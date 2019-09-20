@@ -1,0 +1,66 @@
+version: '3.5'
+
+services:
+
+  db:
+    image: postgres:11
+    environment:
+      - POSTGRES_DB=bmon
+      - POSTGRES_USER=bmon
+      - POSTGRES_PASSWORD=bmon
+    volumes:
+      - 'db-data:/var/lib/postgresql/data'
+
+  redis:
+    image: redis
+
+  web:
+    restart: always
+    image: web
+    build:
+      context: .
+      dockerfile: ./etc/Dockerfile
+    image: bmon/base-image
+    environment:
+      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+    ports:
+      - 8080:8080
+    volumes:
+      - ./:/src
+      - ./etc/docker_entrypoint.sh:/entrypoint.sh
+    depends_on:
+      - db
+    command: nm-server
+     
+  receiver:
+    restart: always
+    image: bmon/base-image
+    environment:
+      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+    volumes:
+      - ./:/src
+      - ./etc/docker_entrypoint.sh:/entrypoint.sh
+    depends_on:
+      - db
+      - redis
+      - web
+    command: nm-receiver
+     
+  generator:
+    image: bmon/base-image
+    volumes:
+      - ./:/src
+      - ./etc/docker_entrypoint.sh:/entrypoint.sh
+      - /data/bitcoin:/bitcoin_data:ro
+      - /home/james/src/bitcoin/src/bitcoin-cli:/bitcoin-cli
+    # So that we can access bitcoin-rpc ports from the host.
+    network_mode: host
+    depends_on:
+      - web
+    environment:
+      - BMON_DATADIR=/bitcoin_data
+      - BMON_PATH_TO_CLI=/bitcoin-cli
+      - BMON_SERVER_URL=web:80
+
+volumes:
+  db-data:

@@ -1,0 +1,22 @@
+2019-07-10T14:35:27Z [msghand] received: cmpctblock (344 bytes) peer=2579
+2019-07-10T14:35:27Z [msghand] Initialized PartiallyDownloadedBlock for block 0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69 using a cmpctblock of size 344
+2019-07-10T14:35:27Z [msghand] received: blocktxn (33 bytes) peer=2579
+2019-07-10T14:35:27Z [msghand] Successfully reconstructed block 0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69 with 1 txn prefilled, 0 txn from mempool (incl at least 0 from extra pool) and 0 txn requested
+2019-07-10T14:35:27Z [msghand]   - Load block from disk: 0.00ms [5025.19s]
+2019-07-10T14:35:27Z [msghand]     - Sanity checks: 0.01ms [1150.96s (1.97ms/blk)]
+2019-07-10T14:35:27Z [msghand]     - Fork checks: 0.04ms [71.00s (0.12ms/blk)]
+2019-07-10T14:35:27Z [msghand]       - Connect 1 transactions: 0.04ms (0.045ms/tx, 0.000ms/txin) [65004.23s (111.16ms/blk)]
+2019-07-10T14:35:27Z [msghand] ERROR: ConnectBlock(): coinbase pays too much (actual=1326546691 vs limit=1250000000)
+2019-07-10T14:35:27Z [msghand] InvalidChainFound: invalid block=0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69  height=584802  log2_work=90.831336  date=2019-07-10T14:35:25Z
+2019-07-10T14:35:27Z [msghand] InvalidChainFound:  current best=0000000000000000001b253b1fac766189e15d7f7078191002e5427ac7b8f9f1  height=584801  log2_work=90.831311  date=2019-07-10T14:35:06Z
+2019-07-10T14:35:27Z [msghand] ERROR: ConnectTip: ConnectBlock 0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69 failed, bad-cb-amount (code 16)
+2019-07-10T14:35:27Z [msghand] InvalidChainFound: invalid block=0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69  height=584802  log2_work=90.831336  date=2019-07-10T14:35:25Z
+2019-07-10T14:35:27Z [msghand] InvalidChainFound:  current best=0000000000000000001b253b1fac766189e15d7f7078191002e5427ac7b8f9f1  height=584801  log2_work=90.831311  date=2019-07-10T14:35:06Z
+2019-07-10T14:35:27Z [msghand] received: cmpctblock (344 bytes) peer=2765
+2019-07-10T14:35:27Z [msghand] ERROR: AcceptBlockHeader: block 0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69 is marked invalid
+2019-07-10T14:35:27Z [msghand] peer=2765: invalid header via cmpctblock
+2019-07-10T14:35:27Z [msghand] received: cmpctblock (344 bytes) peer=2940
+2019-07-10T14:35:27Z [msghand] ERROR: AcceptBlockHeader: block 0000000000000000000b47042b90c6a893e6e5cdef70c92beefb88f4c5fa5a69 is marked invalid
+2019-07-10T14:35:27Z [msghand] peer=2940: invalid header via cmpctblock
+2019-07-10T14:35:27Z [msghand] sending inv (109 bytes) peer=1784
+2019-07-10T14:35:27Z [msghand] received: inv (649 bytes) peer=968

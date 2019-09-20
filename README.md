@@ -4,6 +4,8 @@ A Bitcoin network monitor
 
 ## Design
 
+![netmon design](netmon.png)
+
 Node versions:
 
 - One for each major release
@@ -18,6 +20,12 @@ Invariants:
 - [ ] mempool not empty
 - [ ] tip younger than 30 minutes
 - [ ] no inflation (rolling sum of UTXO amounts + (block_created_amt - block_destroyed_amt) <= supply_at_height))
+
+Notify on:
+
+- [ ] transactions rejected from mempool
+- [ ] bad blocks
+- [ ] reorgs
 
 Measurements:
 
