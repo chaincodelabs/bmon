@@ -27,3 +27,13 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     ports:
       - 9100:9100
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.16.2
+    container_name: logstash
+    restart: unless-stopped
+    volumes:
+      - /data/bitcoin/debug.log:/bitcoin-debug.log:ro
+      - ./logstash/logstash.conf:/logstash.conf
+    network_mode: "host"
+    command: "logstash -f /logstash.conf"
