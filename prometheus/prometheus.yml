@@ -1,0 +1,12 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first.rules"
+  # - "second.rules"
+
+scrape_configs:
+  - job_name: rpi4-8g-0
+    static_configs:
+      - targets: ['rpi4-8g-0:9100', 'rpi4-8g-0:9333']
