@@ -30,7 +30,7 @@ services:
       - ./etc/docker_entrypoint.sh:/entrypoint.sh
     depends_on:
       - db
-    command: nm-server
+    command: bmon-server
      
   receiver:
     restart: always
@@ -44,7 +44,7 @@ services:
       - db
       - redis
       - web
-    command: nm-receiver
+    command: bmon-receiver
      
   generator:
     image: bmon/base-image

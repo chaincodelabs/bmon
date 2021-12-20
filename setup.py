@@ -18,10 +18,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'nm-parse = bmon.logparse:main',
-            'nm-mon = bmon.monitor:main',
-            'nm-server = bmon.webapp:main',
-            'nm-migrate = bmon.db:init_migrate',
+            'bmon-parse = bmon.logparse:main',
+            'bmon-mon = bmon.monitor:main',
+            'bmon-server = bmon.webapp:main',
+            'bmon-migrate = bmon.db:init_migrate',
         ],
     },
 )
