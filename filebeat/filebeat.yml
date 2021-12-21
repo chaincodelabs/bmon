@@ -1,0 +1,7 @@
+filebeat.inputs:
+- input_type: log
+  paths:
+    - /bitcoin-debug.log
+
+output.logstash:
+  hosts: ["tp-i5-8g-0:5044"]
