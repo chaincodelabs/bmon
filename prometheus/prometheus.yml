@@ -9,4 +9,8 @@ rule_files:
 scrape_configs:
   - job_name: rpi4-8g-0
     static_configs:
-      - targets: ['rpi4-8g-0:9100', 'rpi4-8g-0:9333']
+      - targets: ['rpi4-8g-0.lan:9100', 'rpi4-8g-0.lan:9333']
+
+  - job_name: slug
+    static_configs:
+      - targets: ['slug.lan:9100', 'slug.lan:9333']

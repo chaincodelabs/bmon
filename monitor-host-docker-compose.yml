@@ -29,6 +29,7 @@ services:
 
   loki:
     image: grafana/loki:2.4.1
+    container_name: loki
     networks:
       - grafana
     ports:

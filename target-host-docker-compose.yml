@@ -36,3 +36,15 @@ services:
     volumes:
       - /data2/bitcoin/debug.log:/bitcoin-debug.log:ro
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+
+  promtail:
+    image: grafana/promtail:2.0.0
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail.yml:/mnt/config/promtail.yml
+      - /data2/bitcoin/debug.log:/bitcoin-debug.log:ro
+    ports:
+      - 9080:9080
+    command: 
+      - '-config.file=/mnt/config/promtail.yml'
