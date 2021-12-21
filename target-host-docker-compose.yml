@@ -9,7 +9,7 @@ services:
     network_mode: "host"
     environment:
       - BITCOIN_RPC_USER=james
-      - BITCOIN_RPC_PASSWORD=foobar00
+      - BITCOIN_RPC_PASSWORD=$BITCOIN_RPC_PASSWORD
       - METRICS_PORT=9333
 
   node-exporter:
@@ -27,3 +27,12 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     ports:
       - 9100:9100
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.16.2
+    container_name: filebeat
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - /data/bitcoin/debug.log:/bitcoin-debug.log:ro
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml

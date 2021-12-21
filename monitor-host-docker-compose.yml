@@ -83,6 +83,16 @@ services:
     networks:
       - elastic
 
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.16.2
+    container_name: logstash
+    restart: unless-stopped
+    volumes:
+      - ./logstash/logstash.conf:/logstash.conf
+      - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
+    network_mode: "host"
+    command: "logstash -f /logstash.conf"
+
 networks:
   elastic:
     driver: bridge
