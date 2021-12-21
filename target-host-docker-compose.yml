@@ -34,5 +34,5 @@ services:
     restart: unless-stopped
     network_mode: "host"
     volumes:
-      - /data/bitcoin/debug.log:/bitcoin-debug.log:ro
+      - /data2/bitcoin/debug.log:/bitcoin-debug.log:ro
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
