@@ -24,12 +24,12 @@ services:
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
 
   loki:
-    image: grafana/loki:2.4.0
+    image: grafana/loki:2.4.1
     ports:
       - "3100:3100"
     volumes:
-      - ./loki:/etc/loki
-      - loki:/var/lib/loki
+      - loki-data:/loki
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
     command: -config.file=/etc/loki/loki-config.yaml
 
   es01:
@@ -90,7 +90,7 @@ networks:
 
 volumes:
   prom:
-  loki:
+  loki-data:
   grafana:
   esdata01:
   esdata02:
