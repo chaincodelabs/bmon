@@ -10,8 +10,7 @@ services:
     volumes:
       - grafana:/var/lib/grafana
     network_mode: "host"
-    ports:
-      - 3000:3000
+    # publishes on 3000
 
   prometheus:
     image: prom/prometheus:latest
@@ -21,20 +20,18 @@ services:
       - ./prometheus:/etc/prometheus
       - prom:/prometheus
     network_mode: "host"
-    ports:
-      - 9090:9090
     command: --web.enable-lifecycle  --config.file=/etc/prometheus/prometheus.yml
+    # publishes on 9090
 
   loki:
     image: grafana/loki:2.4.1
     container_name: loki
     network_mode: "host"
-    ports:
-      - "3100:3100"
     volumes:
       - loki-data:/loki
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
     command: -config.file=/etc/loki/loki-config.yaml
+    # publishes on 3100
 
   es01:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.16.1
@@ -52,9 +49,8 @@ services:
         hard: -1
     volumes:
       - esdata01:/usr/share/elasticsearch/data
-    ports:
-      - 9200:9200
     network_mode: "host"
+    # publishes on 9200
 
   es02:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.16.1
@@ -77,13 +73,12 @@ services:
   kib01:
     image: docker.elastic.co/kibana/kibana:7.16.1
     container_name: kib01
-    ports:
-      - 5601:5601
     volumes:
       - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,z
     depends_on:
       - es01
     network_mode: "host"
+    # publishes on 5601
 
   logstash:
     image: docker.elastic.co/logstash/logstash:7.16.2
@@ -93,11 +88,10 @@ services:
       - ./logstash/logstash.conf:/logstash.conf
       - ./logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
     command: "logstash -f /logstash.conf"
-    ports:
-      - 5044:5044  # for Filebeat
     depends_on:
       - es01
     network_mode: "host"
+    # publishes on 5044
 
 volumes:
   prom:
