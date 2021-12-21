@@ -3,7 +3,8 @@ filebeat.inputs:
   paths:
     - /bitcoin-debug.log
 
-setup.kibana.host: "tp-i5-8g-0:5601"
+setup.kibana:
+  host: "tp-i5-8g-0:5601"
 
 output.logstash:
   hosts: ["tp-i5-8g-0:5044"]
