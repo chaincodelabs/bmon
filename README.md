@@ -2,6 +2,14 @@
 
 A Bitcoin network monitor
 
+## Setup
+
+1. `./infra.py`
+1. Navigate to Grafana (some-host:3000) and configure datasources
+  - Loki: (http://loki-host:3100)
+  - Prometheus: (http://prom-host:9090)
+
+
 ## Design
 
 ![netmon design](netmon.png)
