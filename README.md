@@ -2,19 +2,11 @@
 
 A Bitcoin network monitor
 
-## Setup
-
-1. `./infra.py`
-1. Navigate to Grafana (some-host:3000) and configure datasources
-  - Loki: (http://loki-host:3100)
-  - Prometheus: (http://prom-host:9090)
-
-
 ## Design
 
 ![netmon design](netmon.png)
 
-Node versions:
+### Node versions
 
 - One for each major release
 - One for current RC
@@ -23,33 +15,41 @@ Node versions:
   - 4 weeks
   - 16 weeks
 
-Invariants:
+### Uses
 
-- [ ] mempool not empty
-- [ ] tip younger than 30 minutes
-- [ ] no inflation (rolling sum of UTXO amounts + (block_created_amt - block_destroyed_amt) <= supply_at_height))
+- [ ] For a given block, determine when it was seen by each node. Present variance.
+    Alert on anomalous variance.
 
-Notify on:
+- [ ] For a given transaction, determine when it was seen by each node. Present
+    variance. Alert on anomalous variance.
 
+- [ ] "Selfish mining" detector: alert on multiple blocks in rapid succession that
+    cause a reorg.
+
+### Notify on
+
+- [ ] mempool empty
+- [ ] inflation (rolling sum of UTXO amounts + (block_created_amt - block_destroyed_amt) > supply_at_height))
+- [ ] tip older than 90 minutes
 - [ ] transactions rejected from mempool
 - [ ] bad blocks
 - [ ] reorgs
 
-Measurements:
+### Measurements
 
 - [ ] block reception time per node
 - [ ] txn reception time per node
 - [ ] reorg count (number of unused tips?)
 - [ ] usual system metrics: memory usage, disk usage, CPU load, etc.
 
-Comparison across nodes:
+### Comparison across nodes
 
-- [ ] mempool contents (are 99.9% of all known txns shared across all mempools?)
+- [ ] mempool contents 
 - [ ] getblocktemplate contents (do they differ at all?)
 - [ ] block processing time (per logs)
 - [ ] block reception time diff
 - [ ] txn reception time diff
 
-Features:
+### Features
 
-- [ ] logs sent to a centralized log explorer (e.g. graylog2, Elasticsearch-Logstash-Kibana stack)
+- [ ] logs sent to a centralized log explorer (Loki-Grafana)
