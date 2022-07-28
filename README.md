@@ -28,20 +28,28 @@ Each bmon node (the analogue of a bitcoind node) runs
 ```mermaid
 flowchart TD
   subgraph node
-    promtail
-    promtail --> loki
-    bitcoind --> /bmon/logs/bitcoin.log
-    /bmon/logs/bitcoin.log --> promtail
-    bitcoind --> bmon_exporter
-    node_exporter
+      node_exporter
+      bmon_exporter
   end
   subgraph server
       loki
       grafana
       alertmanager
       prometheus
-      prometheus --> node_exporter
+      loki --> grafana
+      prometheus --> grafana
+      bmon_exporter --> bmon_collector
   end
+  subgraph node
+    promtail
+    promtail --> loki
+    bitcoind --> /bmon/logs/bitcoin.log
+    /bmon/logs/bitcoin.log --> promtail
+    bitcoind --> bmon_exporter
+    node_exporter --> prometheus
+    prometheus --> alertmanager
+  end
+
 ```
 
 ### Node versions
