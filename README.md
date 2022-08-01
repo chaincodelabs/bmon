@@ -49,8 +49,9 @@ flowchart TD
     node_exporter --> prometheus
     prometheus --> alertmanager
   end
-
 ```
+
+For simplification, all servers participate in a single wireguard network.
 
 ### Node versions
 

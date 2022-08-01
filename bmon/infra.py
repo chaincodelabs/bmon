@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import socket
 import typing as t
+from textwrap import dedent
 from dataclasses import dataclass
 from pathlib import Path
 from string import Template
 
 import fscm
-from fscm import run, mitogen_context, file_, docker
+from fscm import run, mitogen_context, file_, docker, p
 
 
 def stdout(*args, **kwargs) -> str:
@@ -18,12 +19,16 @@ def stdout(*args, **kwargs) -> str:
 # Used for non-destructive querying of the repo.
 GIT_REPO = Path.home() / "src" / "bitcoin"
 
+BMON_DIR = Path('/bmon')
+BMON_LOGS = BMON_DIR / 'logs'
+BMON_DATA = BMON_DIR / 'data'
+BMON_PROGRAMS = BMON_DIR / 'programs'
+
 
 @dataclass
 class Host:
     hostname: str
     username: str
-    data_path: str
 
 
 @dataclass
@@ -36,28 +41,40 @@ class BMonInstallation:
         with mitogen_context(
             self.grafana_host.hostname, username=self.grafana_host.username
         ) as (_, context):
-            context.call(setup_grafana, self.grafana_host.data_path)
-            context.call(setup_alertmanager, self.grafana_host.data_path)
-            context.call(
-                setup_prometheus, self.grafana_host.data_path, self.bitcoin_hostnames
-            )
+            context.call(setup_grafana)
+            context.call(setup_alertmanager)
+            context.call(setup_prometheus, self.bitcoin_hostnames)
 
         with mitogen_context(
             self.loki_host.hostname, username=self.loki_host.username
         ) as (_, context):
-            context.call(setup_loki, self.loki_host.data_path)
+            context.call(setup_loki)
 
 
-def setup_grafana(
-    data_path: str,
-    port: int = 3000,
-):
-    (datap := Path(data_path) / "grafana").mkdir(parents=True, exist_ok=True)
-    (etc := datap / "etc").mkdir(parents=True, exist_ok=True)
-    (var := datap / "var").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_grafana"
+def _mk_docker_run_executable(cmd_name: str, docker_run_args: str) -> fscm.PathHelper:
+    """
+    Each system component has a related executable named /usr/local/bin/bmon-* which
+    logs to stdout and is suitable for management by supervisord.
 
-    uid = stdout("id -u", check=True)
+    For programs run via docker, standardize this script installation here.
+    """
+    run_cmd = dedent(
+        f"""
+        #!/bin/bash
+        exec docker run --name=bmon_{cmd_name} \\
+            {docker_run_args}
+        """
+    )
+
+    binname = cmd_name.replace('_', '-')
+    return p(f"/usr/local/bin/bmon-{binname}").contents(run_cmd).chmod('+x')
+
+
+
+def setup_grafana(port: int = 3000):
+    (datap := BMON_DATA / "grafana").mkdir(parents=True, exist_ok=True)
+    (etc := datap / "etc").mkdir(exist_ok=True)
+    (var := datap / "var").mkdir(exist_ok=True)
 
     if not (config := etc / "grafana.ini").exists():
         gh_url = (
@@ -65,32 +82,22 @@ def setup_grafana(
         )
         run(f'curl -L "{gh_url}" > {config}')
 
-    if not docker.container_exists(container_name):
-        flags = (
-            f"-p {port}:{port} --user={uid} --network=host "
-            f"-v {etc}:/etc/grafana "
-            f"-v {var}:/var/lib/grafana "
-            "--restart unless-stopped "
-        )
-        run(
-            f"docker create --name={container_name} {flags} docker.io/grafana/grafana-enterprise"
-        )
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
+    _mk_docker_run_executable('grafana', dedent(
+        f'''
+        -p {port}:{port} --user=$(id -u) --network=host \\
+        -v {etc}:/etc/grafana \\
+        -v {var}:/var/lib/grafana \\
+        docker.io/grafana/grafana-enterprise"
+        '''))
 
 
 def setup_loki(
-    data_path: str,
     port: int = 3100,
     alertmanager_host: str = "localhost",
     alertmanager_port: str = "9093",
 ):
-    (datap := Path(data_path) / "loki").mkdir(parents=True, exist_ok=True)
-    (etc := datap / "etc").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_loki"
-
-    uid = stdout("id -u", check=True)
+    (datap := BMON_DATA / "loki").mkdir(parents=True, exist_ok=True)
+    (etc := datap / "etc").mkdir(exist_ok=True)
 
     file_(
         etc / "local-config.yaml",
@@ -98,21 +105,13 @@ def setup_loki(
             ALERTMANAGER_HOST=alertmanager_host, ALERTMANAGER_PORT=alertmanager_port
         ),
     )
-
-    if not docker.container_exists(container_name):
-        flags = (
-            f"-p {port}:{port} --user={uid} --network=host "
-            f"-v {datap}:/loki "
-            f"-v {etc}:/etc/loki "
-            "--restart=unless-stopped "
-        )
-        run(
-            f"docker create --name={container_name} {flags} docker.io/grafana/loki "
-            "-config.file=/etc/loki/local-config.yaml"
-        )
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
+    _mk_docker_run_executable('loki', dedent(
+        f'''
+        -p {port}:{port} --user=$(id -u) --network=host \\
+        -v {datap}:/loki \\
+        -v {etc}:/etc/loki \\
+        docker.io/grafana/loki -config.file=/etc/loki/local-config.yaml
+        '''))
 
 
 LOKI_CONFIG = """
@@ -151,13 +150,11 @@ ruler:
 
 
 def setup_prometheus(
-    data_path: str,
     bitcoin_hostnames: t.List[str],
     port: int = 9090,
 ):
-    (datap := Path(data_path) / "prometheus").mkdir(parents=True, exist_ok=True)
-    (etc := datap / "etc").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_prometheus"
+    (datap := BMON_DATA / "prometheus").mkdir(parents=True, exist_ok=True)
+    (etc := datap / "etc").mkdir(exist_ok=True)
 
     prom_conf = Template(PROMETHEUS_CONFIG).substitute()
 
@@ -171,20 +168,14 @@ def setup_prometheus(
             f"      - targets: ['{hostname}:{PROM_EXPORTER_PORT}', '{hostname}:{BITCOIND_EXPORTER_PORT}']\n\n"
         )
 
-    restart_needed = file_(etc / "prometheus.yml", prom_conf)
+    p(etc / "prometheus.yml").contents(prom_conf)
 
-    if not docker.container_exists(container_name):
-        flags = (
-            f"-p {port}:{port} "
-            f"-v {etc}:/etc/prometheus "
-            "--restart unless-stopped "
-        )
-        run(f"docker create --name={container_name} {flags} docker.io/prom/prometheus ")
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
-    elif restart_needed:
-        run(f"docker restart {container_name}")
+    _mk_docker_run_executable('prometheus', dedent(
+        f'''
+        -p {port}:{port} \\
+        -v {etc}:/etc/prometheus \\
+         docker.io/prom/prometheus
+        '''))
 
 
 PROMETHEUS_CONFIG = """
@@ -201,41 +192,34 @@ scrape_configs:
 
 
 def setup_alertmanager(
-    data_path: str,
-    config_template: str = None,
+    config_template: str | None = None,
     port: int = 9093,
 ):
-    (datap := Path(data_path) / "alertmanager").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_alertmanager"
-
-    uid = stdout("id -u", check=True)
-
-    flags = f"-p {port}:{port} --user {uid} --restart unless-stopped "
+    (datap := BMON_DATA / "alertmanager").mkdir(parents=True, exist_ok=True)
+    flags = f"-p {port}:{port} --user $(id -u) --restart unless-stopped "
+    args = ''
 
     if config_template:
         # TODO actually populate config
         flags += f'-v {datap / "config.yaml"}:/etc/alertmanager/config.yaml '
+        args = '--config.file=/etc/alertmanager/config.yaml'
 
-    if not docker.container_exists(container_name):
-        run(
-            f"docker create --name={container_name} {flags} docker.io/prom/alertmanager "
-            f"{'--config.file=/etc/alertmanager/config.yaml' if config_template else ''}"
-        )
 
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
+    _mk_docker_run_executable('alertmanager', dedent(
+        f'''
+        {flags} \\
+        docker.io/prom/alertmanager {args}
+        '''))
 
 
 def setup_promtail(
-    data_path: str,
     loki_address: str,
     bitcoin_version: str,
     bitcoin_git_sha: str,
     bitcoin_logs_path: str,
     port: int = 9080,
 ):
-    (datap := Path(data_path) / "promtail").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_promtail"
+    (datap := BMON_DATA / "promtail").mkdir(parents=True, exist_ok=True)
 
     file_(
         datap / "config.yaml",
@@ -247,25 +231,17 @@ def setup_promtail(
             PORT=port,
         ),
     )
-    uid = stdout("id -u", check=True)
+    uid = '$(id -u)'
     if running_podman():
         uid = "root"  # hack
 
-    flags = (
-        f"-p {port}:{port} --user {uid} "
-        f"-v {bitcoin_logs_path}:/bitcoin-debug.log "
-        f"-v {datap}:/etc/promtail "
-        "--restart unless-stopped "
-    )
-
-    if not docker.container_exists(container_name):
-        run(
-            f"docker create --name={container_name} {flags} docker.io/grafana/promtail "
-            f"--config.file=/etc/promtail/config.yaml"
-        )
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
+    _mk_docker_run_executable('promtail', dedent(
+        f'''
+        -p {port}:{port} --user {uid} \\
+        -v {bitcoin_logs_path}:/bitcoin-debug.log \\
+        -v {datap}:/etc/promtail \\
+        docker.io/grafana/promtail --config.file=/etc/promtail/config.yaml
+        '''))
 
 
 PROMTAIL_CONF = """
@@ -300,48 +276,68 @@ def running_podman():
 BITCOIND_CONF = """
 {rpc_auth}
 dbcache={dbcache}
+printtoconsole=1
 """
+
+BITCOIND_SUPERVISOR_CONF = """
+[program:bitcoind]
+
+command = /usr/local/bin/bmon-bitcoind
+process_name = bitcoind
+autostart = true
+startsecs = 10
+stopwaitsecs = 600
+
+stdout_logfile = /bmon/logs/bitcoind-stdout.log
+stdout_logfile_maxbytes = 200MB
+stdout_logfile_backups = 5
+
+stderr_logfile = /bmon/logs/bitcoind-stderr.log
+stderr_logfile_maxbytes = 100MB
+stderr_logfile_backups = 5
+
+"""
+
+def _download_bitcoin(binary_dest_dir: Path):
+    # TODO make this very primitive download method work across versions and
+    # generally better.
+    tar_path = fscm.download_and_check_sha(
+        'https://bitcoincore.org/bin/bitcoin-core-23.0/bitcoin-23.0-x86_64-linux-gnu.tar.gz',
+        '2cca490c1f2842884a3c5b0606f179f9f937177da4eadd628e3f7fd7e25d26d0')
+    untar_dir_name = 'bitcoin-23.0'
+
+    fscm.run(
+        f'cd {tar_path.parent} && tar xvf {tar_path} && cd {untar_dir_name} && '
+        f'mv bin/{{bitcoind,bitcoin-cli}} {binary_dest_dir}')
+    fscm.run(f'rm -rf {tar_path} {tar_path.parent}/{untar_dir_name}')
 
 
 def setup_bitcoind(
-    data_path: str, git_sha: str, rpc_auth_line: str, bootstrap: str, dockerfile: str
+    git_sha: str, rpc_auth_line: str
 ):
-    fscm.dir(datadir := Path(data_path) / "bitcoin")
-    fscm.file_(datadir / "bootstrap.py", bootstrap)
-    fscm.make_executable(datadir / "bootstrap.py")
-    fscm.file_(datadir / "Dockerfile", dockerfile)
-    fscm.file_(
-        datadir / "bitcoin.conf",
-        BITCOIND_CONF.format(rpc_auth=rpc_auth_line, dbcache=1000),
+    fscm.mkdir(datadir := BMON_DATA / "bitcoin")
+    p(datadir / "bitcoin.conf").contents(
+        BITCOIND_CONF.format(rpc_auth=rpc_auth_line, dbcache=1000))
+    fscm.mkdir(bindir := BMON_PROGRAMS / 'bitcoin')
+
+    _download_bitcoin(bindir)
+
+    run_cmd = dedent(
+        f"""
+        #!/bin/bash
+        exec {bindir}/bitcoind -datadir={datadir} -printtoconsole=1
+        """
     )
 
-    with fscm.cd(datadir):
-        tagname = f"bmon/bitcoin:{git_sha}"
-        run(f"docker build --build-arg VERSION=git:{git_sha} --tag {tagname} .", check=True)
+    return p(f"/usr/local/bin/bmon-bitcoind").contents(run_cmd).chmod('+x')
 
-    uid = stdout("id -u", check=True)
-
-    flags = f"-p 8333:8333 -p 8332:8332 --user {uid} --restart unless-stopped "
-    flags += f'-v {datadir}:/bitcoin-datadir '
-
-    container_name = 'bmon_bitcoin'
-    if not docker.container_exists(container_name):
-        run(
-            f"docker create --name={container_name} {flags} {tagname} "
-            "bitcoind -datadir=/bitcoin-datadir"
-        )
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
 
 def setup_bitcoind_exporter(
-    data_path: str,
     rpc_user: str,
     rpc_password: str,
     port: int = 9332,
 ):
-    (datap := Path(data_path) / "bitcoind-exporter").mkdir(parents=True, exist_ok=True)
-    container_name = "bmon_bitcoind_exporter"
+    (datap := BMON_DATA / "bitcoind-exporter").mkdir(parents=True, exist_ok=True)
     image_name = "jamesob/bitcoin-prometheus-exporter"
 
     if not (gitpath := datap / "src").exists():
@@ -351,36 +347,25 @@ def setup_bitcoind_exporter(
         with fscm.cd(gitpath):
             run(f"docker build --tag {image_name} .")
 
-    uid = stdout("id -u", check=True)
+    uid = '$(id -u)'
     if running_podman():
         uid = "root"  # hack
-    flags = (
-        f"-p {port}:{port} --user={uid} --restart=unless-stopped --network=host "
-        f"-e BITCOIN_RPC_HOST=localhost "
-        f"-e BITCOIN_RPC_USER={rpc_user} "
-        f"-e BITCOIN_RPC_PASSWORD={rpc_password} "
-    )
 
-    if not docker.container_exists(container_name):
-        run(f"docker create --name={container_name} {flags} {image_name}")
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
-
+    _mk_docker_run_executable('bitcoind_exporter', dedent(
+        f'''
+        -p {port}:{port} --user={uid} --network=host \\
+        -e BITCOIN_RPC_HOST=localhost \\
+        -e BITCOIN_RPC_USER={rpc_user} \\
+        -e BITCOIN_RPC_PASSWORD={rpc_password} \\
+        {image_name}
+        '''))
 
 def setup_prom_exporter():
-    container_name = "bmon_prom_exporter"
-
-    flags = "--net='host' --pid='host' -v '/:/host:ro,rslave' --restart unless-stopped "
-
-    if not docker.container_exists(container_name):
-        run(
-            f"docker create --name={container_name} {flags} "
-            "quay.io/prometheus/node-exporter --path.rootfs=/host"
-        )
-
-    if not docker.is_container_up(container_name):
-        run(f"docker start {container_name}")
+    _mk_docker_run_executable('prom_exporter', dedent(
+        f'''
+        --net='host' --pid='host' -v '/:/host:ro,rslave' \\
+        quay.io/prometheus/node-exporter --path.rootfs=/host
+        '''))
 
 
 @dataclass
