@@ -1,38 +1,83 @@
 #!/usr/bin/env python3
-from bmon.infra import Host, BMonInstallation, MonitoredBitcoind
+import mitogen
+import fscm
+import os
+import getpass
+
+from pathlib import Path
+from clii import App
+
+from bmon.infra import Host, BMonInstallation, MonitoredBitcoind, LOKI_PORT
+
+cli = App()
+
+server_host = Host("tp-i5-16g-0.lan", "james")
+b1 = Host("tp-i5-16g-1.lan", "james")
+
+bitcoin_hosts = [
+    b1,
+]
+bmon = BMonInstallation(
+    server_host, server_host,
+    bitcoin_hostnames=[h.hostname for h in bitcoin_hosts]
+)
+
+def get_host_context(router, host: Host, su_password: str) -> mitogen.core.Context:
+    return fscm.get_context_from_spec(router, [
+        fscm.SSH(hostname=host.hostname),
+        fscm.Su(password=su_password)
+    ])
 
 
-def main():
-    rpi1 = Host("rpi4-8g-1.lan", "pi", "/data/bmon")
-    rpi0 = Host("rpi4-8g-0.lan", "pi", "/data/bmon")
-    fido = Host("fido.lan", "james", "/home/james/.local/bmon")
-    loki_address = f"{rpi1.hostname}:3100"
+def get_su_pass():
+    if (from_env := os.environ.get('BMON_SERVER_PASSWORD')):
+        return from_env
+    elif (Path.home() / '.password-store' / 'fscm' / 'secrets.gpg').exists():
+        return fscm.get_secrets(['home.servers'], 'fscm/secrets').home.servers.password
+    else:
+        return getpass.getpass('password for bmon servers: ')
 
-    bitcoin_hosts = [rpi0, fido]
 
-    bmon = BMonInstallation(
-        rpi1, rpi1, bitcoin_hostnames=[h.hostname for h in bitcoin_hosts]
-    )
-    bmon.provision()
+@cli.cmd
+def provision():
+    """
+    Install configuration files to hosts.
+    """
+    with fscm.mitogen_router() as router:
 
-    # fido_bitcoin = MonitoredBitcoind(
-    #     fido,
-    #     loki_address=loki_address,
-    #     version="master",
-    #     rpc_user="james",
-    #     rpc_password="",
-    # )
-    # fido_bitcoin.provision()
+        su_pass = get_su_pass()
+        server_context = get_host_context(router, server_host, su_pass)
+        bmon.provision(server_context)
 
-    rpi0_bitcoin = MonitoredBitcoind(
-        rpi0,
-        loki_address=loki_address,
-        version="v22.0",
-        rpc_user="foo",
-        rpc_password="bar",
-    )
-    rpi0_bitcoin.provision()
+        for bhost in bitcoin_hosts:
+            context = get_host_context(router, bhost, su_pass)
+            mon = MonitoredBitcoind(
+                bhost,
+                loki_address=f"{server_host.hostname}:{LOKI_PORT}",
+                version="v23.0",
+                rpc_user="foo",
+                rpc_password="bar",
+            )
+            mon.provision(context)
+
+
+@cli.cmd
+def status():
+    """
+    Check status on hosts.
+    """
+    su_pass = get_su_pass()
+
+    with fscm.mitogen_router() as router:
+        for host in [server_host] + bitcoin_hosts:
+            print(host)
+            con = get_host_context(router, host, su_pass)
+            print(con.call(_get_status))
+
+
+def _get_status():
+    return fscm.run('supervisorctl status').stdout
 
 
 if __name__ == "__main__":
-    main()
+    cli.run()
