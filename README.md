@@ -5,9 +5,9 @@ A Bitcoin network monitor
 ## Local dev
 
 1. Install VirtualBox and Vagrant for your platform
-  - This may require enabling CPU Virtualization within your bios.
-  - We don't use Docker for local development since the infrastructure itself makes
-    use of Docker containers, and recursive Docker use gets tricky.
+    - This may require enabling CPU Virtualization within your bios.
+    - We don't use Docker for local development since the infrastructure itself makes
+      use of Docker containers, and recursive Docker use gets tricky.
 1. Add the following entry to your `/etc/hosts` file:
     ```
     # bmon
