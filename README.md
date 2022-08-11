@@ -4,6 +4,7 @@ A Bitcoin network monitor
 
 ## Local dev
 
+1. Ensure you have Python 3.10+ on your host.
 1. Install VirtualBox and Vagrant for your platform
     - This may require enabling CPU Virtualization within your bios.
     - We don't use Docker for local development since the infrastructure itself makes
