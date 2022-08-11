@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import mitogen
+import mitogen.core
 import fscm
 import os
 import getpass
@@ -26,7 +27,7 @@ def get_host_context(router, host: Host, su_password: str) -> mitogen.core.Conte
     return fscm.get_context_from_spec(router, [
         fscm.SSH(hostname=host.hostname),
         fscm.Su(password=su_password)
-    ])
+    ], pickle_whitelist=[r'bmon\..*'])
 
 
 def get_su_pass():

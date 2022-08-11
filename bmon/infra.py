@@ -178,7 +178,7 @@ def _mk_docker_run_executable(cmd_name: str, docker_run_args: str) -> fscm.PathH
     run_cmd = textwrap.dedent(
         f"""
         #!/bin/bash
-        exec docker run --name=bmon_{cmd_name} --rm {docker_run_args}
+        exec docker run --init --name=bmon_{cmd_name} --rm {docker_run_args}
         """
     ).lstrip()
 

@@ -14,7 +14,8 @@ setup(
     zip_safe=False,
     packages=['bmon'],
     install_requires=[
-        # TODO
+        'mitogen @ git+ssh://git@github.com/jamesob/mitogen.git'
+        'fscm @ git+ssh://git@github.com/jamesob/fscm.git'
     ],
     entry_points={
         'console_scripts': [

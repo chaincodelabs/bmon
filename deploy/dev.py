@@ -35,6 +35,7 @@ def get_host_context(router, host: Host) -> mitogen.core.Context:
                 check_host_keys="ignore",
             ),
         ],
+        pickle_whitelist=['bmon\..*'],
     )
 
 
