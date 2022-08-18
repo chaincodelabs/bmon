@@ -9,7 +9,8 @@ from pathlib import Path
 from string import Template
 
 import fscm
-from fscm import run, mitogen_context, file_, docker, p
+import fscm.remote
+from fscm import run, file_, docker, p, getstdout
 
 
 BMON_DIR = Path("/bmon")
@@ -20,11 +21,7 @@ BMON_PROGRAMS = BMON_DIR / "programs"
 LOKI_PORT = 3100
 
 
-@dataclass
-class Host:
-    hostname: str
-    username: str
-    ssh_port: int = 22
+fscm.remote.OPTIONS.pickle_whitelist = [r'bmon\..*']
 
 
 COMMON_SUPERVISOR_CONF = """
@@ -33,6 +30,7 @@ COMMON_SUPERVISOR_CONF = """
 [unix_http_server]
 file=/var/run/supervisor.sock
 chmod=0700
+chown=${USER}:${USER}
 
 [inet_http_server]
 port=0.0.0.0:9001
@@ -95,35 +93,32 @@ def supervisor_program_config(program_name: str, running_user: str) -> str:
     )
 
 
-@dataclass
-class BMonInstallation:
-    grafana_host: Host
-    loki_host: Host
-    bitcoin_hostnames: t.List[str]
+def _setup_bmon_common(user: str):
+    fscm.s.pkgs_install("git supervisor docker.io curl")
+    fscm.s.group_member(user, "docker")
 
-    def provision(self, mitogen_context):
-        mitogen_context.call(
-            setup_bmon_grafana_host, self.grafana_host.username, self.bitcoin_hostnames
-        )
+    if p('/etc/supervisor/supervisord.conf', sudo=True).contents(
+            Template(COMMON_SUPERVISOR_CONF).substitute(USER=user)).changes:
+        run('systemctl reload supervisor', sudo=True, check=True)
 
-        mitogen_context.call(setup_bmon_loki_host, self.grafana_host.username)
-        mitogen_context.call(reload_supervisor)
+    for dir in (BMON_LOGS, BMON_DATA, BMON_PROGRAMS):
+        p(dir, sudo=True).mkdir().chown(f"{user}:{user}")
+
+
+def provision_bmon_server(bitcoin_hostnames: t.List[str]):
+    # Most commands should be run as a normal user.
+    assert (username := getstdout('whoami')) != 'root'
+    _setup_bmon_common(username)
+    setup_bmon_grafana_host(username, bitcoin_hostnames)
+    setup_bmon_loki_host(username)
+    reload_supervisor()
 
 
 def reload_supervisor():
     fscm.run('supervisorctl reload', sudo=True)
 
 
-def _setup_bmon_common(user: str):
-    fscm.s.pkgs_install("git supervisor docker.io curl")
-    fscm.s.group_member(user, "docker")
-
-    for dir in (BMON_LOGS, BMON_DATA, BMON_PROGRAMS):
-        p(dir).mkdir().chown(f"{user}:{user}")
-
-
 def setup_bmon_grafana_host(user: str, bitcoin_hostnames):
-    _setup_bmon_common(user)
     setup_grafana()
     setup_alertmanager()
     setup_prometheus(bitcoin_hostnames)
@@ -145,26 +140,13 @@ def setup_bmon_grafana_host(user: str, bitcoin_hostnames):
         supervisor_program_config("prom-exporter", user)
     )
 
-    # Kind of a hack; make sure everything is owned by the user.
-    fscm.run(f"chown -R {user}:{user} /bmon")
-
-    # TODO: this is done at Loki end, and they're the same machine for now
-    # fscm.run('systemctl restart supervisor', sudo=True)
-    # fscm.run('supervisorctl restart all', sudo=True)
-
 
 def setup_bmon_loki_host(user: str):
-    _setup_bmon_common(user)
     setup_loki()
 
     p("/etc/supervisor/conf.d/loki.conf", sudo=True).contents(
         supervisor_program_config("loki", user)
     )
-
-    # fscm.run('systemctl restart supervisor', sudo=True)
-
-    # Kind of a hack; make sure everything is owned by the user.
-    fscm.run(f"chown -R {user}:{user} /bmon")
 
 
 def _mk_docker_run_executable(cmd_name: str, docker_run_args: str) -> fscm.PathHelper:
@@ -243,8 +225,7 @@ def setup_loki(
     p(datap := BMON_DATA / "loki").mkdir()
     p(etc := datap / "etc").mkdir()
 
-    file_(
-        etc / "local-config.yaml",
+    p(etc / "local-config.yaml").contents(
         Template(LOKI_CONFIG).substitute(
             ALERTMANAGER_HOST=alertmanager_host,
             ALERTMANAGER_PORT=alertmanager_port,
@@ -369,13 +350,7 @@ def setup_alertmanager(
         args = "--config.file=/etc/alertmanager/config.yaml"
 
     _mk_docker_run_executable(
-        "alertmanager",
-        (
-            f"""
-        {flags}
-        docker.io/prom/alertmanager {args}
-        """
-        ),
+        "alertmanager", f"{flags} docker.io/prom/alertmanager {args}",
     )
 
 
@@ -384,23 +359,33 @@ class BitcoinNet(str, enum.Enum):
     regtest = "regtest"
 
 
-@dataclass
-class MonitoredBitcoind:
+class MonitoredBitcoind(fscm.remote.Host):
     """
     A host that runs bitcoind and reports data to the bmon server.
     """
+    def __init__(self,
+            hostname: str,
+            loki_address: str,
+            version: str,
+            rpc_user: str,
+            rpc_password: str,
+            *args,
+            net: BitcoinNet = BitcoinNet.mainnet,
+            install_sys_monitor: bool = False,
+            **kwargs):
+        super().__init__(hostname, *args, **kwargs)
+        self.loki_address = loki_address
+        self.version = version
+        self.rpc_user = rpc_user
+        self.rpc_password = rpc_password
+        self.net = net
+        self.install_sys_monitor = install_sys_monitor
 
-    host: Host
-    loki_address: str
-    version: str
-    rpc_user: str
-    rpc_password: str
-    net: BitcoinNet = BitcoinNet.mainnet
-    install_sys_monitor: bool = False
 
-    def provision(self, mitogen_context):
-        mitogen_context.call(setup_bitcoin_host, self, self.host.username)
-        mitogen_context.call(reload_supervisor)
+
+def provision_monitored_bitcoind(host):
+    setup_bitcoin_host(host)
+    reload_supervisor()
 
 
 BITCOIND_SUPERVISOR_CONF = """
@@ -424,28 +409,30 @@ stderr_logfile_backups = 5
 """
 
 
-def setup_bitcoin_host(conf: MonitoredBitcoind, user: str):
+def setup_bitcoin_host(host: MonitoredBitcoind):
+    # Most commands should be run as a normal user.
+    assert (user := getstdout('whoami')) != 'root'
     _setup_bmon_common(user)
 
     setup_bitcoind(
-        "", get_bitcoind_auth_line(conf.rpc_user, conf.rpc_password), conf.net
+        "", get_bitcoind_auth_line(host.rpc_user, host.rpc_password), host.net
     )
 
     bitcoin_logs_path = str(BMON_DATA / "bitcoin" / "debug.log")
-    if conf.net == BitcoinNet.regtest:
+    if host.net == BitcoinNet.regtest:
         bitcoin_logs_path = str(BMON_DATA / "bitcoin" / "regtest" / "debug.log")
 
     setup_promtail(
-        conf.loki_address,
-        conf.version,
+        host.loki_address,
+        host.version,
         "",
         bitcoin_logs_path,
     )
     bitcoin_rpc_port = 8332
-    if conf.net == BitcoinNet.regtest:
+    if host.net == BitcoinNet.regtest:
         bitcoin_rpc_port = 18443
 
-    setup_bitcoind_exporter(conf.rpc_user, conf.rpc_password, bitcoin_rpc_port)
+    setup_bitcoind_exporter(host.rpc_user, host.rpc_password, bitcoin_rpc_port)
     setup_prom_exporter()
 
     p("/etc/supervisor/conf.d/bitcoin.conf", sudo=True).contents(
@@ -463,12 +450,6 @@ def setup_bitcoin_host(conf: MonitoredBitcoind, user: str):
     p("/etc/supervisor/conf.d/prom_exporter.conf", sudo=True).contents(
         supervisor_program_config("prom-exporter", user)
     )
-
-    # Kind of a hack; make sure everything is owned by the user.
-    fscm.run(f"chown -R {user}:{user} /bmon")
-
-    # fscm.run('systemctl restart supervisor', sudo=True)
-    # fscm.run('supervisorctl restart all', sudo=True)
 
 
 def setup_promtail(
