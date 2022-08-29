@@ -586,7 +586,7 @@ def setup_bitcoind_exporter(
 
     if not docker.image_exists(image_name):
         with fscm.cd(gitpath):
-            run(f"docker build --tag {image_name} .")
+            run(f"docker build --tag {image_name} .", sudo=True)
 
     uid = "$(id -u)"
     if running_podman():
