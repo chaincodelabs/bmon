@@ -1,10 +1,55 @@
+#!/usr/bin/env python3
 import logging
 import re
+import os
+import typing as t
+from pathlib import Path
 
-from . import db
-from .client import EventReceiver
+# from . import db
+# from .client import EventReceiver
 
 logger = logging.getLogger(__name__)
+
+
+def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
+    """
+    A generator that reads lines out of a logfile and is resilient to log rotation.
+
+    Taken and modified from https://stackoverflow.com/a/25632664.
+    """
+    current = open(filename, "r")
+    curino = os.fstat(current.fileno()).st_ino
+    curr_line = ''
+
+    while True:
+        while True:
+            buf: str = current.read(1024)
+            if not buf:
+                break
+
+            # TODO this could be faster - maybe optimize if it's a problem.
+            for char in buf:
+                if char == '\n':
+                    yield curr_line
+                    curr_line = ''
+                else:
+                    curr_line += char
+
+        try:
+            if os.stat(filename).st_ino != curino:
+                new = open(filename, "r")
+                current.close()
+                current = new
+                curino = os.fstat(current.fileno()).st_ino
+                continue
+        except IOError:
+            pass
+
+
+def monitor_bitcoind_log(filename: str | Path):
+    for line in read_logfile_forever(filename):
+        if 'Bound' in line:
+            print(line)
 
 
 _FLOAT = r'\d*\.\d+'
@@ -35,22 +80,23 @@ class ConnectBlockListener:
     # variation between versions.
     _update_tip_sub_patts = {
         re.compile(fr"new\s+best=(?P<blockhash>{_HASH})\s+"),
-        re.compile(fr"\s+height=(?P<height>\d+)\s+"),
+        re.compile(r"\s+height=(?P<height>\d+)\s+"),
         # version only present in 0.13+
         re.compile(fr"\s+version=(?P<version>{_HEX})\s+"),
-        re.compile(fr"\s+tx=(?P<total_tx_count>\d+)\s+"),
+        re.compile(r"\s+tx=(?P<total_tx_count>\d+)\s+"),
         # Early date format
-        re.compile(fr"\s+date='?(?P<date>[0-9-]+ [0-9:]+)'?\s+"),
+        re.compile(r"\s+date='?(?P<date>[0-9-]+ [0-9:]+)'?\s+"),
         # Later date format
         re.compile(fr"\s+date='(?P<date>{_NOT_QUOTE})'\s+"),
         re.compile(fr"\s+cache=(?P<cachesize_mib>{_FLOAT})MiB\((?P<cachesize_txo>\d+)txo?\)"),
         re.compile(fr"\s+warning='(?P<warning>{_NOT_QUOTE})'"),
-        re.compile(fr"\s+cache=(?P<cachesize_txo>\d+)\s*$"),
+        re.compile(r"\s+cache=(?P<cachesize_txo>\d+)\s*$"),
     }
 
-    def __init__(self, receiver: EventReceiver):
+    # def __init__(self, receiver: EventReceiver):
+    def __init__(self, receiver):
         self.receiver = receiver
-        self.next_event = db.ConnectBlockEvent()
+        # self.next_event = db.ConnectBlockEvent()
 
     def process_msg(self, msg: str):
         matchgroups = {}
@@ -84,12 +130,12 @@ class ConnectBlockListener:
         if self.next_event.connectblock_total_time_ms is not None:
             self.send(self.next_event)
 
-    def send(self, event: db.ConnectBlockEvent):
-        self.receiver.receive(event)
-        self.reset()
+    # def send(self, event: db.ConnectBlockEvent):
+    #     self.receiver.receive(event)
+    #     self.reset()
 
-    def reset(self):
-        self.next_event = db.ConnectBlockEvent()
+    # def reset(self):
+    #     self.next_event = db.ConnectBlockEvent()
 
 
 def dict_onto_event(d: dict, event, type_map: dict, default_type):
@@ -148,15 +194,22 @@ def parse_log_line():
     pass
 
 
-def main():
-    import sys
-    import pathlib
-    recv = EventReceiver()
-    listen = ConnectBlockListener(recv)
+# def main():
+#     import sys
+#     import pathlib
+#     recv = EventReceiver()
+#     listen = ConnectBlockListener(recv)
 
-    contents = pathlib.Path(sys.argv[1]).read_text().splitlines()
+#     contents = pathlib.Path(sys.argv[1]).read_text().splitlines()
 
-    for line in contents:
-        listen.process_msg(line)
+#     for line in contents:
+#         listen.process_msg(line)
 
-    print("done")
+#     print("done")
+
+
+if __name__ == "__main__":
+    try:
+        monitor_bitcoind_log('/home/james/.bitcoin/debug.log')
+    except KeyboardInterrupt:
+        pass
