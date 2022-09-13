@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import logging
 import re
+import hashlib
 import os
 import typing as t
+from dataclasses import dataclass
 from pathlib import Path
 
-# from . import db
-# from .client import EventReceiver
+from . import db
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +47,35 @@ def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
             pass
 
 
+def hash_noncrypto(w) -> str:
+    """TODO: replace this with something faster if shown to be a bottleneck."""
+    return hashlib.md5(w).hexdigest()
+
+
+LineHash = str
+
+
+@dataclass
+class BitcoindLogFollower:
+    filename: str
+
+    # If specified, skip forward to a specific line.
+    sync_to: LineHash | None = None
+
+    # The line we're currently at.
+    current_position: LineHash | None = None
+
+    def monitor(self):
+        pass
+
+
 def monitor_bitcoind_log(filename: str | Path):
+    cb_listener = ConnectBlockListener()
+
     for line in read_logfile_forever(filename):
-        if 'Bound' in line:
-            print(line)
+        got = cb_listener.process_line(line)
+        if got:
+            print(got)
 
 
 _FLOAT = r'\d*\.\d+'
@@ -93,16 +119,14 @@ class ConnectBlockListener:
         re.compile(r"\s+cache=(?P<cachesize_txo>\d+)\s*$"),
     }
 
-    # def __init__(self, receiver: EventReceiver):
-    def __init__(self, receiver):
-        self.receiver = receiver
-        # self.next_event = db.ConnectBlockEvent()
+    def __init__(self):
+        self.next_event = db.ConnectBlockEvent()
 
-    def process_msg(self, msg: str):
+    def process_line(self, msg: str):
         matchgroups = {}
 
         # Special-case UpdateTip since there are so many variations.
-        if msg.find('UpdateTip: ') != -1:
+        if msg.find(_UPDATE_TIP_START) != -1:
             for patt in self._update_tip_sub_patts:
                 match = patt.search(msg)
                 if match:
@@ -125,24 +149,22 @@ class ConnectBlockListener:
                   'total_tx_count'),
             str: ('blockhash', 'version', 'date'),
             str_or_none: ('warning',),
-        }, float)
+        })
 
+        print(self.next_event.__dict__)
+
+        # Event is ready for persisting!
         if self.next_event.connectblock_total_time_ms is not None:
-            self.send(self.next_event)
-
-    # def send(self, event: db.ConnectBlockEvent):
-    #     self.receiver.receive(event)
-    #     self.reset()
-
-    # def reset(self):
-    #     self.next_event = db.ConnectBlockEvent()
+            completed = self.next_event
+            self.next_event = db.ConnectBlockEvent()
+            return completed
 
 
-def dict_onto_event(d: dict, event, type_map: dict, default_type):
+def dict_onto_event(d: dict, event, type_map: dict):
     """
     Take the entries in a dictionary and map them onto a database event.
 
-    Apply type conversions to the raw strings using type_map and default_type.
+    Apply type conversions to the raw strings using type_map.
     """
     type_map = type_map or {}
     name_to_type = {n: t for t, names in type_map.items() for n in names}
@@ -177,7 +199,6 @@ def parse_log_line():
     # -------------------
     # Warning: Found invalid chain at least ~6 blocks longer than our best chain.
 
-
     # Invalid block found
     # -------------------
     # {funcname}: invalid block={blockhash}  height={height}  log2_work={work}  date={block_datetime}
@@ -207,9 +228,12 @@ def parse_log_line():
 
 #     print("done")
 
-
-if __name__ == "__main__":
+def main():
     try:
         monitor_bitcoind_log('/home/james/.bitcoin/debug.log')
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    main()
