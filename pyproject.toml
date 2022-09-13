@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bmon"
+description = "A high-level monitoring system for Bitcoin Core"
+readme = "README.rst"
+requires-python = ">=3.10"
+keywords = ["bitcoin"]
+license = {text = "MIT License"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    'importlib-metadata; python_version<"3.10"',
+    'mitogen @ git+ssh://git@github.com/jamesob/mitogen.git',
+    'fscm @ git+ssh://git@github.com/jamesob/fscm.git',
+    'clii',
+    'pyhash @ git+https://github.com/flier/pyfasthash.git@20a53f9bb7bf15f98e3e549f523b49e1e0f62e15',
+]
+dynamic = ["version"]
+
+[project.scripts]
+bmon-parse = "bmon.logparse:main"
+bmon-mon = "bmon.monitor:main"
+bmon-server = "bmon.webapp:main"
+bmon-migrate = "bmon.db:init_migrate"
+
+[tool.setuptools]
+packages = ["bmon"]
+
+[tool.setuptools.dynamic]
+version = {attr = "bmon.VERSION"}
