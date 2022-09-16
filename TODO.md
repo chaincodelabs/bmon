@@ -1,0 +1,2 @@
+- [ ] config: monitor-host: set `/etc/sysctrl.conf` `vm.max_map_count=262144`
+- [ ] config: logstash not dockerable on arm7l

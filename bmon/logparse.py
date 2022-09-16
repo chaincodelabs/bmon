@@ -18,31 +18,25 @@ def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
 
     Taken and modified from https://stackoverflow.com/a/25632664.
     """
-    current = open(filename, "r")
+    def openfile():
+        return open(filename, "r", errors="ignore")
+
+    current = openfile()
     curino = os.fstat(current.fileno()).st_ino
     curr_line = ''
 
     while True:
         while True:
-            buf: str = current.read(1024)
-            if not buf:
+            curr_line: str = current.readline()
+            if not curr_line:
                 break
-
-            # TODO this could be faster - maybe optimize if it's a problem.
-            for char in buf:
-                if char == '\n':
-                    yield curr_line
-                    curr_line = ''
-                else:
-                    curr_line += char
-
+            yield curr_line
         try:
             if os.stat(filename).st_ino != curino:
-                new = open(filename, "r")
+                new = openfile()
                 current.close()
                 current = new
                 curino = os.fstat(current.fileno()).st_ino
-                continue
         except IOError:
             pass
 
@@ -67,15 +61,6 @@ class BitcoindLogFollower:
 
     def monitor(self):
         pass
-
-
-def monitor_bitcoind_log(filename: str | Path):
-    cb_listener = ConnectBlockListener()
-
-    for line in read_logfile_forever(filename):
-        got = cb_listener.process_line(line)
-        if got:
-            print(got)
 
 
 _FLOAT = r'\d*\.\d+'
@@ -150,8 +135,6 @@ class ConnectBlockListener:
             str: ('blockhash', 'version', 'date'),
             str_or_none: ('warning',),
         })
-
-        print(self.next_event.__dict__)
 
         # Event is ready for persisting!
         if self.next_event.connectblock_total_time_ms is not None:

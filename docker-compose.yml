@@ -15,12 +15,11 @@ services:
     image: docker.io/library/redis
 
   web:
-    restart: always
     image: web
     build:
       context: .
       dockerfile: ./etc/Dockerfile
-    image: bmon/base-image
+    image: bmon-base-image
     environment:
       - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
     ports:
@@ -28,39 +27,83 @@ services:
     volumes:
       - ./:/src
       - ./etc/docker_entrypoint.sh:/entrypoint.sh
-    depends_on:
+    links:
       - db
     command: bmon-server
-     
-  receiver:
-    restart: always
-    image: bmon/base-image
+
+  aggregator-celery-worker:
+    image: bmon-base-image
     environment:
       - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
     volumes:
       - ./:/src
-      - ./etc/docker_entrypoint.sh:/entrypoint.sh
-    depends_on:
+      - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log
+    links:
       - db
       - redis
-      - web
-    command: bmon-receiver
-     
-  generator:
-    image: bmon/base-image
+    command: celery -A bmon.aggregator_worker.tasks:app worker
+
+  bitcoind-celery-worker:
+    image: bmon-base-image
+    environment:
+      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+      - BMON_REDIS_LOCAL_URL=redis://redis:6379/1
+      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
     volumes:
       - ./:/src
-      - ./etc/docker_entrypoint.sh:/entrypoint.sh
-      - /data/bitcoin:/bitcoin_data:ro
-      - /home/james/src/bitcoin/src/bitcoin-cli:/bitcoin-cli
-    # So that we can access bitcoin-rpc ports from the host.
-    network_mode: host
-    depends_on:
-      - web
+      - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log
+    links:
+      - db
+      - redis
+      - aggregator-celery-worker
+    command: celery -A bmon.bitcoind_worker.tasks:app worker
+
+  bitcoind-watcher:
+    image: bmon-base-image
     environment:
-      - BMON_DATADIR=/bitcoin_data
-      - BMON_PATH_TO_CLI=/bitcoin-cli
-      - BMON_SERVER_URL=web:80
+      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+      - BMON_REDIS_LOCAL_URL=redis://redis:6379/1
+      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
+      - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
+    volumes:
+      - ./:/src
+      - /home/james/.bitcoin/debug.log:/var/log/bitcoind.log
+    links:
+      - db
+      - redis
+      - bitcoind-celery-worker
+    command: bmon-watch-bitcoind
+     
+  # receiver:
+  #   restart: always
+  #   image: bmon/base-image
+  #   environment:
+  #     - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+  #   volumes:
+  #     - ./:/src
+  #     - ./etc/docker_entrypoint.sh:/entrypoint.sh
+  #   depends_on:
+  #     - db
+  #     - redis
+  #     - web
+  #   command: bmon-receiver
+     
+  # generator:
+  #   image: bmon/base-image
+  #   volumes:
+  #     - ./:/src
+  #     - ./etc/docker_entrypoint.sh:/entrypoint.sh
+  #     - /data/bitcoin:/bitcoin_data:ro
+  #     - /home/james/src/bitcoin/src/bitcoin-cli:/bitcoin-cli
+  #   # So that we can access bitcoin-rpc ports from the host.
+  #   network_mode: host
+  #   depends_on:
+  #     - web
+  #   environment:
+  #     - BMON_DATADIR=/bitcoin_data
+  #     - BMON_PATH_TO_CLI=/bitcoin-cli
+  #     - BMON_SERVER_URL=web:80
 
 volumes:
   db-data:

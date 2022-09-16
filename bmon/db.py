@@ -9,12 +9,18 @@ from sqlalchemy import (
     Column, Integer, String, DateTime, ForeignKey, Boolean, Enum, Float)
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.dialects.postgresql import UUID, BIT
-from sqlalchemy.ext.declarative import declared_attr, declarative_base
+from sqlalchemy.ext.declarative import declared_attr, as_declarative
 
 from . import config
 
 
-Base = declarative_base()
+@as_declarative()
+class Base:
+    def as_dict(self):
+        d = self.__dict__
+        if '_sa_instance_state' in d:
+            d.pop('_sa_instance_state')
+        return d
 
 
 class IdMixin:

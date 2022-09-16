@@ -14,10 +14,12 @@ classifiers = [
 ]
 dependencies = [
     'importlib-metadata; python_version<"3.10"',
-    'mitogen @ git+ssh://git@github.com/jamesob/mitogen.git',
-    'fscm @ git+ssh://git@github.com/jamesob/fscm.git',
+    'mitogen @ git+https://git@github.com/jamesob/mitogen.git',
+    'fscm @ git+https://git@github.com/jamesob/fscm.git',
     'clii',
-    'pyhash @ git+https://github.com/flier/pyfasthash.git@20a53f9bb7bf15f98e3e549f523b49e1e0f62e15',
+    'flask',
+    'sqlalchemy',
+    'celery[redis]==5.2.7',
 ]
 dynamic = ["version"]
 
@@ -26,6 +28,7 @@ bmon-parse = "bmon.logparse:main"
 bmon-mon = "bmon.monitor:main"
 bmon-server = "bmon.webapp:main"
 bmon-migrate = "bmon.db:init_migrate"
+bmon-watch-bitcoind = "bmon.bitcoind_worker.watch_logs:main"
 
 [tool.setuptools]
 packages = ["bmon"]

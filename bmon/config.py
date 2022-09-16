@@ -17,5 +17,14 @@ TESTING = bool(os.environ.get(
     'BMON_TESTING',
     False))
 
+
+# Only bitcoind-monitoring nodes have a local Redis cache.
+REDIS_LOCAL_URL = os.environ.get('BMON_REDIS_LOCAL_URL')
+
+# All installations must know about the central Redis instance.
+REDIS_CENTRAL_URL = os.environ.get('BMON_REDIS_CENTRAL_URL')
+
 # For testing
 LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'
+
+BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
