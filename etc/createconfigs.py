@@ -53,6 +53,25 @@ def promtail():
     )
 
 
+def bitcoind():
+    auth_line = get_bitcoind_auth_line(ENV.BITCOIN_RPC_USER, ENV.BITCOIN_RPC_PASSWORD)
+    return Template(Path('./etc/bitcoin/bitcoin-template.conf').read_text()).safe_substitute(
+        RPC_AUTH_LINE=auth_line,
+    )
+
+
+def get_bitcoind_auth_line(username: str, password: str):
+    """Copied from `./share/rpcauth/rpcauth.py`"""
+    import hmac
+
+    # Normally fixing the salt wouldn't be advisable, but we want the conf file to be
+    # deterministic.
+    salt = "a05b6fb53780e0b460cdd7387287f426"
+    m = hmac.new(bytearray(salt, "utf-8"), bytearray(password, "utf-8"), "SHA256")
+    password_hmac = m.hexdigest()
+    return f"rpcauth={username}:{salt}${password_hmac}"
+
+
 @cli.main
 @cli.arg('env', '-e')
 def make_env(env: str ='.env'):
@@ -66,8 +85,15 @@ def make_env(env: str ='.env'):
 
     p(grafetc := root / 'grafana' / 'etc').mkdir()
     p(grafetc / 'grafana.ini').contents(grafana())
-    p(root / 'grafana' / 'var').mkdir()
-    p(datasources := grafetc / 'provisioning' / 'datasources').mkdir()
+    p(var := root / 'grafana' / 'var').mkdir()
+    p(dashboards := var / 'dashboards').mkdir()
+    p(dashboards / 'bitcoind.json').contents(
+        Path('./etc/grafana/dashboards/bitcoind.json').read_text())
+    p(prov := grafetc / 'provisioning').mkdir()
+    p(datasources := prov / 'datasources').mkdir()
+    p(dashprov := prov / 'dashboards').mkdir()
+    p(dashprov / 'default.yml').contents(
+        Path('./etc/grafana-dashboards-template.yml').read_text())
     p(datasources / 'datasource.yml').contents(grafana_datasources())
 
     p(lokipath := root / 'loki').mkdir()
@@ -86,6 +112,9 @@ def make_env(env: str ='.env'):
 
     p(promtailp := root / 'promtail').mkdir()
     p(promtailp / 'config.yml').contents(promtail())
+
+    p(btc := root / 'bitcoin' / 'data').mkdir()
+    p(btc / 'bitcoin.conf').contents(bitcoind())
 
 
 if __name__ == "__main__":

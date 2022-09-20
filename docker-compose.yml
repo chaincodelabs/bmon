@@ -65,6 +65,8 @@ services:
       - BITCOIN_RPC_PASSWORD
     links:
       - bitcoind
+    ports:
+      - 9332:9332
 
   bitcoind:
     image: jamesob/bitcoind:latest
@@ -145,36 +147,6 @@ services:
       - redis
       - bitcoind-celery-worker
     command: bmon-watch-bitcoind
-     
-  # receiver:
-  #   restart: always
-  #   image: bmon/base-image
-  #   environment:
-  #     - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
-  #   volumes:
-  #     - ./:/src
-  #     - ./etc/docker_entrypoint.sh:/entrypoint.sh
-  #   depends_on:
-  #     - db
-  #     - redis
-  #     - web
-  #   command: bmon-receiver
-     
-  # generator:
-  #   image: bmon/base-image
-  #   volumes:
-  #     - ./:/src
-  #     - ./etc/docker_entrypoint.sh:/entrypoint.sh
-  #     - /data/bitcoin:/bitcoin_data:ro
-  #     - /home/james/src/bitcoin/src/bitcoin-cli:/bitcoin-cli
-  #   # So that we can access bitcoin-rpc ports from the host.
-  #   network_mode: host
-  #   depends_on:
-  #     - web
-  #   environment:
-  #     - BMON_DATADIR=/bitcoin_data
-  #     - BMON_PATH_TO_CLI=/bitcoin-cli
-  #     - BMON_SERVER_URL=web:80
 
 volumes:
   db-data:
