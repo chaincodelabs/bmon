@@ -12,9 +12,8 @@ A Bitcoin network monitor
 1. Build local config tree: `./etc/createconfig.py`
 1. Bring docker-compose up: `docker-compose up`
 1. Browse to `http://localhost:3000` to access Grafana; use the default admin
-  credentials `admin`/`admin`.
-1. Import a sample dashboard using `Dashboards -> Import -> Import via panel json` with
-  the contents of `etc/sample-grafana-infra-dashboard.json`.
+  credentials `admin`/`admin`. You should see a nice little sample dashboard
+  displaying bitcoind logs etc.
 
 
 ## Design
