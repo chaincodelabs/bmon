@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://${PROM_ADDRESS}
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://${LOKI_ADDRESS}
+
+  - name: Alertmanager
+    type: alertmanager
+    url: http://${ALERTMAN_ADDRESS}
+    access: proxy

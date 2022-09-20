@@ -14,8 +14,79 @@ services:
   redis:
     image: docker.io/library/redis
 
+  grafana:
+    image: docker.io/grafana/grafana-enterprise
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/grafana/etc:/etc/grafana
+      - ${ENV_ROOT}/grafana/var:/var/lib/grafana
+    links:
+      - prom
+      - alertman
+      - loki
+    ports:
+      - 3000:3000
+
+  loki:
+    image: docker.io/grafana/loki
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/loki:/loki
+      - ${ENV_ROOT}/loki/etc:/etc/loki
+    links:
+      - alertman
+    command: -config.file=/etc/loki/local-config.yaml
+
+  prom:
+    image: docker.io/prom/prometheus
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/prom/etc:/etc/prometheus
+      - ${ENV_ROOT}/prom/data:/prometheus
+    links:
+      - alertman
+    ports:
+      - 9090:9090
+
+  alertman:
+    image: docker.io/prom/alertmanager
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
+    command: --config.file=/etc/alertmanager/config.yml
+
+  bitcoind-exporter:
+    image: jamesob/bitcoind-prom
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BITCOIN_RPC_HOST
+      - BITCOIN_RPC_PORT
+      - BITCOIN_RPC_USER
+      - BITCOIN_RPC_PASSWORD
+    links:
+      - bitcoind
+
+  bitcoind:
+    image: jamesob/bitcoind:latest
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
+    command: bitcoind -datadir=/bitcoin/data -regtest -debug
+
+  promtail:
+    image: docker.io/grafana/promtail
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/promtail:/etc/promtail
+      - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
+    command: --config.file=/etc/promtail/config.yml
+    links:
+      - loki
+      - bitcoind
+
   web:
     image: web
+    user: "${UID}"
     build:
       context: .
       dockerfile: ./etc/Dockerfile
@@ -52,7 +123,6 @@ services:
       - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
     volumes:
       - ./:/src
-      - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log
     links:
       - db
       - redis
@@ -68,7 +138,8 @@ services:
       - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
     volumes:
       - ./:/src
-      - /home/james/.bitcoin/debug.log:/var/log/bitcoind.log
+      # TODO: this shouldn't be specific to regtest
+      - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
     links:
       - db
       - redis

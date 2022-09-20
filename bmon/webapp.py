@@ -30,6 +30,18 @@ def _deserialize_body(content: dict):
     return content
 
 
+@app.route('/prom_scrape_config', methods=['GET'])
+def prom_scrape_config():
+    return jsonify([
+        {
+            'targets': ['bitcoind-exporter:9332'],
+            'labels': {
+                'job': 'bitcoind',
+            }
+        },
+    ])
+
+
 def main():
     app.run(
         debug=True,

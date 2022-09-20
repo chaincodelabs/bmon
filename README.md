@@ -4,36 +4,17 @@ A Bitcoin network monitor
 
 ## Local dev
 
-1. Ensure you have Python 3.10+ on your host.
-1. Install VirtualBox and Vagrant for your platform
-    - This may require enabling CPU Virtualization within your bios.
-    - We don't use Docker for local development since the infrastructure itself makes
-      use of Docker containers, and recursive Docker use gets tricky.
-1. Add the following entry to your `/etc/hosts` file:
-    ```
-    # bmon
-    192.168.56.2  bmon-server
-    192.168.56.3  bmon-b1
-    192.168.56.4  bmon-b2
-    ```
-1. If you don't have your SSH pubkey at `~/.ssh/id_rsa.pub`, adjust the corresponding
-  configuration in `Vagrantfile`.
-1. Run `vagrant up` to provision the VMs.
-1. Run `pip install -e .` to install `bmon` infrastructure tooling on your host
-   machine. It is recommended to do this in a non-root virtualenv.
-1. Run `./deploy/dev.py provision` to install bmon configuration and dependencies on
-  each host.
-1. Browse to `http://bmon-server:3000` to access Grafana; use the default admin
+1. Ensure you have Python 3.10+, Docker, and docker-compose on your host.
+    - `pip install docker-compose`
+1. Get fscm and clii.
+    - `pip install fscm clii==1.0.0`
+1. Link the dev .env into place: `ln -s $(pwd)/env.dev $(pwd)/.env`
+1. Build local config tree: `./etc/createconfig.py`
+1. Bring docker-compose up: `docker-compose up`
+1. Browse to `http://localhost:3000` to access Grafana; use the default admin
   credentials `admin`/`admin`.
 1. Import a sample dashboard using `Dashboards -> Import -> Import via panel json` with
   the contents of `etc/sample-grafana-infra-dashboard.json`.
-
-[Supervisor](http://supervisord.org/) is used to manage the processes on each host
-under the `root` account; you can perform management by running `ssh root@<host>` and
-then using the `supervisorctl` command.
-
-In flagrant violation of posix standards, all logs and program configuration are
-available under `/bmon` on each host.
 
 
 ## Design
