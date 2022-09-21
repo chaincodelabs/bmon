@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 # vim: set sw=4 tabstop=4
-import socket
-import enum
+import os
+import sys
+import re
 import typing as t
-import textwrap
 from pathlib import Path
 from string import Template
 
 import fscm
 import fscm.remote
-from fscm import run,  docker, p, getstdout
+from clii import App
+from fscm.remote import executor, SSH
+from fscm import run, p, getstdout, lineinfile
+
+from .config import prod_env
+
+
+cli = App()
 
 
 BMON_DIR = Path("/bmon")
@@ -18,516 +25,155 @@ BMON_DATA = BMON_DIR / "data"
 BMON_PROGRAMS = BMON_DIR / "programs"
 
 LOKI_PORT = 3100
-REPO_URL = 'https://github.com/jamesob/bmon.git'
+REPO_URL = "https://github.com/jamesob/bmon.git"
 
 
-fscm.remote.OPTIONS.pickle_whitelist = [r'bmon\..*']
+class Host(fscm.remote.Host):
+    def __init__(
+        self,
+        *args,
+        is_server: bool = False,
+        bitcoin_version: str | None = None,
+        **kwargs,
+    ):
+        self.is_server = is_server
+        self.bitcoin_version = bitcoin_version
+        super().__init__(*args, **kwargs)
+
+
+HOSTS = [
+    SERVER_HOST := Host("bmon.lan", is_server=True),
+    Host("tp-i5-16g-1.lan", bitcoin_version='v23.0')
+]
+
+bitcoin_hosts = [
+    h for h in HOSTS if h.bitcoin_version is not None
+]
+
+
+def _initialize_hosts():
+    """Set sudo passwords so that they're cached for remote execution."""
+    secrets = fscm.get_secrets(['bmon'], 'fscm/secrets').bmon
+    assert secrets.sudo_password
+
+    for host in HOSTS:
+        host.secrets = secrets
+        host.connection_spec = [SSH(check_host_keys='accept')]
+
+
+fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
+
+
+def _run_in_bash(cmd, *args, **kwargs) -> fscm.RunReturn:
+    return run(f"bash -i -c '{cmd}'", *args, **kwargs)
 
 
 def _setup_bmon_common(user: str):
     fscm.s.pkgs_install("git supervisor docker.io curl")
     fscm.s.group_member(user, "docker")
-    run(f'loginctl enable-linger {user}', sudo=True)
 
-    if not (git := Path.home() / 'bmon').exists():
-        run(f'git clone {REPO_URL} {git}')
+    if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
+        run(f"loginctl enable-linger {user}", sudo=True)
+
+    if not (venv := Path.home() / '.venv').exists():
+        run(f"python3 -m venv {venv}").assert_ok()
+
+    lineinfile(
+        f"/home/{user}/.bashrc",
+        "source ${HOME}/.venv/bin/activate",
+        regex="venv/bin/activate",
+    )
+
+    if not (bmon_path := Path.home() / "bmon").exists():
+        run(f"git clone {REPO_URL} {bmon_path}").assert_ok()
+
+    if not _run_in_bash("which bmon-config", quiet=True).ok:
+        _run_in_bash(f"cd {bmon_path} && pip install -e ./infra").assert_ok()
+
+    if not _run_in_bash("which docker-compose", quiet=True).ok:
+        _run_in_bash("pip install docker-compose").assert_ok()
+
+    run("cd {bmon_path} && git pull origin master").assert_ok()
 
 
-def provision_bmon_server(bitcoin_hostnames: t.List[str]):
-    # Most commands should be run as a normal user.
-    assert (username := getstdout('whoami')) != 'root'
+def provision_bmon_server(host):
+    assert (username := getstdout("whoami")) != "root"
+
     _setup_bmon_common(username)
-    setup_bmon_grafana_host(username, bitcoin_hostnames)
-    setup_bmon_loki_host(username)
-    reload_supervisor()
+    os.chdir(bmon_path := Path.home() / "bmon")
 
-
-
-def setup_bmon_loki_host(user: str):
-    setup_loki()
-
-    p("/etc/supervisor/conf.d/loki.conf", sudo=True).contents(
-        supervisor_program_config("loki", user)
+    settings = dict(
+        db_password=host.secrets.db_password,
+        bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
+        bitcoin_version=host.bitcoin_version,
     )
 
+    p(bmon_path / ".env").contents(prod_env(**settings)).chmod("600")
+    _run_in_bash("bmon-config")
+    docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
+    assert docker_compose.exists()
 
-def _mk_docker_run_executable(cmd_name: str, docker_run_args: str) -> fscm.PathHelper:
-    """
-    Each system component has a related executable named /usr/local/bin/bmon-* which
-    logs to stdout and is suitable for management by supervisord.
-
-    For programs run via docker, standardize this script installation here.
-    """
-    docker_run_args = textwrap.dedent(docker_run_args).replace("\n", " ")
-    run_cmd = textwrap.dedent(
-        f"""
-        #!/bin/bash
-        exec docker run --init --name=bmon_{cmd_name} --rm {docker_run_args}
-        """
-    ).lstrip()
-
-    binname = cmd_name.replace("_", "-")
-    return p(f"/usr/local/bin/bmon-{binname}", sudo=True).contents(run_cmd).chmod("755")
-
-
-def setup_grafana(port: int = 3000):
-    p(datap := BMON_DATA / "grafana").mkdir()
-    p(etc := datap / "etc").mkdir()
-    p(var := datap / "var").mkdir()
-
-    if not (config := etc / "grafana.ini").exists():
-        gh_url = (
-            "https://raw.githubusercontent.com/grafana/grafana/main/conf/sample.ini"
+    p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
+    p(sysd / 'bmon-server.service').contents(
+        Template(Path('./etc/systemd-server-unit.service').read_text()).substitute(
+            user=username,
+            bmon_dir=bmon_path,
+            docker_compose=docker_compose,
         )
-        run(f'curl -L "{gh_url}" > {config}')
-
-    _mk_docker_run_executable(
-        "grafana",
-        (
-            f"""
-        -p {port}:{port} --user=$(id -u) --network=host
-        -v {etc}:/etc/grafana
-        -v {var}:/var/lib/grafana
-        docker.io/grafana/grafana-enterprise
-        """
-        ),
-    )
-
-    p(ds := etc / "provisioning" / "datasources").mkdir()
-    p(ds / "datasource.yml").contents(GRAFANA_DATA_SOURCES_YAML)
-
-
-GRAFANA_DATA_SOURCES_YAML = f"""
-apiVersion: 1
-
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://localhost:9090
-
-  - name: Loki
-    type: loki
-    access: proxy
-    url: http://localhost:{LOKI_PORT}
-
-  - name: Alertmanager
-    type: alertmanager
-    url: http://localhost:9093
-    access: proxy
-
-"""
-
-
-def setup_loki(
-    port: int = LOKI_PORT,
-    alertmanager_host: str = "localhost",
-    alertmanager_port: str = "9093",
-):
-    p(datap := BMON_DATA / "loki").mkdir()
-    p(etc := datap / "etc").mkdir()
-
-    p(etc / "local-config.yaml").contents(
-        Template(LOKI_CONFIG).substitute(
-            ALERTMANAGER_HOST=alertmanager_host,
-            ALERTMANAGER_PORT=alertmanager_port,
-            LOKI_PORT=LOKI_PORT,
-        ),
-    )
-    _mk_docker_run_executable(
-        "loki",
-        (
-            f"""
-        -p {port}:{port} --user=$(id -u) --network=host
-        -v {datap}:/loki
-        -v {etc}:/etc/loki
-        docker.io/grafana/loki -config.file=/etc/loki/local-config.yaml
-        """
-        ),
     )
 
 
-LOKI_CONFIG = """
-auth_enabled: false
-
-server:
-  http_listen_address: 0.0.0.0
-  http_listen_port: ${LOKI_PORT}
-  grpc_listen_port: 9096
-
-common:
-  path_prefix: /loki
-  storage:
-    filesystem:
-      chunks_directory: /loki/chunks
-      rules_directory: /loki/rules
-  replication_factor: 1
-  ring:
-    instance_addr: 127.0.0.1
-    kvstore:
-      store: inmemory
-
-schema_config:
-  configs:
-    - from: 2020-10-24
-      store: boltdb-shipper
-      object_store: filesystem
-      schema: v11
-      index:
-        prefix: index_
-        period: 24h
-
-ruler:
-  alertmanager_url: http://${ALERTMANAGER_HOST}:${ALERTMANAGER_PORT}
-"""
-
-
-def setup_prometheus(
-    bitcoin_hostnames: t.List[str],
-    port: int = 9090,
-):
-    p(datap := BMON_DATA / "prometheus").mkdir()
-    p(data_dir := datap / "data").mkdir()
-    p(etc := datap / "etc").mkdir()
-
-    prom_conf = Template(PROMETHEUS_CONFIG).substitute()
-    this_hostname = fscm.run("hostname -f", quiet=True).stdout.strip()
-
-    PROM_EXPORTER_PORT = 9100
-    BITCOIND_EXPORTER_PORT = 9332
-
-    # This host (prometheus host), should be monitored.
-    prom_conf += (
-        f"  - job_name: {this_hostname}\n"
-        f"    static_configs: \n"
-        f"      - targets: ['{this_hostname}:{PROM_EXPORTER_PORT}']\n\n"
-    )
-
-    for hostname in bitcoin_hostnames:
-        prom_conf += (
-            f"  - job_name: {hostname}\n"
-            f"    static_configs: \n"
-            f"      - targets: ['{hostname}:{PROM_EXPORTER_PORT}', '{hostname}:{BITCOIND_EXPORTER_PORT}']\n\n"
-        )
-
-    p(etc / "prometheus.yml").contents(prom_conf)
-
-    _mk_docker_run_executable(
-        "prometheus",
-        (
-            f"""
-        -p {port}:{port} --user=$(id -u)
-        -v {etc}:/etc/prometheus
-        -v {data_dir}:/prometheus
-         docker.io/prom/prometheus
-        """
-        ),
-    )
-
-
-PROMETHEUS_CONFIG = """
-global:
-  scrape_interval:     15s
-  evaluation_interval: 15s
-
-rule_files:
-  # - "first.rules"
-  # - "second.rules"
-
-scrape_configs:
-"""
-
-
-def setup_alertmanager(
-    config_template: str | None = None,
-    port: int = 9093,
-):
-    p(datap := BMON_DATA / "alertmanager").mkdir()
-    flags = f"-p {port}:{port} --user $(id -u) "
-    args = ""
-
-    if config_template:
-        # TODO actually populate config
-        flags += f'-v {datap / "config.yaml"}:/etc/alertmanager/config.yaml '
-        args = "--config.file=/etc/alertmanager/config.yaml"
-
-    _mk_docker_run_executable(
-        "alertmanager", f"{flags} docker.io/prom/alertmanager {args}",
-    )
-
-
-class BitcoinNet(str, enum.Enum):
-    mainnet = "mainnet"
-    regtest = "regtest"
-
-
-class MonitoredBitcoind(fscm.remote.Host):
-    """
-    A host that runs bitcoind and reports data to the bmon server.
-    """
-    def __init__(self,
-            hostname: str,
-            loki_address: str,
-            version: str,
-            rpc_user: str,
-            rpc_password: str,
-            *args,
-            net: BitcoinNet = BitcoinNet.mainnet,
-            install_sys_monitor: bool = False,
-            **kwargs):
-        super().__init__(hostname, *args, **kwargs)
-        self.loki_address = loki_address
-        self.version = version
-        self.rpc_user = rpc_user
-        self.rpc_password = rpc_password
-        self.net = net
-        self.install_sys_monitor = install_sys_monitor
-
-
-
-def provision_monitored_bitcoind(host):
-    setup_bitcoin_host(host)
-    reload_supervisor()
-
-
-BITCOIND_SUPERVISOR_CONF = """
-[program:bitcoind]
-
-command = /usr/local/bin/bmon-bitcoind
-user = ${USER}
-process_name = bitcoind
-autostart = true
-startsecs = 2
-stopwaitsecs = 10
-
-stdout_logfile = /bmon/logs/bitcoind-stdout.log
-stdout_logfile_maxbytes = 200MB
-stdout_logfile_backups = 5
-
-stderr_logfile = /bmon/logs/bitcoind-stderr.log
-stderr_logfile_maxbytes = 200MB
-stderr_logfile_backups = 5
-
-"""
-
-
-def setup_bitcoin_host(host: MonitoredBitcoind):
-    # Most commands should be run as a normal user.
-    assert (user := getstdout('whoami')) != 'root'
-    _setup_bmon_common(user)
-
-    setup_bitcoind(
-        "", get_bitcoind_auth_line(host.rpc_user, host.rpc_password), host.net
-    )
-
-    bitcoin_logs_path = str(BMON_DATA / "bitcoin" / "debug.log")
-    if host.net == BitcoinNet.regtest:
-        bitcoin_logs_path = str(BMON_DATA / "bitcoin" / "regtest" / "debug.log")
-
-    setup_promtail(
-        host.loki_address,
-        host.version,
-        "",
-        bitcoin_logs_path,
-    )
-    bitcoin_rpc_port = 8332
-    if host.net == BitcoinNet.regtest:
-        bitcoin_rpc_port = 18443
-
-    setup_bitcoind_exporter(host.rpc_user, host.rpc_password, bitcoin_rpc_port)
-    setup_prom_exporter()
-
-    p("/etc/supervisor/conf.d/bitcoin.conf", sudo=True).contents(
-        Template(BITCOIND_SUPERVISOR_CONF).substitute(USER=user)
-    )
-
-    p("/etc/supervisor/conf.d/promtail.conf", sudo=True).contents(
-        supervisor_program_config("promtail", user)
-    )
-
-    p("/etc/supervisor/conf.d/bitcoind_exporter.conf", sudo=True).contents(
-        supervisor_program_config("bitcoind-exporter", user)
-    )
-
-    p("/etc/supervisor/conf.d/prom_exporter.conf", sudo=True).contents(
-        supervisor_program_config("prom-exporter", user)
-    )
-
-
-def setup_promtail(
-    loki_address: str,
-    bitcoin_version: str,
-    bitcoin_git_sha: str,
-    bitcoin_logs_path: str,
-    port: int = 9080,
-):
-    p(datap := BMON_DATA / "promtail").mkdir()
-    p(datap / "config.yaml").contents(
-        Template(PROMTAIL_CONF).substitute(
-            LOKI_ADDRESS=loki_address,
-            BITCOIN_GIT_SHA=bitcoin_git_sha,
-            BITCOIN_VERSION=bitcoin_version,
-            HOSTNAME=socket.gethostname(),
-            PORT=port,
-        ),
-    )
-    uid = "$(id -u)"
-    if running_podman():
-        uid = "root"  # hack
-
-    _mk_docker_run_executable(
-        "promtail",
-        (
-            f"""
-        -p {port}:{port} --user {uid}
-        -v {bitcoin_logs_path}:/bitcoin-debug.log
-        -v {datap}:/etc/promtail
-        docker.io/grafana/promtail --config.file=/etc/promtail/config.yaml
-        """
-        ),
-    )
-
-
-PROMTAIL_CONF = """
-server:
-  http_listen_port: $PORT
-  grpc_listen_port: 0
-
-positions:
-  filename: /tmp/positions.yaml
-
-clients:
-- url: http://${LOKI_ADDRESS}:/loki/api/v1/push
-
-scrape_configs:
-- job_name: system
-  static_configs:
-  - targets:
-      - localhost
-    labels:
-      job: bitcoin
-      host: $HOSTNAME
-      version: ${BITCOIN_VERSION}
-      gitsha: ${BITCOIN_GIT_SHA}
-      __path__: /bitcoin-debug.log
-"""
-
-
-def running_podman():
-    return run("which podman", quiet=True, check=False).ok
-
-
-BITCOIND_CONF = """
-{rpc_auth}
-dbcache={dbcache}
-printtoconsole=1
-"""
-
-
-def _download_bitcoin(binary_dest_dir: Path):
-    """
-    TODO make this very primitive download method work across versions and
-    generally better.
-    """
-    if (bitcoind_bin := binary_dest_dir / "bitcoind").exists() and "v23.0.0" in run(
-        f"{bitcoind_bin} -version | head -n 1", quiet=True
-    ).stdout:
-        return
-
-    tar_path = fscm.download_and_check_sha(
-        "https://bitcoincore.org/bin/bitcoin-core-23.0/bitcoin-23.0-x86_64-linux-gnu.tar.gz",
-        "2cca490c1f2842884a3c5b0606f179f9f937177da4eadd628e3f7fd7e25d26d0",
-    )
-    untar_dir_name = "bitcoin-23.0"
-
-    fscm.run(
-        f"cd {tar_path.parent} && tar xvf {tar_path} && cd {untar_dir_name} && "
-        f"mv bin/bitcoind bin/bitcoin-cli {binary_dest_dir}"
-    )
-    fscm.run(f"rm -rf {tar_path} {tar_path.parent}/{untar_dir_name}")
-
-
-def setup_bitcoind(
-    git_sha: str,
-    rpc_auth_line: str,
-    network: BitcoinNet,
-):
-    p(datadir := BMON_DATA / "bitcoin").mkdir()
-    p(datadir / "bitcoin.conf").contents(
-        BITCOIND_CONF.format(rpc_auth=rpc_auth_line, dbcache=1000)
-    )
-    fscm.mkdir(bindir := BMON_PROGRAMS / "bitcoin")
-
-    _download_bitcoin(bindir)
-
-    netarg = "-regtest" if network == BitcoinNet.regtest else ""
-    run_cmd = textwrap.dedent(
-        f"""
-        #!/bin/bash
-        exec {bindir}/bitcoind {netarg} -datadir={datadir} -printtoconsole=1
-        """
-    ).lstrip()
-
-    p("/usr/local/bin/bmon-bitcoind", sudo=True).contents(run_cmd).chmod("755")
-
-
-def setup_bitcoind_exporter(
-    rpc_user: str,
-    rpc_password: str,
-    bitcoin_rpc_port: int,
-    port: int = 9332,
-):
-    """
-    TODO: include bitcoin version information in prom export
-    """
-    p(datap := BMON_DATA / "bitcoind-exporter").mkdir()
-    image_name = "jamesob/bitcoin-prometheus-exporter"
-
-    if not (gitpath := datap / "src").exists():
-        run(f"git clone https://github.com/{image_name} {gitpath}")
-
-    if not docker.image_exists(image_name):
-        with fscm.cd(gitpath):
-            run(f"docker build --tag {image_name} .", sudo=True)
-
-    uid = "$(id -u)"
-    if running_podman():
-        uid = "root"  # hack
-
-    _mk_docker_run_executable(
-        "bitcoind_exporter",
-        (
-            f"""
-        -p {port}:{port} --user={uid} --network=host
-        -e BITCOIN_RPC_HOST=localhost
-        -e BITCOIN_RPC_PORT={bitcoin_rpc_port}
-        -e BITCOIN_RPC_USER={rpc_user}
-        -e BITCOIN_RPC_PASSWORD={rpc_password}
-        {image_name}
-        """
-        ),
-    )
-
-
-def setup_prom_exporter():
-    _mk_docker_run_executable(
-        "prom_exporter",
-        (
-            """
-        --net='host' --pid='host' -v '/:/host:ro,rslave'
-        quay.io/prometheus/node-exporter --path.rootfs=/host
-        """
-        ),
-    )
-
-
-def get_bitcoind_auth_line(username: str, password: str):
-    """Copied from `./share/rpcauth/rpcauth.py`"""
-    import hmac
-
-    # Normally fixing the salt wouldn't be advisable, but we want the conf file to be
-    # deterministic.
-    salt = "a05b6fb53780e0b460cdd7387287f426"
-    m = hmac.new(bytearray(salt, "utf-8"), bytearray(password, "utf-8"), "SHA256")
-    password_hmac = m.hexdigest()
-    return f"rpcauth={username}:{salt}${password_hmac}"
+def provision_bitcoind_server(host):
+    pass
+
+
+@cli.cmd
+def provision():
+    """Provision necessary dependencies and config files on hosts."""
+    _initialize_hosts()
+
+    with executor(SERVER_HOST) as exec:
+        exec.run(provision_bmon_server)
+
+#     with executor(*bitcoin_hosts) as exec:
+#         exec.run(provision_monitored_bitcoind)
+
+
+@cli.cmd
+def status():
+    """Check status on hosts."""
+    run_on_all('supervisorctl status')
+
+
+@cli.cmd
+def bitcoind_logs():
+    """Present a brief tail of all known bitcoind logs."""
+    run_on_all('tail -n 20 /bmon/logs/bitcoind-stdout.log', host_filter=r'bmon-b\d+')
+
+
+@cli.cmd
+def run_on_all(cmd: str, host_filter: t.Optional[str] = None):
+    """Run some command across all hosts."""
+    _initialize_hosts()
+
+    hosts = HOSTS
+    if host_filter:
+        hosts = [h for h in HOSTS if re.match(host_filter, h.name)]
+
+    with executor(*hosts) as exec:
+        if not (res := exec.run(_run_cmd, cmd)).ok:
+            print(f"Command failed on hosts: {res.failed}")
+            sys.exit(1)
+
+
+def _run_cmd(cmd: str):
+    return fscm.run(cmd)
+
+
+def main():
+    cli.run()
+
+
+if __name__ == "__main__":
+    # You should be using the bmon-deploy entrypoint though.
+    main()

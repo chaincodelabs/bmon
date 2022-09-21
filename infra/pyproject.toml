@@ -21,6 +21,7 @@ version = "0.0.1"
 
 [project.scripts]
 bmon-config = "bmon_infra.config:main"
+bmon-deploy = "bmon_infra.infra:main"
 
 [tool.setuptools]
 packages = ["bmon_infra"]

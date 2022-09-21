@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import sys
 from string import Template
 from pathlib import Path
 from types import SimpleNamespace
+import typing as t
 
 from fscm import p
 from clii import App
@@ -70,16 +70,17 @@ dev_settings = dict(
     bitcoin_version="?",
 )
 
+
 def dev_env() -> str:
     return Template(env_template).substitute(**dev_settings)
 
 
-def prod_env(
+def prod_settings(
     db_password: str,
     bitcoin_rpc_password: str,
     bitcoin_git_sha: str = '?',
     bitcoin_version: str = '?',
-) -> str:
+) -> dict:
     servername = 'bmon.lan'
 
     prod_settings = dict(dev_settings)
@@ -100,7 +101,12 @@ def prod_env(
         bitcoin_version=bitcoin_version,
     ))
 
-    return Template(env_template).substitute(**prod_settings)
+    return prod_settings
+
+
+def prod_env(*args, **kwargs) -> str:
+    settings = prod_settings(*args, **kwargs)
+    return Template(env_template).substitute(**settings)
 
 
 def grafana():
@@ -162,21 +168,7 @@ def get_bitcoind_auth_line(username: str, password: str):
     return f"rpcauth={username}:{salt}${password_hmac}"
 
 
-@cli.main
-@cli.arg('envfile', '-e')
-@cli.arg('envtype', '-t', help="The type of environment. Choices: dev, prod")
-def make_env(envfile: str = '.env', envtype: str = 'dev'):
-    if envtype == 'dev':
-        p(envfile).contents(dev_env())
-    else:
-        raise NotImplementedError
-
-    global ENV
-    ENV = SimpleNamespace(
-        **dict(
-            i.split('=', 1) for i in
-            filter(None, Path(envfile).read_text().splitlines())))
-
+def make_services_data():
     p(root := Path(ENV.ENV_ROOT)).mkdir()
 
     p(grafetc := root / 'grafana' / 'etc').mkdir()
@@ -203,14 +195,32 @@ def make_env(envfile: str = '.env', envtype: str = 'dev'):
     p(am := root / 'alertman').mkdir()
     p(am / 'config.yml').contents(alertman())
 
-    p(btc := root / 'bitcoin').mkdir()
     p(btcdata := root / 'bitcoin' / 'data').mkdir()
+    p(btcdata / 'bitcoin.conf').contents(bitcoind())
 
     p(promtailp := root / 'promtail').mkdir()
     p(promtailp / 'config.yml').contents(promtail())
 
-    p(btc := root / 'bitcoin' / 'data').mkdir()
-    p(btc / 'bitcoin.conf').contents(bitcoind())
+
+@cli.main
+@cli.arg('envfile', '-e')
+@cli.arg('envtype', '-t', help="The type of environment. Choices: dev, prod")
+def make_env(envfile: str = '.env', envtype: str = 'dev', envdict: t.Optional[dict] = None):
+    if envtype == 'dev':
+        p(envfile).contents(dev_env())
+    else:
+        # Don't autopopulate .env on prod.
+        pass
+
+    if not envdict:
+        # Read from the envfile
+        envdict = dict(
+            i.split('=', 1) for i in
+            filter(None, Path(envfile).read_text().splitlines()))
+
+    global ENV
+    ENV = SimpleNamespace(**envdict)
+    make_services_data()
 
 
 def main():
