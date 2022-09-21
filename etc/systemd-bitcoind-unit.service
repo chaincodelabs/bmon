@@ -7,9 +7,8 @@ WorkingDirectory=${bmon_dir}
 StandardOutput=journal
 RemainAfterExit=true
 
-# Shut down if already running
 ExecStart=${docker_compose_path} --profile bitcoind --profile prod up -d --remove-orphans
-ExecStop=${docker_compose_path} --profile bitcoind --profile prod down
+ExecStop=${docker_compose_path} --profile bitcoind --profile prod stop
 
 [Install]
 WantedBy=default.target

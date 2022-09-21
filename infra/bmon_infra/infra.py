@@ -118,7 +118,7 @@ def provision_bmon_server(host, parent):
     docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
     assert docker_compose.exists()
 
-    _run_in_bash(f"{docker_compose} build")
+    _run_in_bash(f"{docker_compose} --profile server --profile prod build")
 
     p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
 
@@ -140,6 +140,8 @@ def provision_bmon_server(host, parent):
             parent.get_file('./etc/server-nginx.conf')).changes:
         run('systemctl restart nginx', sudo=True)
 
+    run("systemctl --user restart bmon-server").assert_ok()
+
 
 def provision_monitored_bitcoind(host, parent):
     assert (username := getstdout("whoami")) != "root"
@@ -158,7 +160,7 @@ def provision_monitored_bitcoind(host, parent):
     docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
     assert docker_compose.exists()
 
-    _run_in_bash(f"{docker_compose} build")
+    _run_in_bash(f"{docker_compose} --profile bitcoind --profile prod build")
 
     p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
 
@@ -172,7 +174,8 @@ def provision_monitored_bitcoind(host, parent):
     ).changes:
         run('systemctl --user daemon-reload')
 
-#     systemd.enable_service('bmon-bitcoind')
+    # systemd.enable_service('bmon-bitcoind')
+    # run("systemctl --user restart bmon-server").assert_ok()
 
 
 @cli.cmd
@@ -188,6 +191,7 @@ def provision(type: str = ''):
 
     if not type or type.startswith('bitcoin'):
         with executor(*BITCOIN_HOSTS) as exec:
+            exec.allow_file_access('./etc/*', './etc/**/*')
             exec.run(provision_monitored_bitcoind)
 
 
