@@ -4,9 +4,11 @@ WORKDIR /src
 RUN apt-get -qq update && apt-get install -qq -y libpq-dev netcat iproute2
 
 COPY . ./
-COPY ./etc/docker_entrypoint.sh /entrypoint.sh
+COPY ./docker/wait-for /bin/wait-for
+COPY ./docker/entrypoint.sh /entrypoint.sh
 RUN pip install --upgrade pip setuptools && \
+  pip install -e ./infra && \
   pip install -e . && \
-  chmod +x /entrypoint.sh
+  chmod +x /entrypoint.sh /bin/wait-for
 
 ENTRYPOINT ["/entrypoint.sh"]

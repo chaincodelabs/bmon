@@ -27,9 +27,7 @@ def get_su_pass():
 
 fscm.remote.OPTIONS.default_connection_spec = (fscm.SSH(),)
 
-server_host = Host(
-    "tp-i5-16g-0.lan",
-)
+server_host = Host("bmon.lan")
 
 common_bitcoind_kwargs = dict(
     loki_address=f'{server_host.hostname}:{LOKI_PORT}',

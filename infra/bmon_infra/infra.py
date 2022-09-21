@@ -4,13 +4,12 @@ import socket
 import enum
 import typing as t
 import textwrap
-from dataclasses import dataclass
 from pathlib import Path
 from string import Template
 
 import fscm
 import fscm.remote
-from fscm import run, file_, docker, p, getstdout
+from fscm import run,  docker, p, getstdout
 
 
 BMON_DIR = Path("/bmon")
@@ -19,90 +18,19 @@ BMON_DATA = BMON_DIR / "data"
 BMON_PROGRAMS = BMON_DIR / "programs"
 
 LOKI_PORT = 3100
+REPO_URL = 'https://github.com/jamesob/bmon.git'
 
 
 fscm.remote.OPTIONS.pickle_whitelist = [r'bmon\..*']
 
 
-COMMON_SUPERVISOR_CONF = """
-; supervisor config file
-
-[unix_http_server]
-file=/var/run/supervisor.sock
-chmod=0700
-chown=${USER}:${USER}
-
-[inet_http_server]
-port=0.0.0.0:9001
-username=bmon
-password=foobar
-
-[supervisord]
-logfile=/var/log/supervisor/supervisord.log
-pidfile=/var/run/supervisord.pid
-childlogdir=/var/log/supervisor
-
-; the below section must remain in the config file for RPC
-; (supervisorctl/web interface) to work, additional interfaces may be
-; added by defining them in separate rpcinterface: sections
-
-[rpcinterface:supervisor]
-supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-
-[supervisorctl]
-serverurl=unix:///var/run/supervisor.sock ; use a unix:// URL  for a unix socket
-
-; The [include] section can just contain the "files" setting.  This
-; setting can list multiple files (separated by whitespace or
-; newlines).  It can also contain wildcards.  The filenames are
-; interpreted as relative to this file.  Included files *cannot*
-; include files themselves.
-
-[include]
-files = /etc/supervisor/conf.d/*.conf
-
-"""
-
-
-def supervisor_program_config(program_name: str, running_user: str) -> str:
-    """
-    Return supervisor configration for non-bitcoind programs.
-
-    Config for bitcoind is spelled out specifically below.
-    """
-    return textwrap.dedent(
-        f"""
-        [program:{program_name}]
-
-        command = /usr/local/bin/bmon-{program_name}
-        user = {running_user}
-        process_name = {program_name}
-        autostart = true
-        startsecs = 2
-        stopwaitsecs = 100
-
-        stdout_logfile = /bmon/logs/{program_name}-stdout.log
-        stdout_logfile_maxbytes = 10MB
-        stdout_logfile_backups = 1
-
-        stderr_logfile = /bmon/logs/{program_name}-stderr.log
-        stderr_logfile_maxbytes = 10MB
-        stderr_logfile_backups = 1
-
-        """
-    )
-
-
 def _setup_bmon_common(user: str):
     fscm.s.pkgs_install("git supervisor docker.io curl")
     fscm.s.group_member(user, "docker")
+    run(f'loginctl enable-linger {user}', sudo=True)
 
-    if p('/etc/supervisor/supervisord.conf', sudo=True).contents(
-            Template(COMMON_SUPERVISOR_CONF).substitute(USER=user)).changes:
-        run('systemctl reload supervisor', sudo=True, check=True)
-
-    for dir in (BMON_LOGS, BMON_DATA, BMON_PROGRAMS):
-        p(dir, sudo=True).mkdir().chown(f"{user}:{user}")
+    if not (git := Path.home() / 'bmon').exists():
+        run(f'git clone {REPO_URL} {git}')
 
 
 def provision_bmon_server(bitcoin_hostnames: t.List[str]):
@@ -113,32 +41,6 @@ def provision_bmon_server(bitcoin_hostnames: t.List[str]):
     setup_bmon_loki_host(username)
     reload_supervisor()
 
-
-def reload_supervisor():
-    fscm.run('supervisorctl reload', sudo=True)
-
-
-def setup_bmon_grafana_host(user: str, bitcoin_hostnames):
-    setup_grafana()
-    setup_alertmanager()
-    setup_prometheus(bitcoin_hostnames)
-    setup_prom_exporter()
-
-    p("/etc/supervisor/conf.d/grafana.conf", sudo=True).contents(
-        supervisor_program_config("grafana", user)
-    )
-
-    p("/etc/supervisor/conf.d/alertmanager.conf", sudo=True).contents(
-        supervisor_program_config("alertmanager", user)
-    )
-
-    p("/etc/supervisor/conf.d/prometheus.conf", sudo=True).contents(
-        supervisor_program_config("prometheus", user)
-    )
-
-    p("/etc/supervisor/conf.d/prom_exporter.conf", sudo=True).contents(
-        supervisor_program_config("prom-exporter", user)
-    )
 
 
 def setup_bmon_loki_host(user: str):

@@ -1,0 +1,74 @@
+# Services that run on each bitcoind instance.
+
+version: '3.5'
+
+services:
+
+  bitcoind-exporter:
+    image: jamesob/bitcoind-prom
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BITCOIN_RPC_HOST
+      - BITCOIN_RPC_PORT
+      - BITCOIN_RPC_USER
+      - BITCOIN_RPC_PASSWORD
+    links:
+      - bitcoind
+    ports:
+      - 9332:9332
+
+  bitcoind:
+    image: jamesob/bitcoind:latest
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
+    command: bitcoind -datadir=/bitcoin/data -regtest -debug
+
+  promtail:
+    image: docker.io/grafana/promtail
+    user: "${UID}"
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL
+      - BMON_REDIS_CENTRAL_URL
+      - WAIT_FOR="${LOKI_HOST}:${LOKI_PORT}"
+    volumes:
+      - ${ENV_ROOT}/promtail:/etc/promtail
+      - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
+    command: --config.file=/etc/promtail/config.yml
+    links:
+      - bitcoind
+
+  bitcoind-celery-worker:
+    build:
+      context: .
+      dockerfile: ./docker/py.Dockerfile
+    image: bmon-base-image
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL
+      - BMON_REDIS_CENTRAL_URL
+      - WAIT_FOR="${DB_HOST}:${DB_PORT},${REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+    links:
+      - redis
+      - aggregator-celery-worker
+    command: celery -A bmon.bitcoind_worker.tasks:app worker
+
+  bitcoind-watcher:
+    image: bmon-base-image
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL=
+      - BMON_REDIS_CENTRAL_URL
+      - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
+      - WAIT_FOR="${DB_HOST}:${DB_PORT},${REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+      # TODO: this shouldn't be specific to regtest
+      - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
+    links:
+      - redis
+      - bitcoind-celery-worker
+    command: bmon-watch-bitcoind

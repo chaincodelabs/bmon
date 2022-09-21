@@ -1,3 +1,5 @@
+# Services that run on the single, centralized bmon server instance.
+
 version: '3.5'
 
 services:
@@ -13,6 +15,8 @@ services:
 
   redis:
     image: docker.io/library/redis
+    ports:
+      - 6379:6379
 
   grafana:
     image: docker.io/grafana/grafana-enterprise
@@ -36,6 +40,8 @@ services:
     links:
       - alertman
     command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - 3100:3100
 
   prom:
     image: docker.io/prom/prometheus
@@ -54,52 +60,22 @@ services:
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
     command: --config.file=/etc/alertmanager/config.yml
-
-  bitcoind-exporter:
-    image: jamesob/bitcoind-prom
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BITCOIN_RPC_HOST
-      - BITCOIN_RPC_PORT
-      - BITCOIN_RPC_USER
-      - BITCOIN_RPC_PASSWORD
-    links:
-      - bitcoind
     ports:
-      - 9332:9332
-
-  bitcoind:
-    image: jamesob/bitcoind:latest
-    user: "${UID}"
-    volumes:
-      - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
-    command: bitcoind -datadir=/bitcoin/data -regtest -debug
-
-  promtail:
-    image: docker.io/grafana/promtail
-    user: "${UID}"
-    volumes:
-      - ${ENV_ROOT}/promtail:/etc/promtail
-      - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
-    command: --config.file=/etc/promtail/config.yml
-    links:
-      - loki
-      - bitcoind
+      - 9093
 
   web:
     image: web
     user: "${UID}"
     build:
       context: .
-      dockerfile: ./etc/Dockerfile
+      dockerfile: ./docker/py.Dockerfile
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+      - BMON_DATABASE_URL
     ports:
       - 8080:8080
     volumes:
       - ./:/src
-      - ./etc/docker_entrypoint.sh:/entrypoint.sh
     links:
       - db
     command: bmon-server
@@ -107,7 +83,7 @@ services:
   aggregator-celery-worker:
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
+      - BMON_DATABASE_URL
       - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
     volumes:
       - ./:/src
@@ -116,37 +92,6 @@ services:
       - db
       - redis
     command: celery -A bmon.aggregator_worker.tasks:app worker
-
-  bitcoind-celery-worker:
-    image: bmon-base-image
-    environment:
-      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
-      - BMON_REDIS_LOCAL_URL=redis://redis:6379/1
-      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
-    volumes:
-      - ./:/src
-    links:
-      - db
-      - redis
-      - aggregator-celery-worker
-    command: celery -A bmon.bitcoind_worker.tasks:app worker
-
-  bitcoind-watcher:
-    image: bmon-base-image
-    environment:
-      - BMON_DATABASE_URL=postgres://bmon:bmon@db:5432/bmon
-      - BMON_REDIS_LOCAL_URL=redis://redis:6379/1
-      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
-      - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
-    volumes:
-      - ./:/src
-      # TODO: this shouldn't be specific to regtest
-      - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
-    links:
-      - db
-      - redis
-      - bitcoind-celery-worker
-    command: bmon-watch-bitcoind
 
 volumes:
   db-data:
