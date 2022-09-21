@@ -15,7 +15,7 @@ dependencies = [
     'importlib-metadata; python_version<"3.10"',
     'mitogen @ git+https://git@github.com/jamesob/mitogen.git',
     'fscm @ git+https://git@github.com/jamesob/fscm.git',
-    'clii',
+    'clii >= 1.0.0',
 ]
 version = "0.0.1"
 
