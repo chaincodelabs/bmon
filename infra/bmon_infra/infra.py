@@ -174,8 +174,8 @@ def provision_monitored_bitcoind(host, parent):
     ).changes:
         run('systemctl --user daemon-reload')
 
-    # systemd.enable_service('bmon-bitcoind')
-    # run("systemctl --user restart bmon-server").assert_ok()
+    systemd.enable_service('bmon-bitcoind')
+    run("systemctl --user restart bmon-server").assert_ok()
 
 
 @cli.cmd

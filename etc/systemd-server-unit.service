@@ -7,7 +7,7 @@ WorkingDirectory=${bmon_dir}
 StandardOutput=journal
 RemainAfterExit=true
 
-ExecStart=${docker_compose_path} --profile server --profile prod -d --remove-orphans
+ExecStart=${docker_compose_path} --profile server --profile prod up -d --remove-orphans
 ExecStop=${docker_compose_path} --profile server --profile prod stop
 
 [Install]
