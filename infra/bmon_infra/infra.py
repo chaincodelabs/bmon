@@ -11,7 +11,7 @@ import fscm
 import fscm.remote
 from clii import App
 from fscm.remote import executor, SSH
-from fscm import run, p, getstdout, lineinfile
+from fscm import run, p, getstdout, lineinfile, systemd
 
 from .config import prod_env
 
@@ -123,11 +123,12 @@ def provision_bmon_server(host, parent):
         )
     )
 
+    systemd.enable_service('bmon-server')
+
     fscm.s.pkgs_install('nginx')
     p('/etc/nginx/sites-enabled/default', sudo=True).rm()
     if p('/etc/nginx/sites-enabled/bmon.conf', sudo=True).contents(
-        parent.get_file('./etc/server-nginx.conf').read_text()
-    ).changes:
+            parent.get_file('./etc/server-nginx.conf')).changes:
         run('systemctl restart nginx', sudo=True)
 
 
@@ -141,6 +142,7 @@ def provision():
     _initialize_hosts()
 
     with executor(SERVER_HOST) as exec:
+        exec.allow_file_access('./etc/*', './etc/**/*')
         exec.run(provision_bmon_server)
 
 #     with executor(*bitcoin_hosts) as exec:
