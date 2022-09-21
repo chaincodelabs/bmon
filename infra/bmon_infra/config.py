@@ -18,6 +18,7 @@ UID=${uid}
 
 BMON_DATABASE_HOST=${db_host}
 BMON_DATABASE_PORT=${db_port}
+BMON_DATABASE_PASSWORD=${db_password}
 BMON_DATABASE_URL=${db_url}
 
 BMON_REDIS_HOST=${redis_central_host}
@@ -49,6 +50,7 @@ dev_settings = dict(
     root="./services/dev",
     uid=1000,
     db_host='bmon',
+    db_password='bmon',
     db_port=5432,
     db_url='postgres://bmon:bmon@db:5432/bmon',
     redis_central_host='redis',
@@ -76,6 +78,7 @@ def dev_env() -> str:
 
 
 def prod_settings(
+    is_server: bool,
     db_password: str,
     bitcoin_rpc_password: str,
     bitcoin_git_sha: str = '?',
@@ -84,22 +87,45 @@ def prod_settings(
     servername = 'bmon.lan'
 
     prod_settings = dict(dev_settings)
-    prod_settings.update(**dict(
+    prod_settings.update(
         root="./services/prod",
-        db_host=servername,
-        db_url=f'postgres://bmon:{db_password}@{servername}:5432/bmon',
-        redis_central=f'redis://{servername}:6379/0',
-        redis_central_host=servername,
-        prom_address=f'{servername}:9090',
-        prom_scrape_sd_url=f'http://{servername}/prom_scrape_config',
-        bitcoin_rpc_port=8332,
-        bitcoin_rpc_user='bmon',
-        bitcoin_rpc_password=bitcoin_rpc_password,
-        loki_host=servername,
-        alertman_address=f'{servername}:9093',
-        bitcoin_git_sha=bitcoin_git_sha,
-        bitcoin_version=bitcoin_version,
-    ))
+        db_password=db_password,
+    )
+
+    if not is_server:
+        prod_settings.update(
+            db_host=servername,
+            db_url=f'postgres://bmon:{db_password}@{servername}:5432/bmon',
+            redis_central=f'redis://{servername}:6379/0',
+            redis_central_host=servername,
+            prom_address=f'{servername}:9090',
+            prom_scrape_sd_url=f'http://{servername}/prom_scrape_config',
+            bitcoin_rpc_port=8332,
+            bitcoin_rpc_user='bmon',
+            bitcoin_rpc_password=bitcoin_rpc_password,
+            loki_host=servername,
+            alertman_address=f'{servername}:9093',
+            bitcoin_git_sha=bitcoin_git_sha,
+            bitcoin_version=bitcoin_version,
+        )
+    else:
+        # Many of these services are running in compose.
+        prod_settings.update(
+            root="./services/prod",
+            db_host='db',
+            db_url=f'postgres://bmon:{db_password}@db:5432/bmon',
+            redis_central='redis://redis:6379/0',
+            redis_central_host='redis',
+            prom_address='prom:9090',
+            prom_scrape_sd_url=f'http://web:8080/prom_scrape_config',
+            bitcoin_rpc_port=8332,
+            bitcoin_rpc_user='bmon',
+            bitcoin_rpc_password=bitcoin_rpc_password,
+            loki_host='loki',
+            alertman_address='alertman:9093',
+            bitcoin_git_sha=bitcoin_git_sha,
+            bitcoin_version=bitcoin_version,
+        )
 
     return prod_settings
 

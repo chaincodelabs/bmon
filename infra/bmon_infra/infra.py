@@ -96,7 +96,7 @@ def _setup_bmon_common(user: str):
     run(f"cd {bmon_path} && git pull origin master").assert_ok()
 
 
-def provision_bmon_server(host):
+def provision_bmon_server(host, parent):
     assert (username := getstdout("whoami")) != "root"
 
     _setup_bmon_common(username)
@@ -108,19 +108,27 @@ def provision_bmon_server(host):
         bitcoin_version=host.bitcoin_version,
     )
 
-    p(bmon_path / ".env").contents(prod_env(**settings)).chmod("600")
-    _run_in_bash("bmon-config")
+    p(bmon_path / ".env").contents(prod_env(is_server=True, **settings)).chmod("600")
+    _run_in_bash("bmon-config -t prod")
     docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
     assert docker_compose.exists()
 
     p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
     p(sysd / 'bmon-server.service').contents(
-        Template(Path('./etc/systemd-server-unit.service').read_text()).substitute(
+        parent.template(
+            './etc/systemd-server-unit.service',
             user=username,
             bmon_dir=bmon_path,
             docker_compose=docker_compose,
         )
     )
+
+    fscm.s.pkgs_install('nginx')
+    p('/etc/nginx/sites-enabled/default', sudo=True).rm()
+    if p('/etc/nginx/sites-enabled/bmon.conf', sudo=True).contents(
+        parent.get_file('./etc/server-nginx.conf').read_text()
+    ).changes:
+        run('systemctl restart nginx', sudo=True)
 
 
 def provision_bitcoind_server(host):
