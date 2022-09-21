@@ -15,4 +15,4 @@ ExecStart={docker_compose_path} -f docker-compose.bitcoind.yml up
 ExecStop={docker_compose_path} -f docker-compose.bitcoind.yml down
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

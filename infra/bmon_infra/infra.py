@@ -93,7 +93,7 @@ def _setup_bmon_common(user: str):
     if not _run_in_bash("which docker-compose", quiet=True).ok:
         _run_in_bash("pip install docker-compose").assert_ok()
 
-    run("cd {bmon_path} && git pull origin master").assert_ok()
+    run(f"cd {bmon_path} && git pull origin master").assert_ok()
 
 
 def provision_bmon_server(host):
