@@ -36,6 +36,7 @@ BITCOIN_RPC_USER=${bitcoin_rpc_user}
 BITCOIN_RPC_PASSWORD=${bitcoin_rpc_password}
 
 LOKI_PORT=${loki_port}
+LOKI_HOST=${loki_host}
 LOKI_ADDRESS=${loki_host}:${loki_port}
 
 ALERTMAN_ADDRESS=${alertman_address}

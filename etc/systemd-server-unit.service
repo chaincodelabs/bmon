@@ -2,14 +2,13 @@
 Description=bmon server
 
 [Service]
-Type=simple
+Type=oneshot
 WorkingDirectory=${bmon_dir}
 StandardOutput=journal
+RemainAfterExit=true
 
-# Shut down if already running
-ExecStartPre=${docker_compose_path} -f docker-compose.yml up
-ExecStart=${docker_compose_path} -f docker-compose.yml up
-ExecStop=${docker_compose_path} -f docker-compose.yml down
+ExecStart=${docker_compose_path} --profile server --profile prod -d --remove-orphans
+ExecStop=${docker_compose_path} --profile server --profile prod down
 
 [Install]
 WantedBy=default.target

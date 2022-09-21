@@ -8,6 +8,7 @@ version: '3.5'
 services:
 
   db:
+    profiles: ["server"]
     image: docker.io/library/postgres:11
     environment:
       - POSTGRES_DB=bmon
@@ -17,11 +18,13 @@ services:
       - 'db-data:/var/lib/postgresql/data'
 
   redis:
+    profiles: ["server"]
     image: docker.io/library/redis
     ports:
       - 6379:6379
 
   grafana:
+    profiles: ["server"]
     image: docker.io/grafana/grafana-enterprise
     user: "${UID}"
     volumes:
@@ -35,6 +38,7 @@ services:
       - 3000:3000
 
   loki:
+    profiles: ["server"]
     image: docker.io/grafana/loki
     user: "${UID}"
     volumes:
@@ -47,6 +51,7 @@ services:
       - 3100:3100
 
   prom:
+    profiles: ["server"]
     image: docker.io/prom/prometheus
     user: "${UID}"
     volumes:
@@ -58,6 +63,7 @@ services:
       - 9090:9090
 
   alertman:
+    profiles: ["server"]
     image: docker.io/prom/alertmanager
     user: "${UID}"
     volumes:
@@ -67,6 +73,7 @@ services:
       - 9093
 
   web:
+    profiles: ["server"]
     image: web
     user: "${UID}"
     build:
@@ -84,6 +91,7 @@ services:
     command: bmon-server
 
   aggregator-celery-worker:
+    profiles: ["server"]
     image: bmon-base-image
     environment:
       - BMON_DATABASE_URL
@@ -95,6 +103,97 @@ services:
       - db
       - redis
     command: celery -A bmon.aggregator_worker.tasks:app worker
+
+  bitcoind-exporter:
+    profiles: ["bitcoind"]
+    image: jamesob/bitcoind-prom
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BITCOIN_RPC_HOST
+      - BITCOIN_RPC_PORT
+      - BITCOIN_RPC_USER
+      - BITCOIN_RPC_PASSWORD
+    links:
+      - bitcoind
+    ports:
+      - 9332:9332
+
+  bitcoind:
+    profiles: ["bitcoind"]
+    image: jamesob/bitcoind:latest
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
+    command: bitcoind -datadir=/bitcoin/data -regtest -debug
+
+  promtail:
+    profiles: ["bitcoind"]
+    image: docker.io/grafana/promtail
+    user: "${UID}"
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL
+      - BMON_REDIS_CENTRAL_URL
+      - WAIT_FOR="${LOKI_HOST}:${LOKI_PORT}"
+    volumes:
+      - ${ENV_ROOT}/promtail:/etc/promtail
+      - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
+    command: --config.file=/etc/promtail/config.yml
+    links:
+      - bitcoind
+
+  bitcoind-celery-worker:
+    profiles: ["bitcoind"]
+    build:
+      context: .
+      dockerfile: ./docker/py.Dockerfile
+    image: bmon-base-image
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL
+      - BMON_REDIS_CENTRAL_URL
+      - WAIT_FOR="${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+    links:
+      - redis
+      - aggregator-celery-worker
+    command: celery -A bmon.bitcoind_worker.tasks:app worker
+
+  bitcoind-watcher:
+    profiles: ["bitcoind"]
+    image: bmon-base-image
+    environment:
+      - BMON_DATABASE_URL
+      - BMON_REDIS_LOCAL_URL=
+      - BMON_REDIS_CENTRAL_URL
+      - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
+      - WAIT_FOR="${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+      # TODO: this shouldn't be specific to regtest
+      - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
+    links:
+      - redis
+      - bitcoind-celery-worker
+    command: bmon-watch-bitcoind
+
+  node-exporter:
+    # only monitor this stuff in prod since its mountpoint needs are zealous.
+    profiles: ["prod"]  
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - 9100:9100
 
 volumes:
   db-data:

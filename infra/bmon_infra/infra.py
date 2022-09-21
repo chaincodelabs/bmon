@@ -5,7 +5,6 @@ import sys
 import re
 import typing as t
 from pathlib import Path
-from string import Template
 
 import fscm
 import fscm.remote
@@ -34,10 +33,12 @@ class Host(fscm.remote.Host):
         *args,
         is_server: bool = False,
         bitcoin_version: str | None = None,
+        prom_exporter_port: int | None = 9102,
         **kwargs,
     ):
         self.is_server = is_server
         self.bitcoin_version = bitcoin_version
+        self.prom_exporter_port = prom_exporter_port
         super().__init__(*args, **kwargs)
 
 
@@ -46,7 +47,7 @@ HOSTS = [
     Host("tp-i5-16g-1.lan", bitcoin_version='v23.0')
 ]
 
-bitcoin_hosts = [
+BITCOIN_HOSTS = [
     h for h in HOSTS if h.bitcoin_version is not None
 ]
 
@@ -95,6 +96,10 @@ def _setup_bmon_common(user: str):
 
     run(f"cd {bmon_path} && git pull origin master").assert_ok()
 
+    if p('/etc/docker/daemon.json', sudo=True).contents(
+            '{ "log-driver": "journald" }').changes:
+        run('systemctl restart docker', sudo=True).assert_ok()
+
 
 def provision_bmon_server(host, parent):
     assert (username := getstdout("whoami")) != "root"
@@ -112,6 +117,8 @@ def provision_bmon_server(host, parent):
     _run_in_bash("bmon-config -t prod")
     docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
     assert docker_compose.exists()
+
+    _run_in_bash(f"{docker_compose} build")
 
     p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
 
@@ -134,21 +141,54 @@ def provision_bmon_server(host, parent):
         run('systemctl restart nginx', sudo=True)
 
 
-def provision_bitcoind_server(host):
-    pass
+def provision_monitored_bitcoind(host, parent):
+    assert (username := getstdout("whoami")) != "root"
+
+    _setup_bmon_common(username)
+    os.chdir(bmon_path := Path.home() / "bmon")
+
+    settings = dict(
+        db_password=host.secrets.db_password,
+        bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
+        bitcoin_version=host.bitcoin_version,
+    )
+
+    p(bmon_path / ".env").contents(prod_env(is_server=False, **settings)).chmod("600")
+    _run_in_bash("bmon-config -t prod")
+    docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
+    assert docker_compose.exists()
+
+    _run_in_bash(f"{docker_compose} build")
+
+    p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
+
+    if p(sysd / 'bmon-bitcoind.service').contents(
+        parent.template(
+            './etc/systemd-bitcoind-unit.service',
+            user=username,
+            bmon_dir=bmon_path,
+            docker_compose_path=docker_compose,
+        )
+    ).changes:
+        run('systemctl --user daemon-reload')
+
+#     systemd.enable_service('bmon-bitcoind')
 
 
 @cli.cmd
-def provision():
+@cli.arg('type', '-t', help='Options: server, bitcoin')
+def provision(type: str = ''):
     """Provision necessary dependencies and config files on hosts."""
     _initialize_hosts()
 
-    with executor(SERVER_HOST) as exec:
-        exec.allow_file_access('./etc/*', './etc/**/*')
-        exec.run(provision_bmon_server)
+    if not type or type == 'server':
+        with executor(SERVER_HOST) as exec:
+            exec.allow_file_access('./etc/*', './etc/**/*')
+            exec.run(provision_bmon_server)
 
-#     with executor(*bitcoin_hosts) as exec:
-#         exec.run(provision_monitored_bitcoind)
+    if not type or type.startswith('bitcoin'):
+        with executor(*BITCOIN_HOSTS) as exec:
+            exec.run(provision_monitored_bitcoind)
 
 
 @cli.cmd

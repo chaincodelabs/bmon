@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker-compose -f docker-compose.yml -f docker-compose.bitcoind.yml $@
+docker-compose --profile bitcoind --profile server $@
