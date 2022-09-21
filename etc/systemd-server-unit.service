@@ -1,18 +1,15 @@
 [Unit]
 Description=bmon server
-Requires=docker.service
-After=docker.service
 
 [Service]
 Type=simple
-User={user}
-WorkingDirectory={bmon_dir}
+WorkingDirectory=${bmon_dir}
 StandardOutput=journal
 
 # Shut down if already running
-ExecStartPre={docker_compose_path} -f docker-compose.yml up
-ExecStart={docker_compose_path} -f docker-compose.yml up
-ExecStop={docker_compose_path} -f docker-compose.yml down
+ExecStartPre=${docker_compose_path} -f docker-compose.yml up
+ExecStart=${docker_compose_path} -f docker-compose.yml up
+ExecStop=${docker_compose_path} -f docker-compose.yml down
 
 [Install]
 WantedBy=default.target

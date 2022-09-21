@@ -114,14 +114,16 @@ def provision_bmon_server(host, parent):
     assert docker_compose.exists()
 
     p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
-    p(sysd / 'bmon-server.service').contents(
+
+    if p(sysd / 'bmon-server.service').contents(
         parent.template(
             './etc/systemd-server-unit.service',
             user=username,
             bmon_dir=bmon_path,
-            docker_compose=docker_compose,
+            docker_compose_path=docker_compose,
         )
-    )
+    ).changes:
+        run('systemctl --user daemon-reload')
 
     systemd.enable_service('bmon-server')
 
