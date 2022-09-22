@@ -24,7 +24,7 @@ BMON_DATABASE_URL=${db_url}
 BMON_REDIS_HOST=${redis_central_host}
 BMON_REDIS_LOCAL_HOST=${redis_local_host}
 BMON_REDIS_LOCAL_URL=redis://${redis_local_host}:6379/0
-BMON_REDIS_CENTRAL_URL=redis://${redis_central}:6379/1
+BMON_REDIS_CENTRAL_URL=redis://${redis_central_host}:6379/1
 
 PROM_ADDRESS=${prom_address}
 PROM_EXPORTER_PORT=${prom_exporter_port}
