@@ -34,6 +34,7 @@ def _deserialize_body(content: dict):
 
 @app.route('/prom_scrape_config', methods=['GET'])
 def prom_scrape_config():
+    print([h.__dict__ for h in BITCOIN_HOSTS])
     targets = [
         {
             'targets': filter(None, [
