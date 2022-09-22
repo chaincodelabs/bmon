@@ -145,6 +145,12 @@ services:
     links:
       - bitcoind
 
+  redis-bitcoind:
+    profiles: ["bitcoind", "prod"]
+    image: docker.io/library/redis
+    ports:
+      - 6379:6379
+
   bitcoind-celery-worker:
     profiles: ["bitcoind"]
     build:
@@ -158,6 +164,8 @@ services:
       - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
+    links:
+      - redis-bitcoind
     command: celery -A bmon.bitcoind_worker.tasks:app worker
 
   bitcoind-watcher:

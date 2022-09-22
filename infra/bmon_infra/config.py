@@ -22,8 +22,9 @@ BMON_DATABASE_PASSWORD=${db_password}
 BMON_DATABASE_URL=${db_url}
 
 BMON_REDIS_HOST=${redis_central_host}
-BMON_REDIS_LOCAL_URL=${redis_local}
-BMON_REDIS_CENTRAL_URL=${redis_central}
+BMON_REDIS_LOCAL_HOST=${redis_local_host}
+BMON_REDIS_LOCAL_URL=redis://${redis_local}:6379/0
+BMON_REDIS_CENTRAL_URL=redis://${redis_central}:6379/1
 
 PROM_ADDRESS=${prom_address}
 PROM_EXPORTER_PORT=${prom_exporter_port}
@@ -56,8 +57,7 @@ dev_settings = dict(
     db_port=5432,
     db_url='postgres://bmon:bmon@db:5432/bmon',
     redis_central_host='redis',
-    redis_local='redis://redis:6379/1',
-    redis_central='redis://redis:6379/0',
+    redis_local_host='redis',
     prom_address='prom:9090',
     prom_exporter_port=9100,
     bitcoind_exporter_port=9332,
@@ -96,29 +96,12 @@ def prod_settings(
         bitcoin_network='',
     )
 
-    if not is_server:
-        prod_settings.update(
-            db_host=servername,
-            db_url=f'postgres://bmon:{db_password}@{servername}:5432/bmon',
-            redis_central=f'redis://{servername}:6379/0',
-            redis_central_host=servername,
-            prom_address=f'{servername}:9090',
-            prom_scrape_sd_url=f'http://{servername}/prom_scrape_config',
-            bitcoin_rpc_port=8332,
-            bitcoin_rpc_user='bmon',
-            bitcoin_rpc_password=bitcoin_rpc_password,
-            loki_host=servername,
-            alertman_address=f'{servername}:9093',
-            bitcoin_git_sha=bitcoin_git_sha,
-            bitcoin_version=bitcoin_version,
-        )
-    else:
+    if is_server:
         # Many of these services are running in compose.
         prod_settings.update(
             root="./services/prod",
             db_host='db',
             db_url=f'postgres://bmon:{db_password}@db:5432/bmon',
-            redis_central='redis://redis:6379/0',
             redis_central_host='redis',
             prom_address='prom:9090',
             prom_scrape_sd_url='http://web:8080/prom_scrape_config',
@@ -127,6 +110,23 @@ def prod_settings(
             bitcoin_rpc_password=bitcoin_rpc_password,
             loki_host='loki',
             alertman_address='alertman:9093',
+            bitcoin_git_sha=bitcoin_git_sha,
+            bitcoin_version=bitcoin_version,
+        )
+    else:
+        # a bitcoind instance
+        prod_settings.update(
+            db_host=servername,
+            db_url=f'postgres://bmon:{db_password}@{servername}:5432/bmon',
+            redis_central_host=servername,
+            redis_local_host='redis-bitcoind',
+            prom_address=f'{servername}:9090',
+            prom_scrape_sd_url=f'http://{servername}/prom_scrape_config',
+            bitcoin_rpc_port=8332,
+            bitcoin_rpc_user='bmon',
+            bitcoin_rpc_password=bitcoin_rpc_password,
+            loki_host=servername,
+            alertman_address=f'{servername}:9093',
             bitcoin_git_sha=bitcoin_git_sha,
             bitcoin_version=bitcoin_version,
         )
