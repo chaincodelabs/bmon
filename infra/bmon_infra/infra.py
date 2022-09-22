@@ -27,7 +27,7 @@ class Host(fscm.remote.Host):
         is_server: bool = False,
         bitcoin_version: str | None = None,
         prom_exporter_port: int | None = 9100,
-        bitcoind_exporter_port: int | None = 9102,
+        bitcoind_exporter_port: int | None = 9332,
         **kwargs,
     ):
         self.is_server = is_server
