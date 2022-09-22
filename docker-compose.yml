@@ -140,7 +140,7 @@ services:
       - WAIT_FOR=${LOKI_HOST}:${LOKI_PORT}
     volumes:
       - ${ENV_ROOT}/promtail:/etc/promtail
-      - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
+      - ${BITCOIN_DATA_PATH}:/bitcoin/data
     command: --config.file=/etc/promtail/config.yml
     links:
       - bitcoind
@@ -179,8 +179,7 @@ services:
       - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
-      # TODO: this shouldn't be specific to regtest
-      - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
+      - ${BITCOIN_DATA_PATH}/debug.log:/var/log/bitcoind.log
     links:
       - bitcoind-celery-worker
     command: bmon-watch-bitcoind

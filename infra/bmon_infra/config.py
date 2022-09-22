@@ -46,6 +46,7 @@ PROMTAIL_PORT=${promtail_port}
 BITCOIN_GIT_SHA=${bitcoin_git_sha}
 BITCOIN_VERSION=${bitcoin_version}
 BITCOIN_NETWORK_FLAG=${bitcoin_network}
+BITCOIN_DATA_PATH=${bitcoin_data_path}
 """
 
 
@@ -73,6 +74,7 @@ dev_settings = dict(
     bitcoin_git_sha="?",
     bitcoin_version="?",
     bitcoin_network='-regtest',
+    bitcoin_data_path="./services/dev/bitcoin/data/regtest",
 )
 
 
@@ -94,6 +96,7 @@ def prod_settings(
         root="./services/prod",
         db_password=db_password,
         bitcoin_network='',
+        bitcoin_data_path="./services/prod/bitcoin/data",
     )
 
     if is_server:
