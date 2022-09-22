@@ -137,7 +137,7 @@ services:
       - BMON_DATABASE_URL
       - BMON_REDIS_LOCAL_URL
       - BMON_REDIS_CENTRAL_URL
-      - WAIT_FOR="${LOKI_HOST}:${LOKI_PORT}"
+      - WAIT_FOR=${LOKI_HOST}:${LOKI_PORT}
     volumes:
       - ${ENV_ROOT}/promtail:/etc/promtail
       - ${ENV_ROOT}/bitcoin/data/regtest:/bitcoin/data
@@ -155,7 +155,7 @@ services:
       - BMON_DATABASE_URL
       - BMON_REDIS_LOCAL_URL
       - BMON_REDIS_CENTRAL_URL
-      - WAIT_FOR="${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379"
+      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
     command: celery -A bmon.bitcoind_worker.tasks:app worker
@@ -168,7 +168,7 @@ services:
       - BMON_REDIS_LOCAL_URL=
       - BMON_REDIS_CENTRAL_URL
       - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
-      - WAIT_FOR="${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379"
+      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
       # TODO: this shouldn't be specific to regtest

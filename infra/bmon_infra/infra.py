@@ -189,7 +189,7 @@ def provision_monitored_bitcoind(
 
 @cli.cmd
 @cli.arg("type", "-t", help="Options: server, bitcoin")
-def provision(type: str = "", rebuild_docker: bool = False):
+def deploy(type: str = "", rebuild_docker: bool = False):
     """Provision necessary dependencies and config files on hosts."""
     _initialize_hosts()
 
