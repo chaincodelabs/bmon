@@ -106,7 +106,7 @@ services:
 
   bitcoind-exporter:
     profiles: ["bitcoind"]
-    image: jamesob/bitcoind-prom
+    image: jvstein/bitcoin-prometheus-exporter:latest
     environment:
       - PYTHONUNBUFFERED=1
       - BITCOIN_RPC_HOST
