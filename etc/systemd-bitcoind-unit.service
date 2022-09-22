@@ -7,8 +7,9 @@ WorkingDirectory=${bmon_dir}
 StandardOutput=journal
 RemainAfterExit=true
 
-ExecStart=${docker_compose_path} --profile bitcoind --profile prod up -d --remove-orphans
-ExecStop=${docker_compose_path} --profile bitcoind --profile prod stop
+Environment="COMPOSE_PROFILES=bitcoind,prod,prod-bitcoind"
+ExecStart=${docker_compose_path} up -d --remove-orphans
+ExecStop=${docker_compose_path} stop
 
 [Install]
 WantedBy=default.target

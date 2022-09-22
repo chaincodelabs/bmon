@@ -146,7 +146,7 @@ services:
       - bitcoind
 
   redis-bitcoind:
-    profiles: ["bitcoind", "prod"]
+    profiles: ["prod-bitcoind"]
     image: docker.io/library/redis
     ports:
       - 6379:6379
@@ -161,7 +161,7 @@ services:
       - BMON_DATABASE_URL
       - BMON_REDIS_LOCAL_URL
       - BMON_REDIS_CENTRAL_URL
-      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
+      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379
     volumes:
       - ./:/src
     links:
