@@ -249,7 +249,7 @@ def make_env(
     envfile: str = ".env",
     envtype: str = "dev",
     envdict: t.Optional[dict] = None,
-    hostname: str | None = None,
+    hostname: t.Optional[str] = None,
 ):
     if envtype == "dev":
         p(envfile).contents(dev_env())
