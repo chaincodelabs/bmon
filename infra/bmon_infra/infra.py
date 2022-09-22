@@ -17,13 +17,6 @@ from .config import prod_env
 
 cli = App()
 
-
-BMON_DIR = Path("/bmon")
-BMON_LOGS = BMON_DIR / "logs"
-BMON_DATA = BMON_DIR / "data"
-BMON_PROGRAMS = BMON_DIR / "programs"
-
-LOKI_PORT = 3100
 REPO_URL = "https://github.com/jamesob/bmon.git"
 
 
@@ -44,22 +37,20 @@ class Host(fscm.remote.Host):
 
 HOSTS = [
     SERVER_HOST := Host("bmon.lan", is_server=True),
-    Host("tp-i5-16g-1.lan", bitcoin_version='v23.0')
+    Host("tp-i5-16g-1.lan", bitcoin_version="v23.0"),
 ]
 
-BITCOIN_HOSTS = [
-    h for h in HOSTS if h.bitcoin_version is not None
-]
+BITCOIN_HOSTS = [h for h in HOSTS if h.bitcoin_version is not None]
 
 
 def _initialize_hosts():
     """Set sudo passwords so that they're cached for remote execution."""
-    secrets = fscm.get_secrets(['bmon'], 'fscm/secrets').bmon
+    secrets = fscm.get_secrets(["bmon"], "fscm/secrets").bmon
     assert secrets.sudo_password
 
     for host in HOSTS:
         host.secrets = secrets
-        host.connection_spec = [SSH(check_host_keys='accept')]
+        host.connection_spec = [SSH(check_host_keys="accept")]
 
 
 fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
@@ -76,7 +67,7 @@ def _setup_bmon_common(user: str):
     if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
         run(f"loginctl enable-linger {user}", sudo=True)
 
-    if not (venv := Path.home() / '.venv').exists():
+    if not (venv := Path.home() / ".venv").exists():
         run(f"python3 -m venv {venv}").assert_ok()
 
     lineinfile(
@@ -96,12 +87,15 @@ def _setup_bmon_common(user: str):
 
     run(f"cd {bmon_path} && git pull origin master").assert_ok()
 
-    if p('/etc/docker/daemon.json', sudo=True).contents(
-            '{ "log-driver": "journald" }').changes:
-        run('systemctl restart docker', sudo=True).assert_ok()
+    if (
+        p("/etc/docker/daemon.json", sudo=True)
+        .contents('{ "log-driver": "journald" }')
+        .changes
+    ):
+        run("systemctl restart docker", sudo=True).assert_ok()
 
 
-def provision_bmon_server(host, parent):
+def provision_bmon_server(host: Host, parent: fscm.remote.Parent, rebuild_docker: bool):
     assert (username := getstdout("whoami")) != "root"
 
     _setup_bmon_common(username)
@@ -115,35 +109,45 @@ def provision_bmon_server(host, parent):
 
     p(bmon_path / ".env").contents(prod_env(is_server=True, **settings)).chmod("600")
     _run_in_bash("bmon-config -t prod")
-    docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
+    docker_compose = Path.home() / ".venv" / "bin" / "docker-compose"
     assert docker_compose.exists()
 
-    _run_in_bash(f"{docker_compose} --profile server --profile prod build")
+    if rebuild_docker:
+        _run_in_bash(f"{docker_compose} --profile server --profile prod build")
 
-    p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
+    p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
-    if p(sysd / 'bmon-server.service').contents(
-        parent.template(
-            './etc/systemd-server-unit.service',
-            user=username,
-            bmon_dir=bmon_path,
-            docker_compose_path=docker_compose,
+    if (
+        p(sysd / "bmon-server.service")
+        .contents(
+            parent.template(
+                "./etc/systemd-server-unit.service",
+                user=username,
+                bmon_dir=bmon_path,
+                docker_compose_path=docker_compose,
+            )
         )
-    ).changes:
-        run('systemctl --user daemon-reload')
+        .changes
+    ):
+        run("systemctl --user daemon-reload")
 
-    systemd.enable_service('bmon-server')
+    systemd.enable_service("bmon-server")
 
-    fscm.s.pkgs_install('nginx')
-    p('/etc/nginx/sites-enabled/default', sudo=True).rm()
-    if p('/etc/nginx/sites-enabled/bmon.conf', sudo=True).contents(
-            parent.get_file('./etc/server-nginx.conf')).changes:
-        run('systemctl restart nginx', sudo=True)
+    fscm.s.pkgs_install("nginx")
+    p("/etc/nginx/sites-enabled/default", sudo=True).rm()
+    if (
+        p("/etc/nginx/sites-enabled/bmon.conf", sudo=True)
+        .contents(parent.get_file("./etc/server-nginx.conf"))
+        .changes
+    ):
+        run("systemctl restart nginx", sudo=True)
 
     run("systemctl --user restart bmon-server").assert_ok()
 
 
-def provision_monitored_bitcoind(host, parent):
+def provision_monitored_bitcoind(
+    host: Host, parent: fscm.remote.Parent, rebuild_docker: bool
+):
     assert (username := getstdout("whoami")) != "root"
 
     _setup_bmon_common(username)
@@ -157,54 +161,59 @@ def provision_monitored_bitcoind(host, parent):
 
     p(bmon_path / ".env").contents(prod_env(is_server=False, **settings)).chmod("600")
     _run_in_bash("bmon-config -t prod")
-    docker_compose = Path.home() / '.venv' / 'bin' / 'docker-compose'
+    docker_compose = Path.home() / ".venv" / "bin" / "docker-compose"
     assert docker_compose.exists()
 
-    _run_in_bash(f"{docker_compose} --profile bitcoind --profile prod build")
+    if rebuild_docker:
+        _run_in_bash(f"{docker_compose} --profile bitcoind --profile prod build")
 
-    p(sysd := Path.home() / '.config' / 'systemd' / 'user').mkdir()
+    p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
-    if p(sysd / 'bmon-bitcoind.service').contents(
-        parent.template(
-            './etc/systemd-bitcoind-unit.service',
-            user=username,
-            bmon_dir=bmon_path,
-            docker_compose_path=docker_compose,
+    if (
+        p(sysd / "bmon-bitcoind.service")
+        .contents(
+            parent.template(
+                "./etc/systemd-bitcoind-unit.service",
+                user=username,
+                bmon_dir=bmon_path,
+                docker_compose_path=docker_compose,
+            )
         )
-    ).changes:
-        run('systemctl --user daemon-reload')
+        .changes
+    ):
+        run("systemctl --user daemon-reload")
 
-    systemd.enable_service('bmon-bitcoind')
-    run("systemctl --user restart bmon-server").assert_ok()
+    systemd.enable_service("bmon-bitcoind")
+    run("systemctl --user restart bmon-bitcoind").assert_ok()
 
 
 @cli.cmd
-@cli.arg('type', '-t', help='Options: server, bitcoin')
-def provision(type: str = ''):
+@cli.arg("type", "-t", help="Options: server, bitcoin")
+def provision(type: str = "", rebuild_docker: bool = False):
     """Provision necessary dependencies and config files on hosts."""
     _initialize_hosts()
 
-    if not type or type == 'server':
+    if not type or type == "server":
         with executor(SERVER_HOST) as exec:
-            exec.allow_file_access('./etc/*', './etc/**/*')
-            exec.run(provision_bmon_server)
+            exec.allow_file_access("./etc/*", "./etc/**/*")
+            exec.run(provision_bmon_server, rebuild_docker)
 
-    if not type or type.startswith('bitcoin'):
+    if not type or type.startswith("bitcoin"):
         with executor(*BITCOIN_HOSTS) as exec:
-            exec.allow_file_access('./etc/*', './etc/**/*')
-            exec.run(provision_monitored_bitcoind)
+            exec.allow_file_access("./etc/*", "./etc/**/*")
+            exec.run(provision_monitored_bitcoind, rebuild_docker)
 
 
 @cli.cmd
 def status():
     """Check status on hosts."""
-    run_on_all('supervisorctl status')
+    run_on_all("supervisorctl status")
 
 
 @cli.cmd
 def bitcoind_logs():
     """Present a brief tail of all known bitcoind logs."""
-    run_on_all('tail -n 20 /bmon/logs/bitcoind-stdout.log', host_filter=r'bmon-b\d+')
+    run_on_all("tail -n 20 /bmon/logs/bitcoind-stdout.log", host_filter=r"bmon-b\d+")
 
 
 @cli.cmd

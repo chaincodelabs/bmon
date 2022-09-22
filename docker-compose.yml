@@ -16,6 +16,8 @@ services:
       - POSTGRES_PASSWORD=${BMON_DATABASE_PASSWORD}
     volumes:
       - 'db-data:/var/lib/postgresql/data'
+    ports:
+      - 5432:5432
 
   redis:
     profiles: ["server"]
@@ -68,6 +70,7 @@ services:
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
+      - ${ENV_ROOT}/alertman/data:/data
     command: --config.file=/etc/alertmanager/config.yml
     ports:
       - 9093

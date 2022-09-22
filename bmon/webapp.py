@@ -47,6 +47,8 @@ def prom_scrape_config():
                 'job': 'bitcoind',
                 'bitcoin_version': host.bitcoin_version,
             },
+        }
+        for host in BITCOIN_HOSTS
     ]
     return jsonify(targets)
 
