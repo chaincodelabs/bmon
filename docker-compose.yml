@@ -67,7 +67,6 @@ services:
   alertman:
     profiles: ["server"]
     image: docker.io/prom/alertmanager
-    user: "${UID}"
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
       - ${ENV_ROOT}/alertman/data:/data
