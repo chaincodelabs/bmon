@@ -26,12 +26,14 @@ class Host(fscm.remote.Host):
         *args,
         is_server: bool = False,
         bitcoin_version: str | None = None,
-        prom_exporter_port: int | None = 9102,
+        prom_exporter_port: int | None = 9100,
+        bitcoind_exporter_port: int | None = 9102,
         **kwargs,
     ):
         self.is_server = is_server
         self.bitcoin_version = bitcoin_version
         self.prom_exporter_port = prom_exporter_port
+        self.bitcoind_exporter_port = bitcoind_exporter_port
         super().__init__(*args, **kwargs)
 
 
