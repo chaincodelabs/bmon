@@ -173,7 +173,7 @@ services:
     image: bmon-base-image
     environment:
       - BMON_DATABASE_URL
-      - BMON_REDIS_LOCAL_URL=
+      - BMON_REDIS_LOCAL_URL
       - BMON_REDIS_CENTRAL_URL
       - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
       - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
