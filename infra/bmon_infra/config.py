@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import socket
+import typing as t
 from string import Template
 from pathlib import Path
 from types import SimpleNamespace
-import typing as t
 
 from fscm import p
 from clii import App
@@ -53,27 +54,27 @@ BITCOIN_DATA_PATH=${bitcoin_data_path}
 dev_settings = dict(
     root="./services/dev",
     uid=1000,
-    db_host='bmon',
-    db_password='bmon',
+    db_host="bmon",
+    db_password="bmon",
     db_port=5432,
-    db_url='postgres://bmon:bmon@db:5432/bmon',
-    redis_central_host='redis',
-    redis_local_host='redis',
-    prom_address='prom:9090',
+    db_url="postgres://bmon:bmon@db:5432/bmon",
+    redis_central_host="redis",
+    redis_local_host="redis",
+    prom_address="prom:9090",
     prom_exporter_port=9100,
     bitcoind_exporter_port=9332,
-    prom_scrape_sd_url='http://web:8080/prom_scrape_config',
-    bitcoin_rpc_host='bitcoind',
+    prom_scrape_sd_url="http://web:8080/prom_scrape_config",
+    bitcoin_rpc_host="bitcoind",
     bitcoin_rpc_port=18443,
-    bitcoin_rpc_user='foo',
-    bitcoin_rpc_password='bar',
+    bitcoin_rpc_user="foo",
+    bitcoin_rpc_password="bar",
     loki_port=3100,
     loki_host="loki",
     alertman_address="alertman:9093",
     promtail_port=9080,
     bitcoin_git_sha="?",
     bitcoin_version="?",
-    bitcoin_network='-regtest',
+    bitcoin_network="-regtest",
     bitcoin_data_path="./services/dev/bitcoin/data/regtest",
 )
 
@@ -86,16 +87,16 @@ def prod_settings(
     is_server: bool,
     db_password: str,
     bitcoin_rpc_password: str,
-    bitcoin_git_sha: str = '?',
-    bitcoin_version: str = '?',
+    bitcoin_git_sha: str = "?",
+    bitcoin_version: str = "?",
 ) -> dict:
-    servername = 'bmon.lan'
+    servername = "bmon.lan"
 
     prod_settings = dict(dev_settings)
     prod_settings.update(
         root="./services/prod",
         db_password=db_password,
-        bitcoin_network='',
+        bitcoin_network="",
         bitcoin_data_path="./services/prod/bitcoin/data",
     )
 
@@ -103,16 +104,16 @@ def prod_settings(
         # Many of these services are running in compose.
         prod_settings.update(
             root="./services/prod",
-            db_host='db',
-            db_url=f'postgres://bmon:{db_password}@db:5432/bmon',
-            redis_central_host='redis',
-            prom_address='prom:9090',
-            prom_scrape_sd_url='http://web:8080/prom_scrape_config',
+            db_host="db",
+            db_url=f"postgres://bmon:{db_password}@db:5432/bmon",
+            redis_central_host="redis",
+            prom_address="prom:9090",
+            prom_scrape_sd_url="http://web:8080/prom_scrape_config",
             bitcoin_rpc_port=8332,
-            bitcoin_rpc_user='bmon',
+            bitcoin_rpc_user="bmon",
             bitcoin_rpc_password=bitcoin_rpc_password,
-            loki_host='loki',
-            alertman_address='alertman:9093',
+            loki_host="loki",
+            alertman_address="alertman:9093",
             bitcoin_git_sha=bitcoin_git_sha,
             bitcoin_version=bitcoin_version,
         )
@@ -120,16 +121,16 @@ def prod_settings(
         # a bitcoind instance
         prod_settings.update(
             db_host=servername,
-            db_url=f'postgres://bmon:{db_password}@{servername}:5432/bmon',
+            db_url=f"postgres://bmon:{db_password}@{servername}:5432/bmon",
             redis_central_host=servername,
-            redis_local_host='redis-bitcoind',
-            prom_address=f'{servername}:9090',
-            prom_scrape_sd_url=f'http://{servername}/prom_scrape_config',
+            redis_local_host="redis-bitcoind",
+            prom_address=f"{servername}:9090",
+            prom_scrape_sd_url=f"http://{servername}/prom_scrape_config",
             bitcoin_rpc_port=8332,
-            bitcoin_rpc_user='bmon',
+            bitcoin_rpc_user="bmon",
             bitcoin_rpc_password=bitcoin_rpc_password,
             loki_host=servername,
-            alertman_address=f'{servername}:9093',
+            alertman_address=f"{servername}:9093",
             bitcoin_git_sha=bitcoin_git_sha,
             bitcoin_version=bitcoin_version,
         )
@@ -143,11 +144,13 @@ def prod_env(*args, **kwargs) -> str:
 
 
 def grafana():
-    return Path('./etc/grafana-template.ini').read_text()
+    return Path("./etc/grafana-template.ini").read_text()
 
 
 def grafana_datasources():
-    return Template(Path('./etc/grafana-datasources-template.yml').read_text()).substitute(
+    return Template(
+        Path("./etc/grafana-datasources-template.yml").read_text()
+    ).substitute(
         PROM_ADDRESS=ENV.PROM_ADDRESS,
         LOKI_ADDRESS=ENV.LOKI_ADDRESS,
         ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
@@ -155,36 +158,38 @@ def grafana_datasources():
 
 
 def prom():
-    return Template(Path('./etc/prom-template.yml').read_text()).substitute(
+    return Template(Path("./etc/prom-template.yml").read_text()).substitute(
         ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
         PROM_SCRAPE_SD_URL=ENV.PROM_SCRAPE_SD_URL,
     )
 
 
 def loki():
-    return Template(Path('./etc/loki-template.yml').read_text()).substitute(
+    return Template(Path("./etc/loki-template.yml").read_text()).substitute(
         LOKI_PORT=ENV.LOKI_PORT,
         ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
     )
 
 
 def alertman():
-    return Path('./etc/alertmanager-template.yml').read_text()
+    return Path("./etc/alertmanager-template.yml").read_text()
 
 
-def promtail():
-    return Template(Path('./etc/promtail-template.yml').read_text()).substitute(
+def promtail(hostname: str | None = None):
+    hostname = hostname or socket.gethostname()
+
+    return Template(Path("./etc/promtail-template.yml").read_text()).substitute(
         PROMTAIL_PORT=ENV.PROMTAIL_PORT,
         LOKI_ADDRESS=ENV.LOKI_ADDRESS,
-        HOSTNAME='?',
-        BITCOIN_GIT_SHA='?',
-        BITCOIN_VERSION='?',
+        HOSTNAME=hostname,
+        BITCOIN_GIT_SHA=ENV.BITCOIN_GIT_SHA,
+        BITCOIN_VERSION=ENV.BITCOIN_VERSION,
     )
 
 
 def bitcoind():
     auth_line = get_bitcoind_auth_line(ENV.BITCOIN_RPC_USER, ENV.BITCOIN_RPC_PASSWORD)
-    return Template(Path('./etc/bitcoin/bitcoin-template.conf').read_text()).substitute(
+    return Template(Path("./etc/bitcoin/bitcoin-template.conf").read_text()).substitute(
         RPC_AUTH_LINE=auth_line,
     )
 
@@ -201,45 +206,52 @@ def get_bitcoind_auth_line(username: str, password: str):
     return f"rpcauth={username}:{salt}${password_hmac}"
 
 
-def make_services_data():
+def make_services_data(hostname: str | None = None):
     p(root := Path(ENV.ENV_ROOT)).mkdir()
 
-    p(grafetc := root / 'grafana' / 'etc').mkdir()
-    p(grafetc / 'grafana.ini').contents(grafana())
-    p(var := root / 'grafana' / 'var').mkdir()
-    p(dashboards := var / 'dashboards').mkdir()
-    p(dashboards / 'bitcoind.json').contents(
-        Path('./etc/grafana/dashboards/bitcoind.json').read_text())
-    p(prov := grafetc / 'provisioning').mkdir()
-    p(datasources := prov / 'datasources').mkdir()
-    p(dashprov := prov / 'dashboards').mkdir()
-    p(dashprov / 'default.yml').contents(
-        Path('./etc/grafana-dashboards-template.yml').read_text())
-    p(datasources / 'datasource.yml').contents(grafana_datasources())
+    p(grafetc := root / "grafana" / "etc").mkdir()
+    p(grafetc / "grafana.ini").contents(grafana())
+    p(var := root / "grafana" / "var").mkdir()
+    p(dashboards := var / "dashboards").mkdir()
+    p(dashboards / "bitcoind.json").contents(
+        Path("./etc/grafana/dashboards/bitcoind.json").read_text()
+    )
+    p(prov := grafetc / "provisioning").mkdir()
+    p(datasources := prov / "datasources").mkdir()
+    p(dashprov := prov / "dashboards").mkdir()
+    p(dashprov / "default.yml").contents(
+        Path("./etc/grafana-dashboards-template.yml").read_text()
+    )
+    p(datasources / "datasource.yml").contents(grafana_datasources())
 
-    p(lokipath := root / 'loki').mkdir()
-    p(lokietc := lokipath / 'etc').mkdir()
-    p(lokietc / 'local-config.yaml').contents(loki())
+    p(lokipath := root / "loki").mkdir()
+    p(lokietc := lokipath / "etc").mkdir()
+    p(lokietc / "local-config.yaml").contents(loki())
 
-    p(prometc := root / 'prom' / 'etc').mkdir()
-    p(root / 'prom' / 'data').mkdir()
-    p(prometc / 'prometheus.yml').contents(prom())
+    p(prometc := root / "prom" / "etc").mkdir()
+    p(root / "prom" / "data").mkdir()
+    p(prometc / "prometheus.yml").contents(prom())
 
-    p(am := root / 'alertman').mkdir()
-    p(am / 'config.yml').contents(alertman())
+    p(am := root / "alertman").mkdir()
+    p(am / "config.yml").contents(alertman())
 
-    p(btcdata := root / 'bitcoin' / 'data').mkdir()
-    p(btcdata / 'bitcoin.conf').contents(bitcoind())
+    p(btcdata := root / "bitcoin" / "data").mkdir()
+    p(btcdata / "bitcoin.conf").contents(bitcoind())
 
-    p(promtailp := root / 'promtail').mkdir()
-    p(promtailp / 'config.yml').contents(promtail())
+    p(promtailp := root / "promtail").mkdir()
+    p(promtailp / "config.yml").contents(promtail(hostname))
 
 
 @cli.main
-@cli.arg('envfile', '-e')
-@cli.arg('envtype', '-t', help="The type of environment. Choices: dev, prod")
-def make_env(envfile: str = '.env', envtype: str = 'dev', envdict: t.Optional[dict] = None):
-    if envtype == 'dev':
+@cli.arg("envfile", "-e")
+@cli.arg("envtype", "-t", help="The type of environment. Choices: dev, prod")
+def make_env(
+    envfile: str = ".env",
+    envtype: str = "dev",
+    envdict: t.Optional[dict] = None,
+    hostname: str | None = None,
+):
+    if envtype == "dev":
         p(envfile).contents(dev_env())
     else:
         # Don't autopopulate .env on prod.
@@ -248,12 +260,13 @@ def make_env(envfile: str = '.env', envtype: str = 'dev', envdict: t.Optional[di
     if not envdict:
         # Read from the envfile
         envdict = dict(
-            i.split('=', 1) for i in
-            filter(None, Path(envfile).read_text().splitlines()))
+            i.split("=", 1)
+            for i in filter(None, Path(envfile).read_text().splitlines())
+        )
 
     global ENV
     ENV = SimpleNamespace(**envdict)
-    make_services_data()
+    make_services_data(hostname)
 
 
 def main():

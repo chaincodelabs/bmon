@@ -160,7 +160,7 @@ def provision_monitored_bitcoind(
     )
 
     p(bmon_path / ".env").contents(prod_env(is_server=False, **settings)).chmod("600")
-    _run_in_bash("bmon-config -t prod")
+    _run_in_bash(f"bmon-config -t prod --hostname {host.name}")
     docker_compose = Path.home() / ".venv" / "bin" / "docker-compose"
     assert docker_compose.exists()
 

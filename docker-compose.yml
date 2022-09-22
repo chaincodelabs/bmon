@@ -67,11 +67,11 @@ services:
   alertman:
     profiles: ["server"]
     image: docker.io/prom/alertmanager
-    user: "${UID}"
+    user: "${UID}:1000"
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
-      - ${ENV_ROOT}/alertman/data:/data
-    command: --config.file=/etc/alertmanager/config.yml --storage.path=/data
+      - ${ENV_ROOT}/alertman/data:/alertmanager
+    command: --config.file=/etc/alertmanager/config.yml --storage.path=/alertmanager
     ports:
       - 9093
 
