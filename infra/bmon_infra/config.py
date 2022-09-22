@@ -44,6 +44,7 @@ ALERTMAN_ADDRESS=${alertman_address}
 PROMTAIL_PORT=${promtail_port}
 BITCOIN_GIT_SHA=${bitcoin_git_sha}
 BITCOIN_VERSION=${bitcoin_version}
+BITCOIN_NETWORK_FLAG=${bitcoin_network}
 """
 
 
@@ -71,6 +72,7 @@ dev_settings = dict(
     promtail_port=9080,
     bitcoin_git_sha="?",
     bitcoin_version="?",
+    bitcoin_network='-regtest',
 )
 
 
@@ -91,6 +93,7 @@ def prod_settings(
     prod_settings.update(
         root="./services/prod",
         db_password=db_password,
+        bitcoin_network='',
     )
 
     if not is_server:
@@ -118,7 +121,7 @@ def prod_settings(
             redis_central='redis://redis:6379/0',
             redis_central_host='redis',
             prom_address='prom:9090',
-            prom_scrape_sd_url=f'http://web:8080/prom_scrape_config',
+            prom_scrape_sd_url='http://web:8080/prom_scrape_config',
             bitcoin_rpc_port=8332,
             bitcoin_rpc_user='bmon',
             bitcoin_rpc_password=bitcoin_rpc_password,
