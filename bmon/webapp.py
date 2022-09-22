@@ -34,16 +34,15 @@ def _deserialize_body(content: dict):
 
 @app.route('/prom_scrape_config', methods=['GET'])
 def prom_scrape_config():
-    print([h.__dict__ for h in BITCOIN_HOSTS])
     targets = [
         {
-            'targets': filter(None, [
+            'targets': list(filter(None, [
                 f'{host.name}:{host.bitcoind_exporter_port}',
                 (
                     f'{host.name}:{host.prom_exporter_port}' if
                     host.prom_exporter_port else ''
                 ),
-            ]),
+            ])),
             'labels': {
                 'job': 'bitcoind',
                 'bitcoin_version': host.bitcoin_version,
