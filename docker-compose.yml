@@ -155,9 +155,6 @@ services:
       - WAIT_FOR="${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379"
     volumes:
       - ./:/src
-    links:
-      - redis
-      - aggregator-celery-worker
     command: celery -A bmon.bitcoind_worker.tasks:app worker
 
   bitcoind-watcher:
@@ -174,7 +171,6 @@ services:
       # TODO: this shouldn't be specific to regtest
       - ${ENV_ROOT}/bitcoin/data/regtest/debug.log:/var/log/bitcoind.log
     links:
-      - redis
       - bitcoind-celery-worker
     command: bmon-watch-bitcoind
 
