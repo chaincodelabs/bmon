@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""
+Wait for stuff to boot with no system dependencies other than Python 3.
+
+Example usages:
+
+    wait-for server:3000
+    WAIT_FOR=localhost:8080,localhost:8081 wait-for -n 2
+
+"""
+
+import os
+import sys
+import socket
+import time
+import argparse
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        '-d', '--delay', action='store', type=float, default=0.2,
+        help='Number of seconds to delay between attempts')
+    parser.add_argument(
+        '-n', '--num-tries', action='store', type=int, default=200,
+        help='Number of times to try each target')
+    parser.add_argument(
+        'targets', nargs='*',
+        default=[i.strip() for i in os.environ.get('WAIT_FOR', '').split(',')],
+        help='The targets to poll, e.g. "localhost:8081"')
+
+    args = parser.parse_args()
+
+    for target in filter(None, args.targets):
+        wait_for_target(target, args)
+
+
+def wait_for_target(target: str, args):
+    tries = args.num_tries
+    host, port = target.split(':')
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print(f"waiting for {target} ({tries * args.delay}s)")
+    sys.stdout.flush()
+
+    while tries > 0:
+        if s.connect_ex((host, int(port))):
+            tries -= 1
+            time.sleep(args.delay)
+        else:
+            print(f"connected to {target}!")
+            return True
+
+    print(f"timed out waiting for {target}")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

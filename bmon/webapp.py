@@ -5,6 +5,8 @@ import os
 from flask import Flask, request, jsonify
 from .db import Host
 
+from bmon_infra.infra import BITCOIN_HOSTS
+
 
 app = Flask(__name__)
 
@@ -32,14 +34,23 @@ def _deserialize_body(content: dict):
 
 @app.route('/prom_scrape_config', methods=['GET'])
 def prom_scrape_config():
-    return jsonify([
+    targets = [
         {
-            'targets': ['bitcoind-exporter:9332'],
+            'targets': list(filter(None, [
+                f'{host.name}:{host.bitcoind_exporter_port}',
+                (
+                    f'{host.name}:{host.prom_exporter_port}' if
+                    host.prom_exporter_port else ''
+                ),
+            ])),
             'labels': {
                 'job': 'bitcoind',
-            }
-        },
-    ])
+                'bitcoin_version': host.bitcoin_version,
+            },
+        }
+        for host in BITCOIN_HOSTS
+    ]
+    return jsonify(targets)
 
 
 def main():
