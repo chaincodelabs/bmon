@@ -1,4 +1,4 @@
-# network-monitor
+# bmon
 
 A Bitcoin network monitor
 
@@ -64,6 +64,36 @@ flowchart TD
 ```
 
 For simplification, all servers participate in a single wireguard network.
+
+## How are hosts configured?
+
+All known participants in bmon are listed in `./infra/hosts.yml`. This file is parsed
+by `./infra/bmon_infra/infra.py` (which gets installed as the `bmon-deploy`), which
+then configures each host over SSH (using [fscm](https://github.com/jamesob/fscm),
+which itself uses mitogen, a Python library that basically facilitates remote execution of
+Python code over an SSH connection).
+
+During provisioning, a copy of the `bmon` repo is cloned on each host at `~/bmon`,
+and then `bmon-config` (`./infra/bmon_infra/config.py`) is run to generate a `.env`
+file with all configuration and secrets based on the host's entry in `hosts.yml`.
+
+The `.env` file is read in by docker-compose and used to set various parameters of the
+container runtimes. The docker-compose lifecycle is managed by systemd on each host; a
+user-level systemd unit is installed by the `bmon-deploy` command.
+
+
+## How is wireguard used?
+
+Since monitored hosts will live on different networks, wireguard is used to create a
+flat networking topology so that all hosts can be easily reached by the central bmon
+server, which aggregates measurements across each host.
+
+To add a host, file an issue here and I'll give a wireguard config to use.
+
+Wireguard is also used to simulate geographical dispersion of the monitored nodes. A
+VPN provider gives us Wireguard configurations for diverse networks, which we then use
+on certain monitored bitcoind hosts.
+
 
 ### Node versions
 
