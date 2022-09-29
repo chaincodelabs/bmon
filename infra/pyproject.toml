@@ -16,6 +16,7 @@ dependencies = [
     'mitogen @ git+https://git@github.com/jamesob/mitogen.git',
     'fscm @ git+https://git@github.com/jamesob/fscm.git',
     'clii >= 1.0.0',
+    'pyyaml',
 ]
 version = "0.0.1"
 

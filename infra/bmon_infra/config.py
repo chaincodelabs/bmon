@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+Handles generation of .env configuration for both the bmon server and any
+monitored bitcoind instances.
+
+The configuration in .env is used in the docker-compose file, which is then fed
+into each consituent service.
+
+See also: ./infra.py, for how this is used to populate configuration on each host.
+
+"""
 
 import socket
 import typing as t
@@ -46,8 +56,11 @@ ALERTMAN_ADDRESS=${alertman_address}
 PROMTAIL_PORT=${promtail_port}
 BITCOIN_GIT_SHA=${bitcoin_git_sha}
 BITCOIN_VERSION=${bitcoin_version}
-BITCOIN_NETWORK_FLAG=${bitcoin_network}
+BITCOIN_NETWORK_FLAG=${bitcoin_network_flag}
 BITCOIN_DATA_PATH=${bitcoin_data_path}
+BITCOIN_EXTRA_ARGS=${bitcoin_extra_args}
+BITCOIN_PRUNE=${bitcoin_prune}
+BITCOIN_DBCACHE=${bitcoin_dbcache}
 """
 
 
@@ -74,8 +87,11 @@ dev_settings = dict(
     promtail_port=9080,
     bitcoin_git_sha="?",
     bitcoin_version="?",
-    bitcoin_network="-regtest",
+    bitcoin_network_flag="-regtest",
     bitcoin_data_path="./services/dev/bitcoin/data/regtest",
+    bitcoin_extra_args="",
+    bitcoin_prune=0,
+    bitcoin_dbcache=None,
 )
 
 
@@ -83,63 +99,63 @@ def dev_env() -> str:
     return Template(env_template).substitute(**dev_settings)
 
 
-def prod_settings(
-    is_server: bool,
-    db_password: str,
-    bitcoin_rpc_password: str,
-    bitcoin_git_sha: str = "?",
-    bitcoin_version: str = "?",
-) -> dict:
+def prod_settings(host) -> dict:
     servername = "bmon.lan"
+
+    bitcoin_extra_args = ""
+    if host.bitcoin_prune is not None:
+        bitcoin_extra_args += f"-prune={host.bitcoin_prune}"
+    if host.bitcoin_dbcache is not None:
+        bitcoin_extra_args += f" -dbcache={host.bitcoin_dbcache}"
 
     prod_settings = dict(dev_settings)
     prod_settings.update(
         root="./services/prod",
-        db_password=db_password,
-        bitcoin_network="",
+        db_password=host.secrets.db_password,
+        bitcoin_network_flag="",
         bitcoin_data_path="./services/prod/bitcoin/data",
+        bitcoin_extra_args=bitcoin_extra_args,
+        bitcoin_prune=host.bitcoin_prune,
+        bitcoin_dbcache=host.bitcoin_dbcache,
+        bitcoin_version=host.bitcoin_version,
     )
 
-    if is_server:
+    if 'server' in host.tags:
         # Many of these services are running in compose.
         prod_settings.update(
             root="./services/prod",
             db_host="db",
-            db_url=f"postgres://bmon:{db_password}@db:5432/bmon",
+            db_url=f"postgres://bmon:{host.secrets.db_password}@db:5432/bmon",
             redis_central_host="redis",
             prom_address="prom:9090",
             prom_scrape_sd_url="http://web:8080/prom_scrape_config",
             bitcoin_rpc_port=8332,
             bitcoin_rpc_user="bmon",
-            bitcoin_rpc_password=bitcoin_rpc_password,
+            bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
             loki_host="loki",
             alertman_address="alertman:9093",
-            bitcoin_git_sha=bitcoin_git_sha,
-            bitcoin_version=bitcoin_version,
         )
     else:
         # a bitcoind instance
         prod_settings.update(
             db_host=servername,
-            db_url=f"postgres://bmon:{db_password}@{servername}:5432/bmon",
+            db_url=f"postgres://bmon:{host.secrets.db_password}@{servername}:5432/bmon",
             redis_central_host=servername,
             redis_local_host="redis-bitcoind",
             prom_address=f"{servername}:9090",
             prom_scrape_sd_url=f"http://{servername}/prom_scrape_config",
             bitcoin_rpc_port=8332,
             bitcoin_rpc_user="bmon",
-            bitcoin_rpc_password=bitcoin_rpc_password,
+            bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
             loki_host=servername,
             alertman_address=f"{servername}:9093",
-            bitcoin_git_sha=bitcoin_git_sha,
-            bitcoin_version=bitcoin_version,
         )
 
     return prod_settings
 
 
-def prod_env(*args, **kwargs) -> str:
-    settings = prod_settings(*args, **kwargs)
+def prod_env(host) -> str:
+    settings = prod_settings(host)
     return Template(env_template).substitute(**settings)
 
 
@@ -184,6 +200,8 @@ def promtail(hostname: str | None = None):
         HOSTNAME=hostname,
         BITCOIN_GIT_SHA=ENV.BITCOIN_GIT_SHA,
         BITCOIN_VERSION=ENV.BITCOIN_VERSION,
+        BITCOIN_PRUNE=ENV.BITCOIN_PRUNE,
+        BITCOIN_DBCACHE=ENV.BITCOIN_DBCACHE,
     )
 
 

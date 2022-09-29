@@ -46,6 +46,8 @@ def prom_scrape_config():
             'labels': {
                 'job': 'bitcoind',
                 'bitcoin_version': host.bitcoin_version,
+                'bitcoin_dbcache': host.bitcoin_dbcache,
+                'bitcoin_prune': host.bitcoin_prune,
             },
         }
         for host in BITCOIN_HOSTS

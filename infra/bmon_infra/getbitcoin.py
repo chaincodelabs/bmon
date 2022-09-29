@@ -45,9 +45,9 @@ releases = [
         '600d1db5e751fa85903e935a01a74f5cc57e1e7473c15fd3e17ed21e202cfe5a',
     ),
     Release(
-        '0.10',
-        f'{CORE_URL}/bitcoin-core-0.18.1/bitcoin-0.18.1-x86_64-linux-gnu.tar.gz',
-        '600d1db5e751fa85903e935a01a74f5cc57e1e7473c15fd3e17ed21e202cfe5a',
+        '0.10.3',
+        f'{CORE_URL}/bitcoin-core-0.10.3/bitcoin-0.10.3-linux64.tar.gz',
+        '586eb5576f71cd1ad2a42a26f67afc87deffc51d9f75348e2c7e96b1a401e23d',
     ),
 ]
 version_to_release = {r.version: r for r in releases}

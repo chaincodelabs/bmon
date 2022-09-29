@@ -2,75 +2,104 @@
 # vim: set sw=4 tabstop=4
 import os
 import sys
+import getpass
 import re
 import typing as t
 from pathlib import Path
 
+import yaml
 import fscm
 import fscm.remote
 from clii import App
-from fscm.remote import executor, SSH
-from fscm import run, p, getstdout, lineinfile, systemd
+from fscm.remote import executor
+from fscm.contrib import wireguard
+from fscm import run, p, lineinfile, systemd
 
 from .config import prod_env
 
 
 cli = App()
+cli.add_argument("-t", "--tag-filter")
+cli.add_argument("-f", "--hostname-filter")
 
 REPO_URL = "https://github.com/jamesob/bmon.git"
+VENV_PATH = Path.home() / ".venv"
+
+fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
 
 
-class Host(fscm.remote.Host):
+class Host(wireguard.Host):
     def __init__(
         self,
         *args,
-        is_server: bool = False,
         bitcoin_version: str | None = None,
+        bitcoin_prune: int = 0,
+        bitcoin_dbcache: int = 450,
         prom_exporter_port: int | None = 9100,
         bitcoind_exporter_port: int | None = 9332,
         **kwargs,
     ):
-        self.is_server = is_server
         self.bitcoin_version = bitcoin_version
+        self.bitcoin_prune = bitcoin_prune
+        self.bitcoin_dbcache = bitcoin_dbcache
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         super().__init__(*args, **kwargs)
 
 
-HOSTS = [
-    SERVER_HOST := Host("bmon.lan", is_server=True),
-    Host("tp-i5-16g-1.lan", bitcoin_version="v23.0"),
-]
+def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
+    HOSTS_FILE = fscm.this_dir_path().parent / "hosts.yml"
+    data = yaml.safe_load(HOSTS_FILE.read_text())
+    hosts = {name: Host.from_dict(name, d) for name, d in data["hosts"].items()}
 
-BITCOIN_HOSTS = [h for h in HOSTS if h.bitcoin_version is not None]
+    if cli.args.tag_filter:
+        hosts = {name: h for name, h in hosts.items() if cli.args.tag_filter in h.tags}
+    if cli.args.hostname_filter:
+        hosts = {
+            name: h
+            for name, h in hosts.items()
+            if re.search(cli.args.hostname_filter, name)
+        }
+
+    wg_servers = {
+        name: wireguard.Server.from_dict(name, d)
+        for name, d in data["wireguard"].items()
+    }
+
+    secrets = fscm.get_secrets(["*"], "fscm/bmon")
+    host_secrets = secrets.pop("hosts")
+
+    for host in hosts.values():
+        host.secrets.update(secrets).update(
+            getattr(host_secrets, host.name, fscm.Secrets())
+        )
+        host.check_host_keys = "accept"
+
+    return wg_servers, hosts
 
 
-def _initialize_hosts():
-    """Set sudo passwords so that they're cached for remote execution."""
-    secrets = fscm.get_secrets(["bmon"], "fscm/secrets").bmon
-    assert secrets.sudo_password
-
-    for host in HOSTS:
-        host.secrets = secrets
-        host.connection_spec = [SSH(check_host_keys="accept")]
-
-
-fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
-
-
-def _run_in_bash(cmd, *args, **kwargs) -> fscm.RunReturn:
-    return run(f"bash -i -c '{cmd}'", *args, **kwargs)
-
-
-def _setup_bmon_common(user: str):
-    fscm.s.pkgs_install("git supervisor docker.io curl")
+def main_remote(
+    host: Host,
+    parent: fscm.remote.Parent,
+    rebuild_docker: bool,
+    wgmap: t.Dict[str, wireguard.Server],
+):
+    user = getpass.getuser()
+    fscm.s.pkgs_install(
+        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap"
+    )
     fscm.s.group_member(user, "docker")
+
+    if wg_privkey := getattr(host.secrets, "wg-privkey", None):
+        p("/etc/wireguard/wg-bmon-privkey", sudo=True).contents(wg_privkey).chmod("600")
+
+    wireguard.peer(host, wgmap)
 
     if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
         run(f"loginctl enable-linger {user}", sudo=True)
 
-    if not (venv := Path.home() / ".venv").exists():
-        run(f"python3 -m venv {venv}").assert_ok()
+    if not VENV_PATH.exists():
+        run(f"python3 -m venv {VENV_PATH}").assert_ok()
 
     lineinfile(
         f"/home/{user}/.bashrc",
@@ -81,11 +110,14 @@ def _setup_bmon_common(user: str):
     if not (bmon_path := Path.home() / "bmon").exists():
         run(f"git clone {REPO_URL} {bmon_path}").assert_ok()
 
-    if not _run_in_bash("which bmon-config", quiet=True).ok:
-        _run_in_bash(f"cd {bmon_path} && pip install -e ./infra").assert_ok()
+    if ".venv/bin/" not in os.environ["PATH"]:
+        os.environ["PATH"] = f"{VENV_PATH / 'bin'}:{os.environ['PATH']}"
 
-    if not _run_in_bash("which docker-compose", quiet=True).ok:
-        _run_in_bash("pip install docker-compose").assert_ok()
+    if not run("which bmon-config", quiet=True).ok:
+        run(f"cd {bmon_path} && pip install -e ./infra").assert_ok()
+
+    if not run("which docker-compose", quiet=True).ok:
+        run("pip install docker-compose").assert_ok()
 
     run(f"cd {bmon_path} && git pull origin master").assert_ok()
 
@@ -96,26 +128,28 @@ def _setup_bmon_common(user: str):
     ):
         run("systemctl restart docker", sudo=True).assert_ok()
 
+    if "server" in host.tags:
+        provision_bmon_server(host, parent, rebuild_docker)
+    elif "bitcoin" in host.tags:
+        provision_monitored_bitcoind(host, parent, rebuild_docker)
 
-def provision_bmon_server(host: Host, parent: fscm.remote.Parent, rebuild_docker: bool):
-    assert (username := getstdout("whoami")) != "root"
 
-    _setup_bmon_common(username)
+def provision_bmon_server(
+    host: Host,
+    parent: fscm.remote.Parent,
+    rebuild_docker: bool,
+):
+    assert (username := getpass.getuser()) != "root"
+
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    settings = dict(
-        db_password=host.secrets.db_password,
-        bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
-        bitcoin_version=host.bitcoin_version,
-    )
-
-    p(bmon_path / ".env").contents(prod_env(is_server=True, **settings)).chmod("600")
-    _run_in_bash("bmon-config -t prod")
-    docker_compose = Path.home() / ".venv" / "bin" / "docker-compose"
+    p(bmon_path / ".env").contents(prod_env(host)).chmod("600")
+    run("bmon-config -t prod")
+    docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
     if rebuild_docker:
-        _run_in_bash(f"{docker_compose} --profile server --profile prod build")
+        run(f"{docker_compose} --profile server --profile prod build")
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
@@ -144,32 +178,44 @@ def provision_bmon_server(host: Host, parent: fscm.remote.Parent, rebuild_docker
     ):
         run("systemctl restart nginx", sudo=True)
 
+    # Files, like pruned datadirs, will be served out of here.
+    p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
     run("systemctl --user restart bmon-server").assert_ok()
 
 
 def provision_monitored_bitcoind(
     host: Host, parent: fscm.remote.Parent, rebuild_docker: bool
 ):
-    assert (username := getstdout("whoami")) != "root"
-
-    _setup_bmon_common(username)
+    assert (username := getpass.getuser()) != "root"
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    settings = dict(
-        db_password=host.secrets.db_password,
-        bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
-        bitcoin_version=host.bitcoin_version,
-    )
-
-    p(bmon_path / ".env").contents(prod_env(is_server=False, **settings)).chmod("600")
-    _run_in_bash(f"bmon-config -t prod --hostname {host.name}")
-    docker_compose = Path.home() / ".venv" / "bin" / "docker-compose"
+    p(bmon_path / ".env").contents(prod_env(host)).chmod("600")
+    run(f"bmon-config -t prod --hostname {host.name}")
+    docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
     if rebuild_docker:
-        _run_in_bash(f"{docker_compose} --profile bitcoind --profile prod build")
+        run(f"{docker_compose} --profile bitcoind --profile prod build")
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
+
+    if host.bitcoin_prune:
+        BMON_SERVER_WG_IP = "10.33.0.2"
+        # Load in a prepopulated pruned datadir if necessary.
+        btc_size_kb = int(
+            run(f"du -s {bmon_path}/services/prod/bitcoin/data").stdout.split()[0]
+        )
+        gb_in_kb = 1000**3
+
+        if btc_size_kb < gb_in_kb:
+            btc_data = bmon_path / "services/prod/bitcoin/data"
+            run(f"rm -rf {btc_data}").assert_ok()
+            run(
+                f"curl -s http://{BMON_SERVER_WG_IP}/bitcoin-pruned-550.tar.gz | "
+                "tar xz -C /tmp"
+            ).assert_ok()
+            run("mv /tmp/bitcoin-pruned-500mb {btc_data}").assert_ok()
+            print(f"Installed prepopulated pruned dir at {btc_data}")
 
     if (
         p(sysd / "bmon-bitcoind.service")
@@ -190,42 +236,33 @@ def provision_monitored_bitcoind(
 
 
 @cli.cmd
-@cli.arg("type", "-t", help="Options: server, bitcoin")
-def deploy(type: str = "", rebuild_docker: bool = False):
+def deploy(rebuild_docker: bool = False):
     """Provision necessary dependencies and config files on hosts."""
-    _initialize_hosts()
+    wgsmap, hostmap = get_hosts()
+    hosts = list(hostmap.values())
 
-    if not type or type == "server":
-        with executor(SERVER_HOST) as exec:
-            exec.allow_file_access("./etc/*", "./etc/**/*")
-            exec.run(provision_bmon_server, rebuild_docker)
-
-    if not type or type.startswith("bitcoin"):
-        with executor(*BITCOIN_HOSTS) as exec:
-            exec.allow_file_access("./etc/*", "./etc/**/*")
-            exec.run(provision_monitored_bitcoind, rebuild_docker)
+    with executor(*hosts) as exec:
+        exec.allow_file_access("./etc/*", "./etc/**/*")
+        exec.run(main_remote, rebuild_docker, wgsmap)
 
 
 @cli.cmd
 def status():
     """Check status on hosts."""
-    run_on_all("supervisorctl status")
+    runall("supervisorctl status")
 
 
 @cli.cmd
 def bitcoind_logs():
     """Present a brief tail of all known bitcoind logs."""
-    run_on_all("tail -n 20 /bmon/logs/bitcoind-stdout.log", host_filter=r"bmon-b\d+")
+    runall("tail -n 20 /bmon/logs/bitcoind-stdout.log", host_filter=r"bmon-b\d+")
 
 
 @cli.cmd
-def run_on_all(cmd: str, host_filter: t.Optional[str] = None):
+def runall(cmd: str):
     """Run some command across all hosts."""
-    _initialize_hosts()
-
-    hosts = HOSTS
-    if host_filter:
-        hosts = [h for h in HOSTS if re.match(host_filter, h.name)]
+    _, hostmap = get_hosts()
+    hosts = list(hostmap.values())
 
     with executor(*hosts) as exec:
         if not (res := exec.run(_run_cmd, cmd)).ok:
