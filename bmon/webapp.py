@@ -34,7 +34,7 @@ def _deserialize_body(content: dict):
     return content
 
 
-@app.route('/prom_scrape_config', methods=['GET'])
+@app.route('/prom-config', methods=['GET'])
 def prom_scrape_config():
     targets = [
         {
@@ -48,8 +48,8 @@ def prom_scrape_config():
             'labels': {
                 'job': 'bitcoind',
                 'bitcoin_version': host.bitcoin_version,
-                'bitcoin_dbcache': host.bitcoin_dbcache,
-                'bitcoin_prune': host.bitcoin_prune,
+                'bitcoin_dbcache': str(host.bitcoin_dbcache),
+                'bitcoin_prune': str(host.bitcoin_prune),
             },
         }
         for host in HOSTS

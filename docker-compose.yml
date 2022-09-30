@@ -127,6 +127,7 @@ services:
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
+      - ${ENV_ROOT}/bitcoin/data/bitcoin.conf:/bitcoin/bitcoin.conf
     command: bitcoind -datadir=/bitcoin/data ${BITCOIN_NETWORK_FLAG} -debug ${BITCOIN_EXTRA_ARGS}
 
   promtail:
