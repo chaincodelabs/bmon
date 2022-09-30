@@ -36,17 +36,22 @@ def _deserialize_body(content: dict):
 
 @app.route('/prom-config', methods=['GET'])
 def prom_scrape_config():
+    def get_wireguard_ip(host):
+        bmon_wg = host.wireguard['wg-bmon']
+        return bmon_wg.ip
+
     targets = [
         {
             'targets': list(filter(None, [
-                f'{host.name}:{host.bitcoind_exporter_port}',
+                f'{get_wireguard_ip(host)}:{host.bitcoind_exporter_port}',
                 (
-                    f'{host.name}:{host.prom_exporter_port}' if
+                    f'{get_wireguard_ip(host)}:{host.prom_exporter_port}' if
                     host.prom_exporter_port else ''
                 ),
             ])),
             'labels': {
                 'job': 'bitcoind',
+                'hostname': host.name,
                 'bitcoin_version': host.bitcoin_version,
                 'bitcoin_dbcache': str(host.bitcoin_dbcache),
                 'bitcoin_prune': str(host.bitcoin_prune),
