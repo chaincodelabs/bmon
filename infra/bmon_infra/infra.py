@@ -22,7 +22,7 @@ cli = App()
 cli.add_argument("-t", "--tag-filter")
 cli.add_argument("-f", "--hostname-filter")
 
-REPO_URL = "https://github.com/jamesob/bmon.git"
+REPO_URL = "https://github.com/chaincodelabs/bmon.git"
 VENV_PATH = Path.home() / ".venv"
 
 fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
@@ -201,20 +201,22 @@ def provision_monitored_bitcoind(
 
     if host.bitcoin_prune:
         BMON_SERVER_WG_IP = "10.33.0.2"
+        DATADIR_URL = f"http://{BMON_SERVER_WG_IP}/bitcoin-pruned-550.tar.gz"
         # Load in a prepopulated pruned datadir if necessary.
         btc_size_kb = int(
             run(f"du -s {bmon_path}/services/prod/bitcoin/data").stdout.split()[0]
         )
-        gb_in_kb = 1000**3
+        gb_in_kb = 1000**2
 
         if btc_size_kb < gb_in_kb:
             btc_data = bmon_path / "services/prod/bitcoin/data"
+            print(f"Fetching prepopulated (pruned) datadir from {DATADIR_URL}")
+            run(f"curl -s {DATADIR_URL} | tar xz -C /tmp").assert_ok()
             run(f"rm -rf {btc_data}").assert_ok()
-            run(
-                f"curl -s http://{BMON_SERVER_WG_IP}/bitcoin-pruned-550.tar.gz | "
-                "tar xz -C /tmp"
-            ).assert_ok()
-            run("mv /tmp/bitcoin-pruned-500mb {btc_data}").assert_ok()
+            run(f"mv /tmp/bitcoin-pruned-500mb {btc_data}").assert_ok()
+            # If we don't have a debug.log file, docker will make a directory out
+            # of it during the mount process of bitcoind-watcher.
+            run(f"touch {btc_data}/debug.log")
             print(f"Installed prepopulated pruned dir at {btc_data}")
 
     if (
