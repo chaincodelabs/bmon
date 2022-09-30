@@ -50,9 +50,7 @@ class Host(wireguard.Host):
 def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     HOSTS_FILE = fscm.this_dir_path().parent / "hosts.yml"
     data = yaml.safe_load(HOSTS_FILE.read_text())
-    hosts = {
-        str(name): Host.from_dict(name, d) for name, d in data["hosts"].items()
-    }
+    hosts = {str(name): Host.from_dict(name, d) for name, d in data["hosts"].items()}
 
     wg_servers: t.Dict[str, wireguard.Server] = {
         name: wireguard.Server.from_dict(name, d)
@@ -60,6 +58,11 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     }
 
     return wg_servers, hosts
+
+
+def get_server_wireguard_ip() -> str:
+    [server_host] = [h for h in get_hosts()[1].values() if "server" in h.tags]
+    return str(server_host.wireguards["wg-bmon"].ip)
 
 
 def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
@@ -153,7 +156,9 @@ def provision_bmon_server(
 
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host)).chmod("600")
+    p(bmon_path / ".env").contents(prod_env(host, get_server_wireguard_ip())).chmod(
+        "600"
+    )
     run("bmon-config -t prod")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
@@ -199,7 +204,9 @@ def provision_monitored_bitcoind(
     assert (username := getpass.getuser()) != "root"
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host)).chmod("600")
+    p(bmon_path / ".env").contents(prod_env(host, get_server_wireguard_ip())).chmod(
+        "600"
+    )
     run(f"bmon-config -t prod --hostname {host.name}")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
