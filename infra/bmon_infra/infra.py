@@ -47,10 +47,14 @@ class Host(wireguard.Host):
         super().__init__(*args, **kwargs)
 
 
-def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
+def get_hosts(
+    get_secrets: bool = False,
+) -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     HOSTS_FILE = fscm.this_dir_path().parent / "hosts.yml"
     data = yaml.safe_load(HOSTS_FILE.read_text())
-    hosts = {name: Host.from_dict(name, d) for name, d in data["hosts"].items()}
+    hosts: t.Dict[str, Host] = {
+        name: Host.from_dict(name, d) for name, d in data["hosts"].items()
+    }
 
     if cli.args.tag_filter:
         hosts = {name: h for name, h in hosts.items() if cli.args.tag_filter in h.tags}
@@ -61,18 +65,21 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
             if re.search(cli.args.hostname_filter, name)
         }
 
-    wg_servers = {
+    wg_servers: t.Dict[str, wireguard.Server] = {
         name: wireguard.Server.from_dict(name, d)
         for name, d in data["wireguard"].items()
     }
 
-    secrets = fscm.get_secrets(["*"], "fscm/bmon")
-    host_secrets = secrets.pop("hosts")
+    if get_secrets:
+        secrets = fscm.get_secrets(["*"], "fscm/bmon")
+        host_secrets = secrets.pop("hosts")
+
+        for host in hosts.values():
+            host.secrets.update(secrets).update(
+                getattr(host_secrets, host.name, fscm.Secrets())
+            )
 
     for host in hosts.values():
-        host.secrets.update(secrets).update(
-            getattr(host_secrets, host.name, fscm.Secrets())
-        )
         host.check_host_keys = "accept"
 
     return wg_servers, hosts
@@ -240,7 +247,7 @@ def provision_monitored_bitcoind(
 @cli.cmd
 def deploy(rebuild_docker: bool = False):
     """Provision necessary dependencies and config files on hosts."""
-    wgsmap, hostmap = get_hosts()
+    wgsmap, hostmap = get_hosts(get_secrets=True)
     hosts = list(hostmap.values())
 
     with executor(*hosts) as exec:
@@ -263,7 +270,7 @@ def bitcoind_logs():
 @cli.cmd
 def runall(cmd: str):
     """Run some command across all hosts."""
-    _, hostmap = get_hosts()
+    _, hostmap = get_hosts(get_secrets=True)
     hosts = list(hostmap.values())
 
     with executor(*hosts) as exec:
