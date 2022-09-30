@@ -60,8 +60,8 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     return wg_servers, hosts
 
 
-def get_server_wireguard_ip() -> str:
-    [server_host] = [h for h in get_hosts()[1].values() if "server" in h.tags]
+def get_server_wireguard_ip(hosts) -> str:
+    [server_host] = [h for h in hosts if "server" in h.tags]
     return str(server_host.wireguards["wg-bmon"].ip)
 
 
@@ -96,6 +96,7 @@ def main_remote(
     parent: fscm.remote.Parent,
     rebuild_docker: bool,
     wgmap: t.Dict[str, wireguard.Server],
+    server_wg_ip: str,
 ):
     user = getpass.getuser()
     fscm.s.pkgs_install(
@@ -151,12 +152,13 @@ def provision_bmon_server(
     host: Host,
     parent: fscm.remote.Parent,
     rebuild_docker: bool,
+    server_wg_ip: str,
 ):
     assert (username := getpass.getuser()) != "root"
 
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host, get_server_wireguard_ip())).chmod(
+    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod(
         "600"
     )
     run("bmon-config -t prod")
@@ -199,12 +201,13 @@ def provision_bmon_server(
 
 
 def provision_monitored_bitcoind(
-    host: Host, parent: fscm.remote.Parent, rebuild_docker: bool
+    host: Host, parent: fscm.remote.Parent, rebuild_docker: bool,
+    server_wg_ip: str,
 ):
     assert (username := getpass.getuser()) != "root"
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host, get_server_wireguard_ip())).chmod(
+    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod(
         "600"
     )
     run(f"bmon-config -t prod --hostname {host.name}")
@@ -262,7 +265,7 @@ def deploy(rebuild_docker: bool = False):
 
     with executor(*hosts) as exec:
         exec.allow_file_access("./etc/*", "./etc/**/*")
-        exec.run(main_remote, rebuild_docker, wgsmap)
+        exec.run(main_remote, rebuild_docker, wgsmap, get_server_wireguard_ip(hosts))
 
 
 @cli.cmd
