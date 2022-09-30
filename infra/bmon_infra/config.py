@@ -61,6 +61,7 @@ BITCOIN_DATA_PATH=${bitcoin_data_path}
 BITCOIN_EXTRA_ARGS=${bitcoin_extra_args}
 BITCOIN_PRUNE=${bitcoin_prune}
 BITCOIN_DBCACHE=${bitcoin_dbcache}
+BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
 """
 
 
@@ -92,6 +93,7 @@ dev_settings = dict(
     bitcoin_extra_args="",
     bitcoin_prune=0,
     bitcoin_dbcache=None,
+    bitcoin_docker_tag='latest',
 )
 
 
@@ -118,6 +120,7 @@ def prod_settings(host) -> dict:
         bitcoin_prune=host.bitcoin_prune,
         bitcoin_dbcache=host.bitcoin_dbcache,
         bitcoin_version=host.bitcoin_version,
+        bitcoin_docker_tag=host.bitcoin_version.lstrip('v'),
     )
 
     if 'server' in host.tags:

@@ -123,7 +123,7 @@ services:
 
   bitcoind:
     profiles: ["bitcoind"]
-    image: jamesob/bitcoind:latest
+    image: jamesob/bitcoind:${BITCOIN_DOCKER_TAG}
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
