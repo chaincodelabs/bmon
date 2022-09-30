@@ -98,7 +98,7 @@ services:
     image: bmon-base-image
     environment:
       - BMON_DATABASE_URL
-      - BMON_REDIS_CENTRAL_URL=redis://redis:6379/0
+      - BMON_REDIS_CENTRAL_URL
     volumes:
       - ./:/src
       - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log

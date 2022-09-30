@@ -5,6 +5,8 @@ import celery
 from .. import config
 from ..aggregator_worker.tasks import receive_bitcoind_event
 
+
+assert config.REDIS_LOCAL_URL
 app = celery.Celery(
     'tasks',
     broker=config.REDIS_LOCAL_URL,

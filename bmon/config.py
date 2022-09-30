@@ -22,7 +22,7 @@ TESTING = bool(os.environ.get(
 REDIS_LOCAL_URL = os.environ.get('BMON_REDIS_LOCAL_URL')
 
 # All installations must know about the central Redis instance.
-REDIS_CENTRAL_URL = os.environ.get('BMON_REDIS_CENTRAL_URL')
+REDIS_CENTRAL_URL = os.environ['BMON_REDIS_CENTRAL_URL']
 
 # For testing
 LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'

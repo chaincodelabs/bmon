@@ -8,6 +8,7 @@ from .tasks import send_event
 def monitor_bitcoind_log(filename: str | Path):
     cb_listener = ConnectBlockListener()
 
+    print(f"listening to logs at {filename}")
     for line in read_logfile_forever(filename):
         got = cb_listener.process_line(line)
         if got:
