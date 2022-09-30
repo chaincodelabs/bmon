@@ -37,7 +37,7 @@ def _deserialize_body(content: dict):
 @app.route('/prom-config', methods=['GET'])
 def prom_scrape_config():
     def get_wireguard_ip(host):
-        bmon_wg = host.wireguard['wg-bmon']
+        bmon_wg = host.wireguards['wg-bmon']
         return bmon_wg.ip
 
     targets = [
