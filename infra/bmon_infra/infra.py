@@ -143,9 +143,9 @@ def main_remote(
         run("systemctl restart docker", sudo=True).assert_ok()
 
     if "server" in host.tags:
-        provision_bmon_server(host, parent, rebuild_docker)
+        provision_bmon_server(host, parent, rebuild_docker, server_wg_ip)
     elif "bitcoin" in host.tags:
-        provision_monitored_bitcoind(host, parent, rebuild_docker)
+        provision_monitored_bitcoind(host, parent, rebuild_docker, server_wg_ip)
 
 
 def provision_bmon_server(
