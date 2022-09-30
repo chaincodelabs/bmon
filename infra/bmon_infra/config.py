@@ -120,7 +120,7 @@ def prod_settings(host) -> dict:
         bitcoin_prune=host.bitcoin_prune,
         bitcoin_dbcache=host.bitcoin_dbcache,
         bitcoin_version=host.bitcoin_version,
-        bitcoin_docker_tag=host.bitcoin_version.lstrip('v'),
+        bitcoin_docker_tag=(host.bitcoin_version or '?').lstrip('v'),
     )
 
     if 'server' in host.tags:
