@@ -9,7 +9,7 @@ RemainAfterExit=true
 
 Environment="COMPOSE_PROFILES=server,prod"
 ExecStart=${docker_compose_path} up -d --remove-orphans
-ExecStop=${docker_compose_path} stop
+ExecStop=${docker_compose_path} rm -fs
 
 [Install]
 WantedBy=default.target
