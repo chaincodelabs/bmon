@@ -3,12 +3,14 @@ import datetime
 import os
 
 from flask import Flask, request, jsonify
-from .db import Host
 
-from bmon_infra.infra import BITCOIN_HOSTS
+from bmon_infra.infra import get_hosts
 
 
 app = Flask(__name__)
+
+
+HOSTS = [h for h in get_hosts()[1].values() if 'bitcoin' in h.tags]
 
 
 @app.route('/v0/report', methods=['POST'])
@@ -50,7 +52,7 @@ def prom_scrape_config():
                 'bitcoin_prune': host.bitcoin_prune,
             },
         }
-        for host in BITCOIN_HOSTS
+        for host in HOSTS
     ]
     return jsonify(targets)
 
