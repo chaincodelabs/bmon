@@ -113,13 +113,11 @@ class ConnectBlockListener:
         # Special-case UpdateTip since there are so many variations.
         if msg.find(_UPDATE_TIP_START) != -1:
             for patt in self._update_tip_sub_patts:
-                match = patt.search(msg)
-                if match:
+                if (match := patt.search(msg)):
                     matchgroups.update(match.groupdict())
         else:
             for patt in self._patts:
-                match = patt.search(msg)
-                if match:
+                if (match := patt.search(msg)):
                     matchgroups.update(match.groupdict())
                     break
 

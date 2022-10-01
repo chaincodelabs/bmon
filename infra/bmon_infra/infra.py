@@ -301,5 +301,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # You should be using the bmon-deploy entrypoint though.
+    # You should be using the bmon-infra entrypoint though.
     main()
