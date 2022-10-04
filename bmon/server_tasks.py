@@ -4,6 +4,7 @@ import datetime
 import django
 from celery import Celery
 from django.conf import settings
+from django.utils import timezone
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bmon.settings')
 django.setup()
@@ -26,4 +27,4 @@ def receive_bitcoind_event(event: dict, linehash: str):
 
     models.LogProgress.objects.update_or_create(
         host=instance.host, defaults={
-            'loghash': linehash, 'timestamp': datetime.datetime.utcnow()})
+            'loghash': linehash, 'timestamp': timezone.now()})
