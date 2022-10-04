@@ -18,6 +18,7 @@ from django.urls import path
 from ninja import NinjaAPI
 
 from bmon_infra.infra import get_hosts
+from .views import home
 
 api = NinjaAPI()
 
@@ -55,4 +56,5 @@ def prom_scrape_config(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", api.urls),
+    path("", home),
 ]

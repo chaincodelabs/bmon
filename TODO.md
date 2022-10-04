@@ -1,3 +1,5 @@
+- [ ] monitor bitcoin node disk usage
+- [ ] limit journald size with /etc/systemd/journald.conf  "SystemMaxUse=100M"
 - [ ] configure docker-compose to log into journald, rotate, etc.
 - [ ] config: monitor-host: set `/etc/sysctrl.conf` `vm.max_map_count=262144`
 - [ ] config: logstash not dockerable on arm7l

@@ -151,3 +151,11 @@ on certain monitored bitcoind hosts.
 ### Features
 
 - [ ] logs sent to a centralized log explorer (Loki-Grafana)
+
+
+### Misc.
+
+#### Resizing existing vagrant disk
+
+sudo cfdisk /dev/sda
+sudo resize2fs -p -F /dev/sda1

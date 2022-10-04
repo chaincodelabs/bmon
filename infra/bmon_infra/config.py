@@ -111,6 +111,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
     settings = dict(dev_settings)
     settings.update(
         root="./services/prod",
+        hostname=host.name,
         db_password=host.secrets.db_password,
         bitcoin_network="",
         bitcoin_data_path="./services/prod/bitcoin/data",
