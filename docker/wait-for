@@ -43,7 +43,12 @@ def wait_for_target(target: str, args):
     sys.stdout.flush()
 
     while tries > 0:
-        if s.connect_ex((host, int(port))):
+        try:
+            not_connected = s.connect_ex((host, int(port)))
+        except socket.gaierror:
+            not_connected = True
+
+        if not_connected:
             tries -= 1
             time.sleep(args.delay)
         else:
