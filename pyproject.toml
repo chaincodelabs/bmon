@@ -19,6 +19,7 @@ dependencies = [
     'redis',
     'celery[redis]',
     'walrus',
+    'django-ninja',
 ]
 version = "0.0.1"
 

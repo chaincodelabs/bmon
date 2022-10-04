@@ -15,7 +15,44 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from ninja import NinjaAPI
+
+from bmon_infra.infra import get_hosts
+
+api = NinjaAPI()
+
+HOSTS = [h for h in get_hosts()[1].values() if 'bitcoin' in h.tags]
+
+
+@api.get('/prom-config')
+def prom_scrape_config(request):
+    def get_wireguard_ip(host):
+        bmon_wg = host.wireguards['wg-bmon']
+        return bmon_wg.ip
+
+    targets = [
+        {
+            'targets': list(filter(None, [
+                f'{get_wireguard_ip(host)}:{host.bitcoind_exporter_port}',
+                (
+                    f'{get_wireguard_ip(host)}:{host.prom_exporter_port}' if
+                    host.prom_exporter_port else ''
+                ),
+            ])),
+            'labels': {
+                'job': 'bitcoind',
+                'hostname': host.name,
+                'bitcoin_version': host.bitcoin_version,
+                'bitcoin_dbcache': str(host.bitcoin_dbcache),
+                'bitcoin_prune': str(host.bitcoin_prune),
+            },
+        }
+        for host in HOSTS
+    ]
+    return targets
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("api/", api.urls),
 ]

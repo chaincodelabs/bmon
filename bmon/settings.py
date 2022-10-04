@@ -41,7 +41,7 @@ SECRET_KEY = 'django-insecure-wtsk76*1ci%=)05y^-t-9^0y^y1ku3iunp2(h&6*qo@vxzv#n3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('BMON_PROD') != "1"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 LOGGING = {
     'version': 1,
