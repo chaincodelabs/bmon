@@ -2,19 +2,57 @@
 import logging
 import re
 import hashlib
+import datetime
 import os
 import typing as t
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import db
+from django.conf import settings
+from django.forms.models import model_to_dict
 
-logger = logging.getLogger(__name__)
+from bmon.models import ConnectBlockDetails, ConnectBlockEvent
+from bmon.bitcoind_tasks import send_event
+from bmon.redis import get_redis
 
 
-def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
+log = logging.getLogger(__name__)
+
+
+def watch_logs(filename: str):
+    cb_listener = ConnectBlockListener()
+
+    redis = get_redis()
+    log_cursor_key = f"{settings.HOSTNAME}-bitcoind-log-cursor"
+    start_log_cursor = (redis.get(log_cursor_key) or b'').decode()
+
+    log.info(f"listening to logs at {filename}")
+    for line in read_logfile_forever(filename, start_log_cursor):
+        got = cb_listener.process_line(line)
+        redis[log_cursor_key] = hash_noncrypto(line)
+
+        if got:
+            try:
+                got.full_clean()
+            except Exception:
+                log.exception("model failed to validate!")
+                # TODO: stash the bad model somewhere for later processing.
+                continue
+
+            d = model_to_dict(got)
+            d['_model'] = got.__class__.__name__
+            send_event.delay(d)
+
+
+def read_logfile_forever(
+    filename: str | Path, seek_to_cursor: str | None = None
+) -> t.Iterator[str]:
     """
     A generator that reads lines out of a logfile and is resilient to log rotation.
+
+    Args:
+        seek_to_cursor: if passed, seek to the line that hashes to this value. If no
+            such line can be found, process all lines.
 
     Taken and modified from https://stackoverflow.com/a/25632664.
     """
@@ -24,6 +62,30 @@ def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
     current = openfile()
     curino = os.fstat(current.fileno()).st_ino
     curr_line = ''
+    start_pos = None
+
+    if seek_to_cursor:
+        log.info("Attempting to seek to logline cursor %s", seek_to_cursor)
+
+        while True:
+            line = current.readline()
+            if not line:
+                break
+
+            if hash_noncrypto(line) == seek_to_cursor:
+                start_pos = current.tell()
+                log.info("Found start of logs (per cursor %s) at %s",
+                         seek_to_cursor, start_pos)
+                break
+
+        if not start_pos:
+            log.warning(
+                "Desired logline cursor (%s) not found in file %s - parsing all lines",
+               seek_to_cursor, filename)
+
+    current.seek(0)
+    if start_pos:
+        current.seek(start_pos)
 
     while True:
         while True:
@@ -41,12 +103,29 @@ def read_logfile_forever(filename: str | Path) -> t.Iterator[str]:
             pass
 
 
-def hash_noncrypto(w) -> str:
+def hash_noncrypto(w: str) -> str:
     """TODO: replace this with something faster if shown to be a bottleneck."""
-    return hashlib.md5(w).hexdigest()
+    return hashlib.md5(w.encode()).hexdigest()
 
 
 LineHash = str
+
+
+def get_time(line: str = '', timestr: str = '') -> datetime.datetime:
+    """
+    Return the time a log message was emitted in UTC.
+    """
+    if not (line or timestr):
+        raise ValueError('arg required')
+    if not timestr:
+        timestr = line.split()[0]
+
+    d = datetime.datetime.fromisoformat(timestr.strip())
+
+    # Ensure any date we parse is tz-aware.
+    assert (offset := d.utcoffset()) is not None
+
+    return d + offset
 
 
 @dataclass
@@ -70,15 +149,18 @@ _NOT_QUOTE = '[^\'"]+'
 _UPDATE_TIP_START = "UpdateTip: "
 
 
+def str_or_none(s):
+    return str(s) if s else None
+
+
 class ConnectBlockListener:
-    _patts = {
+    _detail_patts = {
         re.compile(fr"- Load block from disk: (?P<load_block_from_disk_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Sanity checks: (?P<sanity_checks_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Fork checks: (?P<fork_checks_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Connect (?P<tx_count>\d+) transactions: (?P<connect_txs_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Verify (?P<txin_count>\d+) txins: (?P<verify_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Index writing: (?P<index_writing_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Callbacks: (?P<callbacks_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Connect total: (?P<connect_total_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Flush: (?P<flush_coins_time_ms>{_FLOAT})ms "),
         re.compile(fr"- Writing chainstate: (?P<flush_chainstate_time_ms>{_FLOAT})ms "),
@@ -102,43 +184,117 @@ class ConnectBlockListener:
         re.compile(fr"\s+cache=(?P<cachesize_mib>{_FLOAT})MiB\((?P<cachesize_txo>\d+)txo?\)"),
         re.compile(fr"\s+warning='(?P<warning>{_NOT_QUOTE})'"),
         re.compile(r"\s+cache=(?P<cachesize_txo>\d+)\s*$"),
+        re.compile(fr"\s+log2_work=(?P<log2_work>{_FLOAT}) "),
+    }
+
+    match_types = {
+        float: (
+            'load_block_from_disk_time_ms',
+            'sanity_checks_time_ms',
+            'fork_checks_time_ms',
+            'connect_txs_time_ms',
+            'verify_time_ms',
+            'index_writing_time_ms',
+            'connect_total_time_ms',
+            'flush_coins_time_ms',
+            'flush_chainstate_time_ms',
+            'connect_postprocess_time_ms',
+            'connectblock_total_time_ms',
+        ),
+        int: (
+            'tx_count',
+            'txin_count',
+            'height',
+            'cachesize_txo',
+            'total_tx_count'
+        ),
+        str: (
+            'blockhash',
+            'version',
+            'date',
+        ),
+        str_or_none: (
+            'warning',
+        ),
     }
 
     def __init__(self):
-        self.next_event = db.ConnectBlockEvent()
+        self.next_details = ConnectBlockDetails()
+        self.current_height = None
+        self.current_blockhash = None
 
-    def process_line(self, msg: str):
+    def process_line(
+        self, line: str
+    ) -> t.Optional[t.Union[ConnectBlockEvent, ConnectBlockDetails]]:
+        """
+        Aggregates two kind of connectblock-related events. This is because the events
+        both share log data in terms of blockhash and height.
+
+        We want to make sure that we, at the very least, persist the ConnectBlock events
+        but we also want the fine-grained timing details if we can get them.
+        """
         matchgroups = {}
 
-        # Special-case UpdateTip since there are so many variations.
-        if msg.find(_UPDATE_TIP_START) != -1:
+        # Special-case UpdateTip since we can return the db event in one shot
+        # (based on a single log line).
+        if line.find(_UPDATE_TIP_START) != -1:
             for patt in self._update_tip_sub_patts:
-                if (match := patt.search(msg)):
+                if (match := patt.search(line)):
                     matchgroups.update(match.groupdict())
-        else:
-            for patt in self._patts:
-                if (match := patt.search(msg)):
-                    matchgroups.update(match.groupdict())
-                    break
+
+            timestamp = get_time(line)
+
+            # 0.12 has UpdateTip: lines that just display the warning, so skip those.
+            if 'height' not in matchgroups:
+                return
+
+            self.current_height = int(matchgroups['height'])
+            self.current_blockhash = matchgroups['blockhash']
+
+            cachesize_mib = (
+                float(matchgroups['cachesize_mib'])
+                if 'cachesize_mib' in matchgroups else None)
+
+            return ConnectBlockEvent(
+                host=settings.HOSTNAME,
+                timestamp=timestamp,
+                blockhash=self.current_blockhash,
+                height=self.current_height,
+                log2_work=float(matchgroups['log2_work']),
+                total_tx_count=int(matchgroups['total_tx_count']),
+                version=matchgroups.get('version'),
+                date=get_time(matchgroups['date']),
+                cachesize_mib=cachesize_mib,
+                cachesize_txo=float(matchgroups['cachesize_txo']),
+                warning=matchgroups.get('warning'),
+            )
+
+        # The rest of the code handles creation of ConnectBlockDetails.
+
+        for patt in self._detail_patts:
+            if (match := patt.search(line)):
+                matchgroups.update(match.groupdict())
+                break
 
         if not matchgroups:
             return
 
-        def str_or_none(s):
-            return str(s) if s else None
-
-        dict_onto_event(matchgroups, self.next_event, {
-            int: ('tx_count', 'txin_count', 'height', 'cachesize_txo',
-                  'total_tx_count'),
-            str: ('blockhash', 'version', 'date'),
-            str_or_none: ('warning',),
-        })
+        dict_onto_event(matchgroups, self.next_details, self.match_types)
 
         # Event is ready for persisting!
-        if self.next_event.connectblock_total_time_ms is not None:
-            completed = self.next_event
-            self.next_event = db.ConnectBlockEvent()
+        if self.next_details.connectblock_total_time_ms is not None:
+            self.next_details.host = settings.HOSTNAME
+            self.next_details.blockhash = self.current_blockhash
+            self.next_details.height = self.current_height
+            self.next_details.timestamp = get_time(line)
+
+            completed = self.next_details
+            self.next_details = ConnectBlockDetails()
+            self.current_blockhash = None
+            self.current_height = None
             return completed
+
+        return None
 
 
 def dict_onto_event(d: dict, event, type_map: dict):
@@ -156,8 +312,8 @@ def dict_onto_event(d: dict, event, type_map: dict):
             v = conversion_fnc(v)
             setattr(event, k, v)
         else:
-            logger.warning("[%s] matched attribute not recognized: %s",
-                           event.__class__.__name__, k)
+            log.warning("[%s] matched attribute not recognized: %s",
+                        event.__class__.__name__, k)
 
 
 def parse_log_line():
@@ -194,27 +350,3 @@ def parse_log_line():
 
     # replacing tx %s with %s for %s BTC additional fees, %d delta bytes
     pass
-
-
-# def main():
-#     import sys
-#     import pathlib
-#     recv = EventReceiver()
-#     listen = ConnectBlockListener(recv)
-
-#     contents = pathlib.Path(sys.argv[1]).read_text().splitlines()
-
-#     for line in contents:
-#         listen.process_msg(line)
-
-#     print("done")
-
-def main():
-    try:
-        monitor_bitcoind_log('/home/james/.bitcoin/debug.log')
-    except KeyboardInterrupt:
-        pass
-
-
-if __name__ == "__main__":
-    main()

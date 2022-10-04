@@ -9,13 +9,15 @@ services:
 
   db:
     profiles: ["server"]
-    image: docker.io/library/postgres:11
+    user: "${UID}"
+    image: docker.io/library/postgres:14-bullseye
     environment:
       - POSTGRES_DB=bmon
       - POSTGRES_USER=bmon
-      - POSTGRES_PASSWORD=${BMON_DATABASE_PASSWORD}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     volumes:
-      - 'db-data:/var/lib/postgresql/data'
+      - ${ENV_ROOT}/postgres/data:/var/lib/postgresql/data
+      - /etc/passwd:/etc/passwd:ro
     ports:
       - 5432:5432
 
@@ -84,28 +86,37 @@ services:
       dockerfile: ./docker/py.Dockerfile
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL
+      - RUN_DB_MIGRATIONS=1
+      - DB_HOST
+      - DB_PASSWORD
+      - BMON_HOSTNAME
+      - BMON_REDIS_SERVER_URL
     ports:
       - 8080:8080
     volumes:
       - ./:/src
     links:
       - db
-    command: bmon-server
+    command: ./manage.py runserver 0.0.0.0:8080
 
-  aggregator-celery-worker:
+  server-task-worker:
     profiles: ["server"]
+    user: "${UID}"
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL
-      - BMON_REDIS_CENTRAL_URL
+      - DB_HOST
+      - DB_PASSWORD
+      - BMON_REDIS_HOST
+      - BMON_REDIS_SERVER_URL
+      - BMON_HOSTNAME
+      - WAIT_FOR=${DB_HOST}:5432,${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
       - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log
     links:
       - db
       - redis
-    command: celery -A bmon.aggregator_worker.tasks:app worker
+    command: celery -A bmon.server_tasks worker -l INFO
 
   bitcoind-exporter:
     profiles: ["bitcoind"]
@@ -135,9 +146,8 @@ services:
     image: docker.io/grafana/promtail
     user: "${UID}"
     environment:
-      - BMON_DATABASE_URL
       - BMON_REDIS_LOCAL_URL
-      - BMON_REDIS_CENTRAL_URL
+      - BMON_REDIS_SERVER_URL
       - WAIT_FOR=${LOKI_HOST}:${LOKI_PORT}
     volumes:
       - ${ENV_ROOT}/promtail:/etc/promtail
@@ -152,38 +162,48 @@ services:
     ports:
       - 6379:6379
 
-  bitcoind-celery-worker:
+  bitcoind-task-worker:
     profiles: ["bitcoind"]
+    user: "${UID}"
     build:
       context: .
       dockerfile: ./docker/py.Dockerfile
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL
+      - DB_HOST
+      - DB_PASSWORD
+      - BMON_REDIS_HOST
       - BMON_REDIS_LOCAL_URL
-      - BMON_REDIS_CENTRAL_URL
-      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379
+      - BMON_REDIS_SERVER_URL
+      - BMON_HOSTNAME
+      - WAIT_FOR=${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379
     volumes:
       - ./:/src
-    links:
-      - redis-bitcoind
-    command: celery -A bmon.bitcoind_worker.tasks:app worker
+    # Can't have this as a dependency because of local dev.
+    # links:
+    #   - redis-bitcoind
+    command: celery -A bmon.bitcoind_tasks worker -l INFO
 
   bitcoind-watcher:
     profiles: ["bitcoind"]
+    user: "${UID}"
     image: bmon-base-image
     environment:
-      - BMON_DATABASE_URL
+      - DB_HOST
+      - DB_PASSWORD
+      - BMON_REDIS_HOST
       - BMON_REDIS_LOCAL_URL
-      - BMON_REDIS_CENTRAL_URL
+      - BMON_REDIS_SERVER_URL
+      - BMON_HOSTNAME
       - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
-      - WAIT_FOR=${BMON_DATABASE_HOST}:${BMON_DATABASE_PORT},${BMON_REDIS_HOST}:6379
+      - WAIT_FOR=${BMON_REDIS_HOST}:6379
     volumes:
       - ./:/src
       - ${BITCOIN_DATA_PATH}/debug.log:/var/log/bitcoind.log
     links:
-      - bitcoind-celery-worker
-    command: bmon-watch-bitcoind
+      - db
+      - bitcoind-task-worker
+    command: python manage.py watchlogs
 
   node-exporter:
     # only monitor this stuff in prod since its mountpoint needs are zealous.

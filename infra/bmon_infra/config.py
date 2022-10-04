@@ -11,6 +11,7 @@ See also: ./infra.py, for how this is used to populate configuration on each hos
 """
 
 import socket
+import getpass
 import typing as t
 from string import Template
 from pathlib import Path
@@ -24,18 +25,18 @@ cli = App()
 ENV = SimpleNamespace()
 
 env_template = """
+COMPOSE_PROFILES=${compose_profiles}
 ENV_ROOT=${root}
 UID=${uid}
+BMON_HOSTNAME=${hostname}
 
-BMON_DATABASE_HOST=${db_host}
-BMON_DATABASE_PORT=${db_port}
-BMON_DATABASE_PASSWORD=${db_password}
-BMON_DATABASE_URL=${db_url}
+DB_HOST=${db_host}
+DB_PASSWORD=${db_password}
 
-BMON_REDIS_HOST=${redis_central_host}
+BMON_REDIS_HOST=${redis_server_host}
 BMON_REDIS_LOCAL_HOST=${redis_local_host}
 BMON_REDIS_LOCAL_URL=redis://${redis_local_host}:6379/0
-BMON_REDIS_CENTRAL_URL=redis://${redis_central_host}:6379/1
+BMON_REDIS_SERVER_URL=redis://${redis_server_host}:6379/1
 
 PROM_ADDRESS=${prom_address}
 PROM_EXPORTER_PORT=${prom_exporter_port}
@@ -65,13 +66,12 @@ BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
 
 
 dev_settings = dict(
+    compose_profiles='bitcoind,server',
     root="./services/dev",
     uid=1000,
-    db_host="bmon",
+    db_host="db",
     db_password="bmon",
-    db_port=5432,
-    db_url="postgres://bmon:bmon@db:5432/bmon",
-    redis_central_host="redis",
+    redis_server_host="redis",
     redis_local_host="redis",
     prom_address="prom:9090",
     prom_exporter_port=9100,
@@ -92,6 +92,7 @@ dev_settings = dict(
     bitcoin_prune=0,
     bitcoin_dbcache=None,
     bitcoin_docker_tag='latest',
+    hostname=socket.gethostname(),
 )
 
 
@@ -118,14 +119,15 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_dbcache=host.bitcoin_dbcache,
         bitcoin_version=host.bitcoin_version,
         bitcoin_docker_tag=(host.bitcoin_version or '?').lstrip('v'),
+        bmon_hostnmae=host.name,
     )
 
     if 'server' in host.tags:
         # Many of these services are running in compose.
         settings.update(
+            compose_profiles='server,prod',
             root="./services/prod",
             db_host="db",
-            db_url=f"postgres://bmon:{host.secrets.db_password}@db:5432/bmon",
             redis_central_host="redis",
             prom_address="prom:9090",
             prom_scrape_sd_url="http://web:8080/prom-config",
@@ -138,8 +140,8 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
     else:
         # a bitcoind instance
         settings.update(
+            compose_profiles='bitcoind,prod,prod-bitcoind',
             db_host=server_wireguard_ip,
-            db_url=f"postgres://bmon:{host.secrets.db_password}@{server_wireguard_ip}:5432/bmon",
             redis_central_host=server_wireguard_ip,
             redis_local_host="redis-bitcoind",
             prom_address=f"{server_wireguard_ip}:9090",
@@ -225,7 +227,10 @@ def get_bitcoind_auth_line(username: str, password: str):
 
 
 def make_services_data(hostname: str | None = None):
+    user = getpass.getuser()
     p(root := Path(ENV.ENV_ROOT)).mkdir()
+
+    p(root / 'postgres' / 'data').mkdir()
 
     p(grafetc := root / "grafana" / "etc").mkdir()
     p(grafetc / "grafana.ini").contents(grafana())
@@ -251,6 +256,7 @@ def make_services_data(hostname: str | None = None):
     p(prometc / "prometheus.yml").contents(prom())
 
     p(am := root / "alertman").mkdir()
+    p(am / 'data').mkdir().chown(f'{user}:{user}')
     p(am / "config.yml").contents(alertman())
 
     p(btcdata := root / "bitcoin" / "data").mkdir()

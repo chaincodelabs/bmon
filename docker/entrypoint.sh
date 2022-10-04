@@ -6,6 +6,10 @@ if ! [ -z "${WAIT_FOR}" ]; then
   /bin/wait-for 
 fi
 
+if ! [ -z "${RUN_DB_MIGRATIONS}" ]; then
+  python manage.py migrate
+fi
+
 cd /src
 
 exec "$@"

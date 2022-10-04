@@ -9,7 +9,7 @@ A Bitcoin network monitor
 1. Install the local infrastructure tools:
     - `pip install -e ./infra`
 1. Build local config tree: `bmon-config`
-1. Bring docker-compose up: `./dev.sh up`
+1. Bring docker-compose up: `docker-compose up [-d]`
 1. Browse to `http://localhost:3000` to access Grafana; use the default admin
   credentials `admin`/`admin`. You should see a nice little sample dashboard
   displaying bitcoind logs etc.
