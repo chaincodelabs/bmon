@@ -92,6 +92,7 @@ services:
       - BMON_HOSTNAME
       - BMON_REDIS_SERVER_URL
       - BMON_REDIS_HOST
+      - WAIT_FOR=${DB_HOST}:5432
     ports:
       - 8080:8080
     volumes:
@@ -197,12 +198,11 @@ services:
       - BMON_REDIS_SERVER_URL
       - BMON_HOSTNAME
       - BMON_BITCOIND_LOG_PATH=/var/log/bitcoind.log
-      - WAIT_FOR=${BMON_REDIS_HOST}:6379
+      - WAIT_FOR=${BMON_REDIS_HOST}:6379,${DB_HOST}:5432
     volumes:
       - ./:/src
       - ${BITCOIN_DATA_PATH}/debug.log:/var/log/bitcoind.log
     links:
-      - db
       - bitcoind-task-worker
     command: python manage.py watchlogs
 
