@@ -18,6 +18,10 @@ A Bitcoin network monitor
 ## Running tests
 
 1. `./dev test`
+1. Try generating a block locally:
+    - `docker-compose up -d`
+    - In one terminal: `./dev watchlogs`
+    - In another: `./dev generateblock`
 
 
 ## Design
