@@ -16,6 +16,6 @@ app = Celery(
 
 
 @app.task
-def send_event(event: dict):
+def send_event(event: dict, linehash: str):
     print(f"Sending event to the aggregator: {event}")
-    server_tasks.receive_bitcoind_event.delay(event)
+    server_tasks.receive_bitcoind_event.delay(event, linehash)

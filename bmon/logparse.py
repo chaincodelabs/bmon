@@ -11,7 +11,7 @@ from pathlib import Path
 from django.conf import settings
 from django.forms.models import model_to_dict
 
-from bmon.models import ConnectBlockDetails, ConnectBlockEvent
+from bmon.models import ConnectBlockDetails, ConnectBlockEvent, LogProgress
 from bmon.bitcoind_tasks import send_event
 from bmon.redis import get_redis
 
@@ -20,16 +20,15 @@ log = logging.getLogger(__name__)
 
 
 def watch_logs(filename: str):
+    log.info(f"listening to logs at {filename}")
     cb_listener = ConnectBlockListener()
 
-    redis = get_redis()
-    log_cursor_key = f"{settings.HOSTNAME}-bitcoind-log-cursor"
-    start_log_cursor = (redis.get(log_cursor_key) or b'').decode()
+    log_progress = LogProgress.objects.filter(host=settings.HOSTNAME).first()
+    start_log_cursor = log_progress.loghash if log_progress else None
 
-    log.info(f"listening to logs at {filename}")
     for line in read_logfile_forever(filename, start_log_cursor):
         got = cb_listener.process_line(line)
-        redis[log_cursor_key] = hash_noncrypto(line)
+        linehash = hash_noncrypto(line)
 
         if got:
             try:
@@ -41,7 +40,9 @@ def watch_logs(filename: str):
 
             d = model_to_dict(got)
             d['_model'] = got.__class__.__name__
-            send_event.delay(d)
+
+            # A corresponding LogProgress entry is saved in `server_tasks`.
+            send_event.delay(d, linehash)
 
 
 def read_logfile_forever(

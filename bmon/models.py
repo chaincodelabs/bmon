@@ -1,6 +1,17 @@
 from django.db import models
 
 
+class LogProgress(models.Model):
+    """
+    Records the latest hash of a log line responsible for generating an event on a
+    given host.
+
+    This is used to skip past already-processed log entries on startup.
+    """
+    host = models.CharField(max_length=200, unique=True)
+    timestamp = models.DateTimeField()
+    loghash = models.CharField(max_length=200)
+
 
 class ConnectBlockEvent(models.Model):
     """
