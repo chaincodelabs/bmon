@@ -222,5 +222,27 @@ services:
     ports:
       - 9100:9100
 
+  test:
+    profiles: ["dev"]
+    user: "${UID}"
+    image: bmon-base-image
+    environment:
+      - RUN_DB_MIGRATIONS=1
+      - DJANGO_SETTINGS_MODULE=bmon.settings_test
+      - DB_HOST
+      - DB_PASSWORD
+      - BMON_HOSTNAME
+      - BMON_REDIS_LOCAL_URL=redis://redis:6379/11
+      - BMON_REDIS_SERVER_URL=redis://redis:6379/10
+      - BMON_REDIS_HOST
+      - BMON_REDIS_LOCAL_HOST
+    ports:
+      - 8080:8080
+    volumes:
+      - ./:/src
+    links:
+      - db
+    command: ./manage.py runserver 0.0.0.0:8080
+
 volumes:
   db-data:

@@ -31,5 +31,12 @@ bmon-watch-bitcoind = "bmon.bitcoind_worker.tasks:monitor_bitcoind_log"
 # bmon-worker-bitcoind = "bmon.bitcoind_worker.tasks:run_worker"
 # bmon-worker-server = "bmon.server_worker.tasks:run_worker"
 
+
+[project.optional-dependencies]
+tests = [
+    'pytest',
+    'pytest-django',
+]
+
 [tool.setuptools]
 packages = ["bmon"]

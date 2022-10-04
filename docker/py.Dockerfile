@@ -8,7 +8,7 @@ COPY ./docker/wait-for /bin/wait-for
 COPY ./docker/entrypoint.sh /entrypoint.sh
 RUN pip install --upgrade pip setuptools ipython && \
   pip install -e ./infra && \
-  pip install -e . && \
+  pip install -e .[tests] && \
   chmod +x /entrypoint.sh /bin/wait-for
 
 ENTRYPOINT ["/entrypoint.sh"]

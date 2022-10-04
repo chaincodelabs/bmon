@@ -1,0 +1,23 @@
+2019-08-12T04:01:44Z [msghand] received: inv (289 bytes) peer=4476
+2019-08-12T04:01:44Z [msghand] got inv: tx f7fb920201577760035303dad9c96c22c07e69f2a285b13b1772af38755c1562  have peer=4476
+2019-08-12T04:01:44Z [msghand] got inv: tx 522d5ae8ce124b02d7e8853606347f1566227fd4beb768b6c1d582c46dea78ec  have peer=4476
+2019-08-12T04:01:45Z [msghand] received: cmpctblock (12405 bytes) peer=4349
+2019-08-12T04:01:45Z [msghand] Initialized PartiallyDownloadedBlock for block 00000000000000000010e1543aa317eb5e34148afda9b9da10edbdd9cb8a1c8d using a cmpctblock of size 12405
+2019-08-12T04:01:45Z [msghand] received: blocktxn (33 bytes) peer=4349
+2019-08-12T04:01:45Z [msghand] Successfully reconstructed block 00000000000000000010e1543aa317eb5e34148afda9b9da10edbdd9cb8a1c8d with 1 txn prefilled, 1995 txn from mempool (incl at least 0 from extra pool) and 0 txn requested
+2019-08-12T04:01:45Z [msghand]   - Load block from disk: 0.00ms [5025.72s]
+2019-08-12T04:01:45Z [msghand]     - Sanity checks: 0.01ms [1151.15s (1.95ms/blk)]
+2019-08-12T04:01:45Z [msghand]     - Fork checks: 0.05ms [71.55s (0.12ms/blk)]
+2019-08-12T04:01:45Z [msghand]       - Connect 1996 transactions: 34.40ms (0.017ms/tx, 0.008ms/txin) [69965.68s (118.64ms/blk)]
+2019-08-12T04:01:45Z [msghand]     - Verify 4055 txins: 34.62ms (0.009ms/txin) [71067.69s (120.51ms/blk)]
+2019-08-12T04:01:45Z [msghand]     - Index writing: 10.83ms [1710.73s (2.90ms/blk)]
+2019-08-12T04:01:45Z [msghand]     - Callbacks: 0.09ms [19.32s (0.03ms/blk)]
+2019-08-12T04:01:45Z [msghand]   - Connect total: 46.46ms [74163.86s (125.76ms/blk)]
+2019-08-12T04:01:45Z [msghand]   - Flush: 9.12ms [2394.55s (4.06ms/blk)]
+2019-08-12T04:01:45Z [msghand]   - Writing chainstate: 0.10ms [43.56s (0.07ms/blk)]
+2019-08-12T04:01:45Z [msghand] Blockpolicy estimates updated by 1204 of 1995 block txs, since last block 860 of 1265 tracked, mempool map size 28, max target 1008 from current
+2019-08-12T04:01:45Z [msghand] UpdateTip: new best=00000000000000000010e1543aa317eb5e34148afda9b9da10edbdd9cb8a1c8d height=589733 version=0x20c00000 log2_work=90.954156 tx=444177421 date='2019-08-12T04:01:32Z' progress=1.000000 cache=574.9MiB(79670txo) warning='42 of last 100 blocks have unexpected version'
+2019-08-12T04:01:45Z [msghand]   - Connect postprocess: 56.13ms [906.15s (1.54ms/blk)]
+2019-08-12T04:01:45Z [msghand] - Connect block: 111.80ms [82533.83s (139.95ms/blk)]
+2019-08-12T04:01:45Z [msghand] received: cmpctblock (12405 bytes) peer=4360
+2019-08-12T04:01:45Z [msghand] received: headers (82 bytes) peer=4476

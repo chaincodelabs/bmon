@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+import json
+import subprocess
+
+import clii
+
+cli = clii.App()
+
+
+def sh(cmd, **kwargs):
+    return subprocess.run(cmd, shell=True, **kwargs)
+
+
+def brpc(cmd, **kwargs):
+    return sh("docker-compose exec bitcoind "
+              f"bitcoin-cli -regtest -datadir=/bitcoin/data {cmd}", **kwargs)
+
+
+@cli.cmd
+def pyshell():
+    sh("docker-compose run --rm web ipython")
+
+
+@cli.cmd
+def bitcoinrpc(*cmd):
+    return brpc(' '.join(cmd))
+
+
+@cli.cmd
+def generateblock():
+    wallets = json.loads(brpc("listwallets", capture_output=True).stdout)
+    if 'test' not in wallets:
+        brpc("createwallet test false false '' false true true")
+
+    if '"test"' not in brpc("getwalletinfo", capture_output=True, text=True).stdout:
+        brpc("loadwallet test")
+
+    sh("docker-compose exec bitcoind bitcoin-cli -regtest -datadir=/bitcoin/data -generate")
+
+
+@cli.cmd
+def managepy(*cmd):
+    sh(f"docker-compose run --rm web python manage.py {' '.join(cmd)}")
+
+
+@cli.cmd
+def rebuild():
+    sh("docker-compose down ; docker-compose rm -f")
+    sh("docker-compose build")
+    sh("docker-compose up -d")
+
+
+@cli.cmd
+def watchlogs():
+    sh("docker-compose logs -f bitcoind server-task-worker "
+       "bitcoind-task-worker bitcoind-watcher")
+
+
+@cli.cmd
+def test():
+    sh("docker-compose run --rm test pytest")
+
+
+if __name__ == "__main__":
+    cli.run()

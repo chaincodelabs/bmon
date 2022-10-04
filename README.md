@@ -15,6 +15,11 @@ A Bitcoin network monitor
   displaying bitcoind logs etc.
 
 
+## Running tests
+
+1. `./dev test`
+
+
 ## Design
 
 Bmon consists of two machine types: one server and many nodes. The nodes run bitcoind,
