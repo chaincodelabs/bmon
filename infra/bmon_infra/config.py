@@ -265,6 +265,7 @@ def make_services_data(hostname: str | None = None):
     p(prometc := root / "prom" / "etc").mkdir()
     p(root / "prom" / "data").mkdir()
     p(prometc / "prometheus.yml").contents(prom())
+    p(prometc / "alerts.yml").contents(Path("./etc/prom-alerts.yml").read_text())
 
     p(am := root / "alertman").mkdir()
     p(am / 'data').mkdir().chown(f'{user}:{user}')

@@ -1,0 +1,30 @@
+groups:
+- name: is_up
+  rules: 
+  - alert: InstanceDown
+    expr: up == 0
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} down"
+
+- name: has_disk
+  rules: 
+  - alert: LowDisk
+    expr: (100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) < 5
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} is low on disk"
+
+- name: low_peers
+  rules: 
+  - alert: LowPeers
+    expr: bitcoin_peers < 6
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "{{ $labels.instance }} ({{ $labels.bitcoin_version }}) has low peers"
