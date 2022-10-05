@@ -2,6 +2,12 @@
 
 A Bitcoin network monitor
 
+![screenshot](images/screenshot.png)
+
+Provides log aggregation, a Grafana dashboard, automated alerting, and a framework for
+doing realtime analysis (via logs and RPC) on a collection of bitcoind nodes.
+
+
 ## Local dev
 
 1. Ensure you have Python 3.10+, Docker, and docker-compose on your host.
@@ -23,6 +29,10 @@ A Bitcoin network monitor
     - In one terminal: `./dev watchlogs`
     - In another: `./dev generateblock`
 
+## Adding alerts
+
+Modify `./etc/prom-alerts.yml` and redeploy to the server with 
+`bmon-infra -f bmon deploy`.
 
 ## Design
 
