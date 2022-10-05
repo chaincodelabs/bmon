@@ -37,6 +37,7 @@ class Host(wireguard.Host):
         bitcoin_dbcache: int = 450,
         prom_exporter_port: int | None = 9100,
         bitcoind_exporter_port: int | None = 9332,
+        outbound_wireguard: str | None = None,
         **kwargs,
     ):
         self.bitcoin_version = bitcoin_version
@@ -44,6 +45,7 @@ class Host(wireguard.Host):
         self.bitcoin_dbcache = bitcoin_dbcache
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
+        self.outbound_wireguard = outbound_wireguard
         super().__init__(*args, **kwargs)
 
 
@@ -85,6 +87,14 @@ def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Ho
             getattr(host_secrets, host.name, fscm.Secrets())
         )
 
+        if host.outbound_wireguard:
+            print(
+                f"obtaining outbound wireguard {host.outbound_wireguard!r} for {host}"
+            )
+            host.secrets.outbound_wireguard = run(
+                f"pass show fscm/bmon/{host.outbound_wireguard}"
+            ).stdout
+
     for host in hosts.values():
         host.check_host_keys = "accept"
 
@@ -109,6 +119,16 @@ def main_remote(
         p("/etc/wireguard/wg-bmon-privkey", sudo=True).contents(wg_privkey).chmod("600")
 
     wireguard.peer(host, wgmap)
+
+    if host.outbound_wireguard:
+        wgname = host.outbound_wireguard
+        if (
+            p("/etc/wireguard/{wgname}.conf")
+            .contents(host.secrets.outbound_wireguard)
+            .chmod("600")
+            .changes
+        ):
+            systemd.enable_service(wgname, start=True, restart=True, sudo=True)
 
     if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
         run(f"loginctl enable-linger {user}", sudo=True)
@@ -159,9 +179,7 @@ def provision_bmon_server(
 
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod(
-        "600"
-    )
+    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod("600")
     run("bmon-config -t prod")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
@@ -202,15 +220,15 @@ def provision_bmon_server(
 
 
 def provision_monitored_bitcoind(
-    host: Host, parent: fscm.remote.Parent, rebuild_docker: bool,
+    host: Host,
+    parent: fscm.remote.Parent,
+    rebuild_docker: bool,
     server_wg_ip: str,
 ):
     assert (username := getpass.getuser()) != "root"
     os.chdir(bmon_path := Path.home() / "bmon")
 
-    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod(
-        "600"
-    )
+    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod("600")
     run(f"bmon-config -t prod --hostname {host.name}")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
@@ -227,7 +245,7 @@ def provision_monitored_bitcoind(
         btc_size_kb = int(
             run(f"du -s {bmon_path}/services/prod/bitcoin/data").stdout.split()[0]
         )
-        gb_in_kb = 1000**2
+        gb_in_kb = 1000 ** 2
 
         if btc_size_kb < gb_in_kb:
             btc_data = bmon_path / "services/prod/bitcoin/data"
