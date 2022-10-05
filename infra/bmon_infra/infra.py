@@ -104,6 +104,7 @@ def main_remote(
     )
     fscm.s.group_member(user, "docker")
 
+    p("/etc/wireguard", sudo=True).mkdir()
     if wg_privkey := getattr(host.secrets, "wg-privkey", None):
         p("/etc/wireguard/wg-bmon-privkey", sudo=True).contents(wg_privkey).chmod("600")
 
