@@ -96,7 +96,7 @@ dev_settings = dict(
     bitcoin_dbcache=None,
     bitcoin_docker_tag='latest',
     hostname=socket.gethostname(),
-    pushover_uesr="",
+    pushover_user="",
     pushover_token="",
 )
 
