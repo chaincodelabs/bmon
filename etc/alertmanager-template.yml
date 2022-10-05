@@ -1,7 +1,7 @@
-# route:
-#   receiver: pushover
-# receivers:
-#   - name: pushover
-#     pushover_configs:
-#       - token: ${secrets.pushover.token}
-#         user_key: ${secrets.pushover.shell_user}
+route:
+  receiver: pushover
+receivers:
+  - name: pushover
+    pushover_configs:
+      - token: ${PUSHOVER_TOKEN}
+        user_key: ${PUSHOVER_USER}

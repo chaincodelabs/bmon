@@ -62,6 +62,9 @@ BITCOIN_FLAGS=${bitcoin_flags}
 BITCOIN_PRUNE=${bitcoin_prune}
 BITCOIN_DBCACHE=${bitcoin_dbcache}
 BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
+
+PUSHOVER_USER=${pushover_user}
+PUSHOVER_TOKEN=${pushover_token}
 """
 
 
@@ -93,6 +96,8 @@ dev_settings = dict(
     bitcoin_dbcache=None,
     bitcoin_docker_tag='latest',
     hostname=socket.gethostname(),
+    pushover_uesr="",
+    pushover_token="",
 )
 
 
@@ -137,6 +142,8 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
             loki_host="loki",
             alertman_address="alertman:9093",
+            pushover_user=host.secrets.pushover.user,
+            pushover_token=host.secrets.pushover.token,
         )
     else:
         # a bitcoind instance
@@ -191,7 +198,10 @@ def loki():
 
 
 def alertman():
-    return Path("./etc/alertmanager-template.yml").read_text()
+    return Template(Path("./etc/alertmanager-template.yml").read_text()).substitute(
+        PUSHOVER_TOKEN=ENV.PUSHOVER_TOKEN,
+        PUSHOVER_USER=ENV.PUSHOVER_USER,
+    )
 
 
 def promtail(hostname: str | None = None):
