@@ -9,7 +9,7 @@ RemainAfterExit=true
 
 Environment="COMPOSE_PROFILES=bitcoind,prod,prod-bitcoind"
 ExecStart=${docker_compose_path} up -d --remove-orphans
-ExecStop=${docker_compose_path} rm -fs
+ExecStop=${docker_compose_path} stop ; ${docker_compose_path} rm -f
 
 [Install]
 WantedBy=default.target

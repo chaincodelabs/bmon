@@ -60,8 +60,8 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     return wg_servers, hosts
 
 
-def get_server_wireguard_ip(hosts) -> str:
-    [server_host] = [h for h in hosts if "server" in h.tags]
+def get_server_wireguard_ip() -> str:
+    [server_host] = [h for h in get_hosts()[1].values() if "server" in h.tags]
     return str(server_host.wireguards["wg-bmon"].ip)
 
 
@@ -265,7 +265,7 @@ def deploy(rebuild_docker: bool = False):
 
     with executor(*hosts) as exec:
         exec.allow_file_access("./etc/*", "./etc/**/*")
-        exec.run(main_remote, rebuild_docker, wgsmap, get_server_wireguard_ip(hosts))
+        exec.run(main_remote, rebuild_docker, wgsmap, get_server_wireguard_ip())
 
 
 @cli.cmd
