@@ -1,0 +1,21 @@
+wireguard:
+
+hosts:
+
+  bmon:
+    tags: [server]
+    ssh_hostname: bmon.dev.local
+    wireguard:
+      wg-bmon: 
+        ip: 10.33.0.2
+        endpoint: 10.8.1.1
+        pubkey: +Bxc6NA3doW9lyKqoVybzsRZ3upH8jQpVA2M5myoUHE=
+
+  bitcoind: 
+    tags: [bitcoind]
+    wireguard:
+      wg-bmon: 
+        ip: bitcoind
+        endpoint: 10.8.1.1
+        pubkey: /Qzuh/N11tPhzjCmq9+H+OzbeHnDLvniCPgxc+5R8l8=
+    bitcoin_version: v23.0
