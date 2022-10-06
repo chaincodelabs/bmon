@@ -62,7 +62,7 @@ hosts:
         pubkey: t/jLtFWsGaEy/RGp5ehcY7cVIdsKW8d1iJzTTUBmIxU=
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
-    bitcoin_version: v0.14.2
+    bitcoin_version: v0.18.1
         
   b-03.slug:
     tags: [bitcoind, vagrant]
