@@ -96,8 +96,7 @@ def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Ho
             getattr(host_secrets, host.name, fscm.Secrets())
         )
 
-        # TODO fix this
-        if host.outbound_wireguard and False:
+        if host.outbound_wireguard:
             print(
                 f"loading outbound wireguard {host.outbound_wireguard!r} for {host}"
             )
@@ -130,7 +129,7 @@ def main_remote(
 
     wireguard.peer(host, wgmap)
 
-    if host.outbound_wireguard:
+    if host.outbound_wireguard and False:
         wgname = host.outbound_wireguard
         p(f"/etc/wireguard/{wgname}.conf", sudo=True).contents(
             host.secrets.outbound_wireguard
@@ -238,12 +237,12 @@ def provision_monitored_bitcoind(
     os.chdir(bmon_path := Path.home() / "bmon")
 
     p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod("600")
-    run(f"bmon-config -t prod --hostname {host.name}")
+    run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
     if rebuild_docker:
-        run(f"{docker_compose} --profile bitcoind --profile prod build")
+        run(f"{docker_compose} --profile bitcoind --profile prod build").assert_ok()
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
