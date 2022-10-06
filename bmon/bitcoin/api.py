@@ -29,7 +29,7 @@ def get_rpc(hosts: t.Tuple[Host]) -> t.Dict[str, BitcoinRpc]:
 RPC_ERROR_RESULT = object()
 
 
-def run_rpc(rpc_call_func: t.Callable) -> t.Dict[str, t.Any]:
+def gather_rpc(rpc_call_func: t.Callable) -> t.Dict[str, t.Any]:
     rpcmap = get_rpc(get_bitcoind_hosts())
     promises = {}
     results = {}
