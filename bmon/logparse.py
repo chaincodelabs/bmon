@@ -27,7 +27,12 @@ def watch_logs(filename: str):
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in read_logfile_forever(filename, start_log_cursor):
-        got = cb_listener.process_line(line)
+        try:
+            got = cb_listener.process_line(line)
+        except Exception:
+            log.exception("Failed to process line %r", line)
+            continue
+
         linehash = hash_noncrypto(line)
 
         if got:
