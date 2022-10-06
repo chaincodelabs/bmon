@@ -68,7 +68,7 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
 
 def get_bitcoind_hosts() -> t.List[Host]:
 	hosts = get_hosts()[1].values()
-	return [h for h in hosts if 'bitcoind' in h.tags]
+	return tuple(h for h in hosts if 'bitcoind' in h.tags)
 
 
 def get_server_wireguard_ip() -> str:
@@ -325,6 +325,7 @@ def _run_cmd(cmd: str):
 
 
 def main():
+    os.environ.setdefault('BMON_HOSTS_FILE', './infra/hosts_prod.yml')
     cli.run()
 
 

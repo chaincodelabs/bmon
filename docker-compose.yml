@@ -235,6 +235,7 @@ services:
       - ./:/src
     links:
       - db
+      - bitcoind
     command: ./manage.py runserver 0.0.0.0:8080
 
 volumes:
