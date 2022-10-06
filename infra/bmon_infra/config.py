@@ -30,6 +30,7 @@ BMON_HOSTS_FILE=${hosts_file}
 ENV_ROOT=${root}
 UID=${uid}
 BMON_HOSTNAME=${hostname}
+BMON_DEBUG=${debug}
 
 DB_HOST=${db_host}
 DB_PASSWORD=${db_password}
@@ -100,6 +101,7 @@ dev_settings = dict(
     hostname=socket.gethostname(),
     pushover_user="",
     pushover_token="",
+    debug=1,
 )
 
 
@@ -117,6 +119,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
 
     settings = dict(dev_settings)
     settings.update(
+        debug=0,
         root="./services/prod",
         hosts_file="./infra/hosts_prod.yml",
         hostname=host.name,

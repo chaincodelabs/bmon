@@ -27,8 +27,7 @@ from typing import IO
 DEFAULT_USER_AGENT = "AuthServiceProxy/0.1"
 DEFAULT_HTTP_TIMEOUT = 30
 
-rpc_logger = logging.getLogger("rpc")
-rpc_logger.setLevel(logging.DEBUG)
+rpc_logger = logging.getLogger("bitcoin-rpc")
 
 
 class JSONRPCError(Exception):

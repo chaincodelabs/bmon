@@ -43,7 +43,7 @@ BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
 SECRET_KEY = 'django-insecure-wtsk76*1ci%=)05y^-t-9^0y^y1ku3iunp2(h&6*qo@vxzv#n3'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('BMON_PROD') != "1"
+DEBUG = os.environ.get('BMON_DEBUG') == "1"
 
 ALLOWED_HOSTS = ['*']
 
@@ -69,7 +69,7 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'level': 'INFO',
+            'level': 'INFO' if not DEBUG else 'DEBUG',
             'handlers': [
                 'console',
                 # 'sentry',
