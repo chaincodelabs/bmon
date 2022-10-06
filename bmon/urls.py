@@ -17,12 +17,10 @@ from django.contrib import admin
 from django.urls import path
 from ninja import NinjaAPI
 
-from bmon_infra.infra import get_hosts
+from bmon_infra.infra import get_bitcoind_hosts
 from .views import home
 
 api = NinjaAPI()
-
-HOSTS = [h for h in get_hosts()[1].values() if 'bitcoin' in h.tags]
 
 
 @api.get('/prom-config')
@@ -48,7 +46,7 @@ def prom_scrape_config(request):
                 'bitcoin_prune': str(host.bitcoin_prune),
             },
         }
-        for host in HOSTS
+        for host in get_bitcoind_hosts()
     ]
     return targets
 

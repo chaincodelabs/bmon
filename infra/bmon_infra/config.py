@@ -26,6 +26,7 @@ ENV = SimpleNamespace()
 
 env_template = """
 COMPOSE_PROFILES=${compose_profiles}
+BMON_HOSTS_FILE=${hosts_file}
 ENV_ROOT=${root}
 UID=${uid}
 BMON_HOSTNAME=${hostname}
@@ -70,6 +71,7 @@ PUSHOVER_TOKEN=${pushover_token}
 
 dev_settings = dict(
     compose_profiles='bitcoind,server',
+    hosts_file="./infra/hosts_dev.yml",
     root="./services/dev",
     uid=1000,
     db_host="db",
@@ -116,6 +118,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
     settings = dict(dev_settings)
     settings.update(
         root="./services/prod",
+        hosts_file="./infra/hosts_prod.yml",
         hostname=host.name,
         db_password=host.secrets.db_password,
         bitcoin_network="",

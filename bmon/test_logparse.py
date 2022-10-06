@@ -3,14 +3,6 @@ import datetime
 from . import logparse, conftest
 
 
-class MockReceiver:
-    def __init__(self):
-        self.got = []
-
-    def receive(self, event):
-        self.got.append(event)
-
-
 def test_connectblockevent():
     logdata = conftest.read_data_file("logs_connectblock_basic.txt")
     listener = logparse.ConnectBlockListener()

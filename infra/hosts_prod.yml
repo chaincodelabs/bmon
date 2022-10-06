@@ -21,7 +21,7 @@ hosts:
         pubkey: +Bxc6NA3doW9lyKqoVybzsRZ3upH8jQpVA2M5myoUHE=
 
   bitcoin-01: 
-    tags: [bitcoin]
+    tags: [bitcoind]
     check_host_keys: accept
     outbound_wireguard: wg-switzerland-01
     wireguard:
@@ -33,7 +33,7 @@ hosts:
     bitcoin_version: v23.0
 
   b-01.slug:
-    tags: [bitcoin, vagrant]
+    tags: [bitcoind, vagrant]
     ssh_hostname: slug.j.co
     ssh_port: 2222
     username: vagrant
@@ -49,7 +49,7 @@ hosts:
     bitcoin_version: v22.0
 
   b-02.slug:
-    tags: [bitcoin, vagrant]
+    tags: [bitcoind, vagrant]
     ssh_hostname: slug.j.co
     ssh_port: 2223
     check_host_keys: ignore
@@ -65,7 +65,7 @@ hosts:
     bitcoin_version: v0.14.2
         
   b-03.slug:
-    tags: [bitcoin, vagrant]
+    tags: [bitcoind, vagrant]
     ssh_hostname: slug.j.co
     ssh_port: 2224
     check_host_keys: ignore
@@ -82,7 +82,7 @@ hosts:
     bitcoin_version: v0.19.1
 
   b-04.slug:
-    tags: [bitcoin, vagrant]
+    tags: [bitcoind, vagrant]
     ssh_hostname: slug.j.co
     ssh_port: 2225
     check_host_keys: ignore

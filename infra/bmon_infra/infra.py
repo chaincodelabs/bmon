@@ -48,23 +48,32 @@ class Host(wireguard.Host):
         self.outbound_wireguard = outbound_wireguard
         super().__init__(*args, **kwargs)
 
+    @property
+    def bmon_ip(self):
+        """An IP that makes the host routable to any other bmon host."""
+        return self.wireguards['wg-bmon'].ip
+
 
 def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
-    HOSTS_FILE = fscm.this_dir_path().parent / "hosts.yml"
-    data = yaml.safe_load(HOSTS_FILE.read_text())
+    hostsfile = Path(os.environ['BMON_HOSTS_FILE'])
+    data = yaml.safe_load(hostsfile.read_text())
     hosts = {str(name): Host.from_dict(name, d) for name, d in data["hosts"].items()}
 
     wg_servers: t.Dict[str, wireguard.Server] = {
         name: wireguard.Server.from_dict(name, d)
-        for name, d in data["wireguard"].items()
+        for name, d in (data.get("wireguard") or {}).items()
     }
 
     return wg_servers, hosts
 
+def get_bitcoind_hosts() -> t.List[Host]:
+	hosts = get_hosts()[1].values()
+	return [h for h in hosts if 'bitcoind' in h.tags]
+
 
 def get_server_wireguard_ip() -> str:
     [server_host] = [h for h in get_hosts()[1].values() if "server" in h.tags]
-    return str(server_host.wireguards["wg-bmon"].ip)
+    return str(server_host.bmon_ip)
 
 
 def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
@@ -87,12 +96,13 @@ def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Ho
             getattr(host_secrets, host.name, fscm.Secrets())
         )
 
-        if host.outbound_wireguard:
+        # TODO fix this
+        if host.outbound_wireguard and False:
             print(
-                f"obtaining outbound wireguard {host.outbound_wireguard!r} for {host}"
+                f"loading outbound wireguard {host.outbound_wireguard!r} for {host}"
             )
             host.secrets.outbound_wireguard = run(
-                f"pass show fscm/bmon/{host.outbound_wireguard}"
+                f"pass show fscm/bmon/{host.outbound_wireguard}", q=True,
             ).stdout
 
     for host in hosts.values():
@@ -122,13 +132,12 @@ def main_remote(
 
     if host.outbound_wireguard:
         wgname = host.outbound_wireguard
-        if (
-            p("/etc/wireguard/{wgname}.conf")
-            .contents(host.secrets.outbound_wireguard)
-            .chmod("600")
-            .changes
-        ):
-            systemd.enable_service(wgname, start=True, restart=True, sudo=True)
+        p(f"/etc/wireguard/{wgname}.conf", sudo=True).contents(
+            host.secrets.outbound_wireguard
+        ).chmod("600")
+        systemd.enable_service(
+            "wg-quick@%s" % wgname, start=True, restart=True, sudo=True
+        )
 
     if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
         run(f"loginctl enable-linger {user}", sudo=True)
@@ -165,7 +174,7 @@ def main_remote(
 
     if "server" in host.tags:
         provision_bmon_server(host, parent, rebuild_docker, server_wg_ip)
-    elif "bitcoin" in host.tags:
+    elif "bitcoind" in host.tags:
         provision_monitored_bitcoind(host, parent, rebuild_docker, server_wg_ip)
 
 
@@ -252,7 +261,7 @@ def provision_monitored_bitcoind(
             print(f"Fetching prepopulated (pruned) datadir from {DATADIR_URL}")
             run(f"curl -s {DATADIR_URL} | tar xz -C /tmp").assert_ok()
             run(f"rm -rf {btc_data}").assert_ok()
-            run(f"mv /tmp/bitcoin-pruned-500mb {btc_data}").assert_ok()
+            run(f"mv /tmp/bitcoin-pruned-550 {btc_data}").assert_ok()
             # If we don't have a debug.log file, docker will make a directory out
             # of it during the mount process of bitcoind-watcher.
             run(f"touch {btc_data}/debug.log")
