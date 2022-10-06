@@ -10,11 +10,25 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bmon.settings')
 django.setup()
 
 from bmon import models
+from bmon.bitcoin.api import run_rpc
+
 
 app = Celery(
     'bmon-server-tasks',
     broker=settings.REDIS_SERVER_URL,
 )
+
+@app.on_after_configure.connect
+def setup_periodic_tasks(sender, **kwargs):
+    sender.add_periodic_task(60, examine_peers.s(), name='examine peers')
+
+
+@app.task
+def examine_peers():
+    def getpeerinfo(rpc):
+        return rpc.getpeerinfo()
+
+    print(run_rpc(getpeerinfo))
 
 
 @app.task
