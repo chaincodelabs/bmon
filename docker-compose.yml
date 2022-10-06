@@ -144,6 +144,8 @@ services:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
       - ${ENV_ROOT}/bitcoin/data/bitcoin.conf:/bitcoin/bitcoin.conf
     command: bitcoind -datadir=/bitcoin/data ${BITCOIN_FLAGS}
+    ports:
+      - 8332:8332
 
   promtail:
     profiles: ["bitcoind"]
