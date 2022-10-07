@@ -1,7 +1,5 @@
 ![bmon](images/bmon.png)
 
-# bmon
-
 A Bitcoin network monitor
 
 ![screenshot](images/screenshot.png)
