@@ -5,7 +5,7 @@
 <div class="block-connects">
 {% for connect in blockconnects %}
   <div class="block-connect">
-    <div class="block-title">
+    <div class="card-title">
       block {{ connect.height }} 
     </div>
     <div class="stats">
@@ -36,4 +36,44 @@
 {% endfor %}
 </div>
 
+<div class="hosts">
+{% for host in hosts %}
+  <div class="host">
+    <div class="card-title">
+      host {{ host.name }} {% if host.chaininfo.chain != 'mainnet' %} ({{ host.chaininfo.chain }}) {% endif %}
+    </div>
+    <div class="stats">
+
+      <div class="stat">
+        <div class="title">version</div> 
+        <div class="value">{{ host.bitcoin_version }}</div>
+      </div>
+
+      <div class="stat">
+        <div class="title">height</div> 
+        <div class="value">{{ host.chaininfo.blocks }} ({{ host.chaininfo.bestblockhash | slice:":6" }})</div>
+      </div>
+
+      <div class="stat">
+        <div class="title">pruned?</div> 
+        <div class="value">{{ host.chaininfo.pruned }}</div>
+      </div>
+
+      {% if host.peers %}
+      <div class="stat">
+        <div class="title">peers</div> 
+        <div class="value diffs">
+          <table>
+            {% for addr, subver in host.peers.items %}
+            <tr><td>{{ addr }}</td><td>{{ subver }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+{% endfor %}
+</div>
 {% endblock %}

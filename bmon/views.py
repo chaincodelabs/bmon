@@ -6,7 +6,9 @@ from typing import Dict, List
 from django.http import HttpResponse
 from django.shortcuts import render
 
+from bmon_infra.infra import Host, get_bitcoind_hosts
 from .models import ConnectBlockEvent
+from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
 
 
 @dataclass
@@ -30,7 +32,24 @@ class BlockConnView:
 
 
 def home(request):
-    context = {'blockconnects': []}
+    context = {'blockconnects': [], 'hosts': []}
+    hosts = get_bitcoind_hosts()
+    peer_info = gather_rpc(lambda r: r.getpeerinfo())
+    chain_info = gather_rpc(lambda r: r.getblockchaininfo())
+
+    for host in hosts:
+        peers = peer_info[host.name]
+        if peers == RPC_ERROR_RESULT:
+            peers = []
+
+        chain = chain_info[host.name]
+        if chain == RPC_ERROR_RESULT:
+            chain = {}
+
+        host.peers = {p['addr']: p['subver'] for p in peers}
+        host.chaininfo = chain
+        context['hosts'].append(host)
+
     heights = list(
         ConnectBlockEvent.objects.values_list("height", flat=True)
         .order_by("-height")

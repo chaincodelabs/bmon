@@ -10,20 +10,21 @@ body {
 
 #content {
   font-family: monospace;
+  padding-left: 1em;
 }
 
 #bmon-title {
   font-size: 3em;
   font-family: 'ninepin', monospace;
   padding: 0.3em;
-  border: 1px solid #222;
+  border-bottom: 1px solid #222;
+  border-left: 1px solid #222;
   width: max-content;
   margin-bottom: 1em;
-  filter: drop-shadow(0px 2px 5px black);
   background-color: #f8f8f8;
 }
 
-.block-connects {
+.block-connects, .hosts {
   display: flex;
   flex: 1;
   align-items: stretch;
@@ -31,25 +32,30 @@ body {
   overflow-x: scroll;
   scrollbar-width: none;
   padding-bottom: 17px;
+  margin-bottom: 3em;
 }
 
-.block-connects::-webkit-scrollbar {
+.block-connects::-webkit-scrollbar, .hosts::-webkit-scrollbar {
   display: none;
 }
 
-.block-connect {
+.block-connect, .host {
   padding: 0.8em;
-  margin-right: 1.3em;
   border: 1px solid #666;
   background-color: #fcf3ec; 
   filter: drop-shadow(3px 2px 2px black);
+  margin-right: 1.3em;
 }
 
-.block-connect .stats {
+.host {
+  background-color: #f5fbfb;
+}
+
+.stats {
   width: max-content;
 }
 
-.block-connect .stats .title {
+.stats .title {
   font-weight: bold;
 }
 
@@ -57,7 +63,7 @@ body {
   margin-bottom: 0.8em;
 }
 
-.block-title {
+.card-title {
   font-weight: bold;
   font-size: 1.4em;
   margin-bottom: 0.8em;
