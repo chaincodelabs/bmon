@@ -55,6 +55,10 @@ body {
   width: max-content;
 }
 
+.stats .value table {
+  font-size: 0.9rem;
+}
+
 .stats .title {
   font-weight: bold;
 }
@@ -74,7 +78,7 @@ body {
 }
 
 .diffs tr td:first-child {
-  padding-right: 0.7em;
+  padding-right: 1em;
 }
 
 h1 {

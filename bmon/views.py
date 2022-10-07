@@ -44,7 +44,7 @@ def home(request):
 
         chain = chain_info[host.name]
         if chain == RPC_ERROR_RESULT:
-            chain = {}
+            continue
 
         host.peers = {p['addr']: p['subver'] for p in peers}
         host.chaininfo = chain
