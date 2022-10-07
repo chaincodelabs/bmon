@@ -1,0 +1,39 @@
+{% extends "bmon/base.html" %}
+
+{% block content %}
+
+<div class="block-connects">
+{% for connect in blockconnects %}
+  <div class="block-connect">
+    <div class="block-title">
+      block {{ connect.height }} 
+    </div>
+    <div class="stats">
+
+      <div class="stat">
+        <div class="title">saw</div> 
+        <div class="value">{{ connect.min_dt.isoformat }}</div>
+      </div>
+
+      <div class="stat">
+        <div class="title">stddev</div> 
+        <div class="value">{{ connect.stddev_got_time }}</div>
+      </div>
+
+      <div class="stat">
+        <div class="title">diffs</div> 
+        <div class="value diffs">
+          <table>
+            {% for host, diff in connect.diffs.items %}
+            <tr><td>{{ host }}</td><td>{{ diff }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+{% endblock %}

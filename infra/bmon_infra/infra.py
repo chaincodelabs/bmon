@@ -122,6 +122,8 @@ def main_remote(
         "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap"
     )
     fscm.s.group_member(user, "docker")
+    p(docker := Path.home() / ".docker").mkdir()
+    p(docker / "config.json").contents('{ "detachKeys": "ctrl-z,z" }')
 
     p("/etc/wireguard", sudo=True).mkdir()
     if wg_privkey := getattr(host.secrets, "wg-privkey", None):

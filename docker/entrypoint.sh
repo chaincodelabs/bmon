@@ -8,6 +8,7 @@ fi
 
 if ! [ -z "${RUN_DB_MIGRATIONS}" ]; then
   python manage.py migrate
+  python manage.py collectstatic --noinput
 fi
 
 cd /src
