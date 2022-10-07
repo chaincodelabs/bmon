@@ -68,6 +68,10 @@ body {
   letter-spacing: -1px;
 }
 
+.diffs tr td:first-child {
+  padding-right: 0.7em;
+}
+
 h1 {
 
 }
