@@ -24,6 +24,7 @@ class BlockConnView:
             return datetime.datetime.fromtimestamp(ts)
 
         times = {e.host: e.timestamp.timestamp() for e in self.events}
+        self.date = self.events[0].date
         self.avg_got_time: datetime.datetime = fromts(statistics.mean(times.values()))
         self.stddev_got_time: float = statistics.pstdev(times.values())
         self.min: float = min(times.values())
