@@ -69,7 +69,14 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'level': 'INFO' if not DEBUG else 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'handlers': [
+                'console',
+                # 'sentry',
+            ],
+        },
+        'bitcoin-rpc': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'handlers': [
                 'console',
                 # 'sentry',

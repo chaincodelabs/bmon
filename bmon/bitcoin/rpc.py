@@ -27,7 +27,7 @@ from typing import IO
 DEFAULT_USER_AGENT = "AuthServiceProxy/0.1"
 DEFAULT_HTTP_TIMEOUT = 30
 
-rpc_logger = logging.getLogger("bitcoin-rpc")
+log = logging.getLogger("bitcoin-rpc")
 
 
 class JSONRPCError(Exception):
@@ -91,7 +91,7 @@ class BitcoinRpc(object):
             service_url = service_url.rstrip("/")
             service_url += f"/wallet/{wallet_name}"
 
-        rpc_logger.info(f"Connecting to bitcoind: {service_url}")
+        log.debug(f"Connecting to bitcoind: {service_url}")
         self.url = service_url
 
         # Credential redacted
@@ -99,7 +99,7 @@ class BitcoinRpc(object):
         self._parsed_url = urlparse.urlparse(service_url)
         self.host = self._parsed_url.hostname
 
-        rpc_logger.info(f"Initializing RPC client at {self.public_url}")
+        log.debug(f"Initializing RPC client at {self.public_url}")
         # XXX keep for debugging, but don't ship:
         # logger.info(f"[REMOVE THIS] USING AUTHPAIR {authpair}")
 
@@ -139,7 +139,7 @@ class BitcoinRpc(object):
             }
         )
 
-        rpc_logger.debug(f"[{self.public_url}] calling %s%s", service_name, args)
+        log.debug(f"[{self.public_url}] calling %s%s", service_name, args)
 
         headers = {
             "Host": self._parsed_url.hostname,
@@ -159,7 +159,7 @@ class BitcoinRpc(object):
                 conn = self._getconn(timeout=kwargs["timeout"])
                 conn.request("POST", path, postdata, headers)
             except (BlockingIOError, httplib.CannotSendRequest, socket.gaierror):
-                rpc_logger.exception(
+                log.exception(
                     f"hit request error: {path}, {postdata}, {self._parsed_url}"
                 )
                 tries -= 1
@@ -197,7 +197,7 @@ class BitcoinRpc(object):
         rdata = http_response.read().decode("utf8")
         try:
             loaded = json.loads(rdata, parse_float=Decimal)
-            rpc_logger.debug(f"[{self.public_url}] -> {loaded}")
+            log.debug(f"[{self.public_url}] -> {loaded}")
             return loaded
         except Exception:
             raise JSONRPCError(
