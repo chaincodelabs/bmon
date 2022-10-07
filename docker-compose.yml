@@ -7,6 +7,7 @@ version: '3.5'
 
 x-service-config: &service
   environment: &env
+    BMON_DEBUG:
     BMON_HOSTS_FILE:
     BMON_HOSTNAME:
     DB_HOST:
@@ -90,7 +91,7 @@ services:
     ports:
       - 9093:9093
 
-  web:
+  web: &web_config
     profiles: ["server"]
     image: web
     user: "${UID}"
@@ -109,6 +110,20 @@ services:
     links:
       - db
     command: ./manage.py runserver 0.0.0.0:8080
+
+  shell:
+    image: bmon-base-image
+    profiles: ["ops"]
+    environment:
+      <<: *env
+      WAIT_FOR: "${DB_HOST}:5432"
+      IPYTHONDIR: /var/lib/ipython
+    volumes:
+      - ./:/src
+      - ${ENV_ROOT}/ipython:/var/lib/ipython
+    links:
+      - db
+    command: ./manage.py shell
 
   server-task-worker:
     profiles: ["server"]

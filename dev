@@ -18,11 +18,6 @@ def brpc(cmd, **kwargs):
 
 
 @cli.cmd
-def pyshell():
-    sh("docker-compose run --rm web ipython")
-
-
-@cli.cmd
 def bitcoinrpc(*cmd):
     return brpc(' '.join(cmd))
 
@@ -41,14 +36,24 @@ def generateblock():
 
 @cli.cmd
 def managepy(*cmd):
-    sh(f"docker-compose run --rm web python manage.py {' '.join(cmd)}")
+    sh(f"docker-compose run --rm shell python manage.py {' '.join(cmd)}")
 
 
 @cli.cmd
-def rebuild():
-    sh("docker-compose down ; docker-compose rm -f")
-    sh("docker-compose build")
-    sh("docker-compose up -d")
+def shell():
+    managepy('shell')
+
+
+@cli.cmd
+def reup(service: str = "", rebuild_docker: bool = False, logs: bool = False):
+    sh(f"docker-compose down {service} ; docker-compose rm -f {service} ")
+    if rebuild_docker:
+        sh("docker-compose build")
+
+    sh(f"docker-compose up -d {service}")
+
+    if logs:
+        sh(f"docker-compose logs -f {service}")
 
 
 @cli.cmd
