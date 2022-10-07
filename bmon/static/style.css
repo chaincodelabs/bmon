@@ -51,6 +51,10 @@ body {
   background-color: #f5fbfb;
 }
 
+.block-connect {
+  padding-right: 1.5rem;
+}
+
 .stats {
   width: max-content;
 }

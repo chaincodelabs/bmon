@@ -11,21 +11,21 @@
     <div class="stats">
 
       <div class="stat">
-        <div class="title">saw</div> 
-        <div class="value">{{ connect.min_dt.isoformat }}</div>
+        <div class="title">saw at</div> 
+        <div class="value">{{ connect.min_dt.date.isoformat }}<br />{{ connect.min_dt.time.isoformat }}</div>
       </div>
 
       <div class="stat">
         <div class="title">stddev</div> 
-        <div class="value">±{{ connect.stddev_got_time | floatformat:4 }}</div>
+        <div class="value">± {{ connect.stddev_got_time | floatformat:4 }}</div>
       </div>
 
       <div class="stat">
-        <div class="title">diffs</div> 
+        <div class="title">saw block at diffs</div> 
         <div class="value diffs">
           <table>
             {% for host, diff in connect.diffs.items %}
-            <tr><td>{{ host }}</td><td>{{ diff | floatformat:4 }}</td></tr>
+            <tr><td>{{ host }}</td><td>{{ diff | floatformat:4 }} sec</td></tr>
             {% endfor %}
           </table>
         </div>
