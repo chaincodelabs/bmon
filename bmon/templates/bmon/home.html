@@ -25,7 +25,7 @@
         <div class="value diffs">
           <table>
             {% for host, diff in connect.diffs.items %}
-            <tr><td>{{ host }}</td><td>{{ diff }}</td></tr>
+            <tr><td>{{ host }}</td><td>{{ diff | floatformat:4 }}</td></tr>
             {% endfor %}
           </table>
         </div>
