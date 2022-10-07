@@ -54,7 +54,7 @@ def check_for_overlapping_peers():
 
     print(
         "%d peers found across %d hosts (%s)"
-        % (len(peer_to_hosts), len(hosts_contacted), hosts_contacted)
+        % (len(peer_to_hosts), len(hosts_contacted), ", ".join(hosts_contacted))
     )
     for peer, hosts in peer_to_hosts.items():
         if len(hosts) > 1:
