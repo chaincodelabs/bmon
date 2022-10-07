@@ -45,7 +45,7 @@
 {% for host in hosts %}
   <div class="host">
     <div class="card-title">
-      host {{ host.name }} {% if host.chaininfo.chain != 'mainnet' %} ({{ host.chaininfo.chain }}) {% endif %}
+      host {{ host.name }} {% if host.chaininfo.chain != 'main' %} ({{ host.chaininfo.chain }}) {% endif %}
     </div>
     <div class="stats">
 
