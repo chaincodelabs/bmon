@@ -1,5 +1,7 @@
 from ninja import NinjaAPI
+from django.forms.models import model_to_dict
 
+from bmon import models
 from bmon_infra.infra import get_bitcoind_hosts
 
 api = NinjaAPI()
@@ -31,3 +33,15 @@ def prom_scrape_config(_):
         for host in get_bitcoind_hosts()
     ]
     return targets
+
+
+@api.get('/mempool')
+def mempool(_):
+    mempool_accepts = models.MempoolAccept.objects.order_by('-id')[:400]
+    return [model_to_dict(m) for m in mempool_accepts]
+
+
+@api.get('/process-errors')
+def process_errors(_):
+    objs = models.ProcessLineError.objects.order_by('-id')[:400]
+    return [model_to_dict(m) for m in objs]
