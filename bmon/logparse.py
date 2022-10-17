@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+import time
 import logging
 import re
 import hashlib
 import datetime
 import os
 import typing as t
-from dataclasses import dataclass
 from pathlib import Path
 
 from django.conf import settings
@@ -13,7 +13,6 @@ from django.forms.models import model_to_dict
 
 from bmon.models import ConnectBlockDetails, ConnectBlockEvent, LogProgress
 from bmon.bitcoind_tasks import send_event
-from bmon.redis import get_redis
 
 
 log = logging.getLogger(__name__)
@@ -67,7 +66,6 @@ def read_logfile_forever(
 
     current = openfile()
     curino = os.fstat(current.fileno()).st_ino
-    curr_line = ''
     start_pos = None
 
     if seek_to_cursor:
@@ -78,7 +76,10 @@ def read_logfile_forever(
             if not line:
                 break
 
-            if hash_noncrypto(line) == seek_to_cursor:
+            # Must strip the newline off the end to match contents as yielded below.
+            hashed = hash_noncrypto(line.rstrip('\n'))
+
+            if hashed == seek_to_cursor:
                 start_pos = current.tell()
                 log.info("Found start of logs (per cursor %s) at %s",
                          seek_to_cursor, start_pos)
@@ -93,20 +94,43 @@ def read_logfile_forever(
     if start_pos:
         current.seek(start_pos)
 
+    curr_line = ''
+
     while True:
         while True:
-            curr_line: str = current.readline()
-            if not curr_line:
+            got: str = current.read(1024)
+
+            if not got:
+                # Out of contents
                 break
-            yield curr_line
+            elif '\n' in got:
+                # The chunk we retrieved may have multiple lines, so yield multiple
+                # if need be.
+                lines = got.split('\n')
+                assert len(lines) >= 2
+
+                [end_of_current, *middle_lines, next_curr_line] = lines
+
+                yield curr_line + end_of_current
+
+                for complete_line in middle_lines:
+                    yield complete_line
+
+                curr_line = next_curr_line
+            else:
+                curr_line += got
+
         try:
             if os.stat(filename).st_ino != curino:
                 new = openfile()
                 current.close()
                 current = new
                 curino = os.fstat(current.fileno()).st_ino
+            else:
+                time.sleep(0.001)
         except IOError:
             pass
+
 
 
 def hash_noncrypto(w: str) -> str:
@@ -132,20 +156,6 @@ def get_time(line: str = '', timestr: str = '') -> datetime.datetime:
     assert (offset := d.utcoffset()) is not None
 
     return d + offset
-
-
-@dataclass
-class BitcoindLogFollower:
-    filename: str
-
-    # If specified, skip forward to a specific line.
-    sync_to: LineHash | None = None
-
-    # The line we're currently at.
-    current_position: LineHash | None = None
-
-    def monitor(self):
-        pass
 
 
 _FLOAT = r'\d*\.\d+'
