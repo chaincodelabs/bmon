@@ -64,7 +64,7 @@ def watchlogs():
 
 @cli.cmd
 def test():
-    sh("docker-compose run --rm test pytest")
+    sh("docker-compose run --rm test pytest bmon")
 
 
 if __name__ == "__main__":

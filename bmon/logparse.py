@@ -12,6 +12,7 @@ from django.conf import settings
 from django.forms.models import model_to_dict
 
 from bmon.models import ConnectBlockDetails, ConnectBlockEvent, LogProgress
+from bmon import models
 from bmon.bitcoind_tasks import send_event
 
 
@@ -20,33 +21,44 @@ log = logging.getLogger(__name__)
 
 def watch_logs(filename: str):
     log.info(f"listening to logs at {filename}")
-    cb_listener = ConnectBlockListener()
+
+    listeners = [
+        ConnectBlockListener(),
+        MempoolListener(),
+    ]
 
     log_progress = LogProgress.objects.filter(host=settings.HOSTNAME).first()
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in read_logfile_forever(filename, start_log_cursor):
-        try:
-            got = cb_listener.process_line(line)
-        except Exception:
-            log.exception("Failed to process line %r", line)
-            continue
-
         linehash = hash_noncrypto(line)
 
-        if got:
+        for listener in listeners:
             try:
-                got.full_clean()
+                got = listener.process_line(line)
             except Exception:
-                log.exception("model failed to validate!")
-                # TODO: stash the bad model somewhere for later processing.
+                log.exception("Listener %s failed to process line %r", listener, line)
+                models.ProcessLineError.objects.create(
+                    host=settings.HOSTNAME,
+                    listener=listener.__class.__name__,
+                    line=line,
+                )
                 continue
 
-            d = model_to_dict(got)
-            d['_model'] = got.__class__.__name__
+            if got:
+                log.debug("Got an instance %r from line (%s) %r", got, linehash, line)
+                try:
+                    got.full_clean()
+                except Exception:
+                    log.exception("model %s failed to validate!", got)
+                    # TODO: stash the bad model somewhere for later processing.
+                    continue
 
-            # A corresponding LogProgress entry is saved in `server_tasks`.
-            send_event.delay(d, linehash)
+                d = model_to_dict(got)
+                d['_model'] = got.__class__.__name__
+
+                # A corresponding LogProgress entry is saved in `server_tasks`.
+                send_event.delay(d, linehash)
 
 
 def read_logfile_forever(
@@ -167,6 +179,32 @@ _UPDATE_TIP_START = "UpdateTip: "
 
 def str_or_none(s):
     return str(s) if s else None
+
+
+class MempoolListener:
+
+    _accept_sub_patts = {
+        re.compile(r"\s+peer=(?P<peer_num>\d+)"),
+        re.compile(fr"\s+accepted (?P<txhash>{_HASH})"),
+        re.compile(r"poolsz (?P<pool_size_txns>\d+) txn, (?P<pool_size_kb>\d+) kB"),
+    }
+
+    def process_line(self, line):
+        if ' AcceptToMemoryPool:' in line and ' accepted ' in line:
+            matches = {}
+            timestamp = get_time(line)
+            for patt in self._accept_sub_patts:
+                if (match := patt.search(line)):
+                    matches.update(match.groupdict())
+
+            return models.MempoolAccept(
+                host=settings.HOSTNAME,
+                timestamp=timestamp,
+                peer_num=int(matches['peer_num']),
+                txhash=matches['txhash'],
+                pool_size_kb=int(matches['pool_size_kb']),
+                pool_size_txns=int(matches['pool_size_txns']),
+            )
 
 
 class ConnectBlockListener:

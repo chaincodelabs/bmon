@@ -3,6 +3,20 @@ import datetime
 from . import logparse, conftest
 
 
+def test_mempoollistener():
+    listener = logparse.MempoolListener()
+
+    got = listener.process_line(
+        "2022-10-17T17:57:43.861480Z AcceptToMemoryPool: peer=11: accepted fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b (poolsz 11848 txn, 25560 kB)")  # noqa
+
+    assert got
+    assert got.peer_num == 11
+    assert got.txhash == "fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b"
+    assert got.timestamp == logparse.get_time("2022-10-17T17:57:43.861480Z")
+    assert got.pool_size_kb == 25560
+    assert got.pool_size_txns == 11848
+
+
 def test_connectblockevent():
     logdata = conftest.read_data_file("logs_connectblock_basic.txt")
     listener = logparse.ConnectBlockListener()

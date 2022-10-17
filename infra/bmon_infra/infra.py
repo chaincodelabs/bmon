@@ -66,9 +66,10 @@ def get_hosts() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
 
     return wg_servers, hosts
 
+
 def get_bitcoind_hosts() -> t.List[Host]:
-	hosts = get_hosts()[1].values()
-	return tuple(h for h in hosts if 'bitcoind' in h.tags)
+    hosts = get_hosts()[1].values()
+    return tuple(h for h in hosts if 'bitcoind' in h.tags)
 
 
 def get_server_wireguard_ip() -> str:

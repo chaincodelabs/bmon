@@ -76,3 +76,27 @@ class ConnectBlockDetails(models.Model):
     flush_chainstate_time_ms = models.FloatField()
     connect_postprocess_time_ms = models.FloatField()
     connectblock_total_time_ms = models.FloatField()
+
+
+class MempoolAccept(models.Model):
+    """
+    A transaction is accepted to the mempool.
+
+    2022-10-17T17:57:43.861480Z AcceptToMemoryPool: peer=11: accepted fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b (poolsz 11848 txn, 25560 kB)
+    """
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField()
+    txhash = models.CharField(max_length=80)
+    peer_num = models.IntegerField()
+    pool_size_txns = models.IntegerField()
+    pool_size_kb = models.IntegerField()
+
+
+class ProcessLineError(models.Model):
+    """
+    Created when a listener fails to process a line.
+    """
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField(auto_now_add=True, blank=True)
+    listener = models.CharField(max_length=240)
+    line = models.CharField(max_length=2048)
