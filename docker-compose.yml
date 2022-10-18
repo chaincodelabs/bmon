@@ -19,6 +19,17 @@ x-service-config: &service
     BMON_REDIS_HOST:
     PYTHONUNBUFFERED: 1
 
+x-redis-config: &redis-config
+  image: docker.io/library/redis
+  user: "${UID}"
+  ports:
+    - 6379:6379
+  volumes:
+    - ${ENV_ROOT}/redis/data:/data
+  # Configure redis for persistence with AOF;
+  # See https://redis.io/docs/manual/persistence/
+  command: redis-server --appendonly yes --loglevel warning
+
 services:
 
   db:
@@ -37,16 +48,7 @@ services:
 
   redis:
     profiles: ["server"]
-    image: docker.io/library/redis
-    user: "${UID}"
-    ports:
-      - 6379:6379
-    volumes:
-      - ${ENV_ROOT}/redis/data:/data
-    # Configure redis for persistence with AOF;
-    # See https://redis.io/docs/manual/persistence/
-    command: redis-server --appendonly yes --loglevel warning
-
+    <<: *redis-config
 
   grafana:
     profiles: ["server"]
@@ -186,9 +188,7 @@ services:
 
   redis-bitcoind:
     profiles: ["prod-bitcoind"]
-    image: docker.io/library/redis
-    ports:
-      - 6379:6379
+    <<: *redis-config
 
   bitcoind-task-worker:
     profiles: ["bitcoind"]
