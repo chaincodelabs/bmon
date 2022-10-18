@@ -40,7 +40,7 @@ def watch_logs(filename: str):
                 log.exception("Listener %s failed to process line %r", listener, line)
                 models.ProcessLineError.objects.create(
                     host=settings.HOSTNAME,
-                    listener=listener.__class.__name__,
+                    listener=listener.__class__.__name__,
                     line=line,
                 )
                 continue
