@@ -117,7 +117,7 @@ def main_remote(
     rebuild_docker: bool,
     wgmap: t.Dict[str, wireguard.Server],
     server_wg_ip: str,
-    no_restart: bool = False,
+    restart_spec: str = "",
 ):
     user = getpass.getuser()
     fscm.s.pkgs_install(
@@ -169,7 +169,7 @@ def main_remote(
     if not run("which docker-compose", quiet=True).ok:
         run("pip install docker-compose").assert_ok()
 
-    run(f"cd {bmon_path} && git pull origin master").assert_ok()
+    run(f"cd {bmon_path} && git pull --ff-only origin master").assert_ok()
 
     if (
         p("/etc/docker/daemon.json", sudo=True)
@@ -187,10 +187,10 @@ def main_remote(
         run("systemctl restart systemd-journald", sudo=True).assert_ok()
 
     if "server" in host.tags:
-        provision_bmon_server(host, parent, rebuild_docker, server_wg_ip, no_restart)
+        provision_bmon_server(host, parent, rebuild_docker, server_wg_ip, restart_spec)
     elif "bitcoind" in host.tags:
         provision_monitored_bitcoind(
-            host, parent, rebuild_docker, server_wg_ip, no_restart
+            host, parent, rebuild_docker, server_wg_ip, restart_spec
         )
 
 
@@ -199,7 +199,7 @@ def provision_bmon_server(
     parent: fscm.remote.Parent,
     rebuild_docker: bool,
     server_wg_ip: str,
-    no_restart: bool = False,
+    restart_spec: str,
 ):
     assert (username := getpass.getuser()) != "root"
 
@@ -243,8 +243,20 @@ def provision_bmon_server(
     # Files, like pruned datadirs, will be served out of here.
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
-    if not no_restart:
-        run("systemctl --user restart bmon-server").assert_ok()
+    def cycle(services):
+        run(f"{docker_compose} stop {services}").assert_ok()
+        run(f"{docker_compose} rm -f {services}").assert_ok()
+        run(f"{docker_compose} up -d {services}").assert_ok()
+
+    match restart_spec:
+        case "":
+            cycle("web server-task-worker")
+        case "none":
+            pass
+        case "all":
+            run("systemctl --user restart bmon-server")
+        case _:
+            cycle(f"web server-task-worker {restart_spec}")
 
 
 def provision_monitored_bitcoind(
@@ -252,7 +264,7 @@ def provision_monitored_bitcoind(
     parent: fscm.remote.Parent,
     rebuild_docker: bool,
     server_wg_ip: str,
-    no_restart: bool = False,
+    restart_spec: str,
 ):
     assert (username := getpass.getuser()) != "root"
     os.chdir(bmon_path := Path.home() / "bmon")
@@ -272,7 +284,7 @@ def provision_monitored_bitcoind(
             USER=username,
             HOME=Path.home(),
         )
-    ).chown('root:root').chmod('644')
+    ).chown("root:root").chmod("644")
 
     if (
         p("/etc/systemd/system/timers.target.wants/logrotate.timer", sudo=True)
@@ -303,7 +315,9 @@ def provision_monitored_bitcoind(
         DATADIR_URL = f"http://{server_wg_ip}/bitcoin-pruned-550.tar.gz"
         # Load in a prepopulated pruned datadir if necessary.
         btc_size_kb = int(
-            run(f"du -s {bmon_path}/services/prod/bitcoin/data").stdout.split()[0]
+            run(f"du -s {bmon_path}/services/prod/bitcoin/data", q=True).stdout.split()[
+                0
+            ]
         )
         gb_in_kb = 1000**2
 
@@ -332,32 +346,61 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl --user daemon-reload")
 
-    if not no_restart:
-        systemd.enable_service("bmon-bitcoind")
-        run("systemctl --user restart bmon-bitcoind").assert_ok()
+    systemd.enable_service("bmon-bitcoind")
+
+    def cycle(services):
+        run(f"{docker_compose} stop {services}").assert_ok()
+        run(f"{docker_compose} rm -f {services}").assert_ok()
+        run(f"{docker_compose} up -d {services}").assert_ok()
+
+    match restart_spec:
+        case "":
+            cycle("bitcoind-task-worker bitcoind-watcher")
+        case "none":
+            pass
+        case "all":
+            run("systemctl --user restart bmon-bitcoind")
+        case _:
+            cycle(f"bitcoind-task-worker bitcoind-watcher {restart_spec}")
 
 
 @cli.cmd
-def deploy(rebuild_docker: bool = False, no_restart: bool = False):
-    """Provision necessary dependencies and config files on hosts."""
+def deploy(
+    rebuild_docker: bool = False,
+    restart: str = "",
+):
+    """
+    Provision necessary dependencies and config files on hosts.
+
+    Kwargs:
+        restart: 'all', 'none', or specify services to restart. By default only
+            restart "app" services.
+    """
     wgsmap, hostmap = get_hosts_for_cli()
     hosts = list(hostmap.values())
-    includes_server = any('server' in h.tags for h in hosts)
+    includes_server = any("server" in h.tags for h in hosts)
     server_wg_ip = get_server_wireguard_ip()
 
     with executor(*hosts) as exec:
         exec.allow_file_access("./etc/*", "./etc/**/*")
 
         # Deploy to server first to run database migrations.
-        if includes_server and not exec.run_on_hosts(
-            lambda h: "server" in h.tags,
-            main_remote,
-            rebuild_docker,
-            wgsmap,
-            server_wg_ip,
-            no_restart,
-        ).ok:
+        if (
+            includes_server
+            and not (
+                server_result := exec.run_on_hosts(
+                    lambda h: "server" in h.tags,
+                    main_remote,
+                    rebuild_docker,
+                    wgsmap,
+                    server_wg_ip,
+                    restart,
+                )
+            ).ok
+        ):
             print("Deploy to server failed!")
+            print(server_result.failed)
+            print(server_result.succeeded)
             sys.exit(1)
 
         exec.run_on_hosts(
@@ -366,7 +409,7 @@ def deploy(rebuild_docker: bool = False, no_restart: bool = False):
             rebuild_docker,
             wgsmap,
             server_wg_ip,
-            no_restart,
+            restart,
         )
 
 
