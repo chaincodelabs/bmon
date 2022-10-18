@@ -159,7 +159,7 @@ services:
     links:
       - db
       - redis
-    command: celery flower -A bmon.server_tasks
+    command: celery flower -A bmon.server_tasks --address=0.0.0.0 
     ports:
       - 5555:5555
 
@@ -235,7 +235,7 @@ services:
     # Can't have this as a dependency because of local dev.
     # links:
     #   - redis-bitcoind
-    command: celery flower -A bmon.bitcoind_tasks
+    command: celery flower -A bmon.bitcoind_tasks --address=0.0.0.0
     ports:
       - 5555:5555
 
