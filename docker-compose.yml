@@ -142,11 +142,26 @@ services:
       WAIT_FOR: "${DB_HOST}:5432,${BMON_REDIS_HOST}:6379"
     volumes:
       - ./:/src
-      - /home/james/.bitcoind/debug.log:/var/log/bitcoind.log
     links:
       - db
       - redis
     command: celery -A bmon.server_tasks worker --beat -l INFO
+
+  server-flower:
+    profiles: ["server"]
+    user: "${UID}"
+    image: bmon-base-image
+    environment:
+      <<: *env
+      WAIT_FOR: "${DB_HOST}:5432,${BMON_REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+    links:
+      - db
+      - redis
+    command: celery flower -A bmon.server_tasks
+    ports:
+      - 5555:5555
 
       
   bitcoind-exporter:
@@ -193,9 +208,6 @@ services:
   bitcoind-task-worker:
     profiles: ["bitcoind"]
     user: "${UID}"
-    build:
-      context: .
-      dockerfile: ./docker/py.Dockerfile
     image: bmon-base-image
     environment:
       <<: *env
@@ -207,6 +219,25 @@ services:
     # links:
     #   - redis-bitcoind
     command: celery -A bmon.bitcoind_tasks worker -l INFO
+
+  bitcoind-flower:
+    profiles: ["bitcoind"]
+    user: "${UID}"
+    image: bmon-base-image
+    environment:
+      <<: *env
+      BMON_REDIS_LOCAL_URL: 
+      WAIT_FOR: "${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379"
+    links:
+      - bitcoind-task-worker
+    volumes:
+      - ./:/src
+    # Can't have this as a dependency because of local dev.
+    # links:
+    #   - redis-bitcoind
+    command: celery flower -A bmon.bitcoind_tasks
+    ports:
+      - 5555:5555
 
   bitcoind-watcher:
     profiles: ["bitcoind"]

@@ -18,6 +18,7 @@ dependencies = [
     'django',
     'redis',
     'celery[redis]',
+    'flower',
     'walrus',
     'django-ninja',
     'whitenoise',
