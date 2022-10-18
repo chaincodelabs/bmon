@@ -110,10 +110,12 @@ def dev_env() -> str:
 
 
 def prod_settings(host, server_wireguard_ip: str) -> dict:
-    bitcoin_flags = ""
+    # Don't print to console in prod; everything is done on the basis of the debug.log
+    # anyway, so the stdout will just waste journald space.
+    bitcoin_flags = "-printtoconsole=0"
 
     if host.bitcoin_prune is not None:
-        bitcoin_flags += f"-prune={host.bitcoin_prune}"
+        bitcoin_flags += f" -prune={host.bitcoin_prune}"
     if host.bitcoin_dbcache is not None:
         bitcoin_flags += f" -dbcache={host.bitcoin_dbcache}"
 
