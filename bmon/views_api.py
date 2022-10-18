@@ -2,7 +2,7 @@ from ninja import NinjaAPI
 from django.forms.models import model_to_dict
 
 from bmon import models
-from bmon_infra.infra import get_bitcoind_hosts
+from bmon_infra.infra import get_hosts
 
 api = NinjaAPI()
 
@@ -12,6 +12,10 @@ def prom_scrape_config(_):
     def get_wireguard_ip(host):
         bmon_wg = host.wireguards['wg-bmon']
         return bmon_wg.ip
+
+    hosts = get_hosts()[1].values()
+    bitcoind_hosts = [h for h in hosts if 'bitcoind' in h.tags]
+    [server] = [h for h in hosts if 'server' in h.tags]
 
     targets = [
         {
@@ -30,8 +34,13 @@ def prom_scrape_config(_):
                 'bitcoin_prune': str(host.bitcoin_prune),
             },
         }
-        for host in get_bitcoind_hosts()
+        for host in bitcoind_hosts
     ]
+
+    targets.append({
+        'targets': [f'{get_wireguard_ip(server)}:{server.prom_exporter_port}'],
+        'labels': {'job': 'server', 'hostname': server.name},
+    })
     return targets
 
 
