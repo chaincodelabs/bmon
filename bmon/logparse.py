@@ -24,7 +24,7 @@ def watch_logs(filename: str):
 
     listeners = [
         ConnectBlockListener(),
-        MempoolListener(),
+        # MempoolListener(),
     ]
 
     log_progress = LogProgress.objects.filter(host=settings.HOSTNAME).first()
@@ -55,7 +55,7 @@ def watch_logs(filename: str):
                     continue
 
                 d = model_to_dict(got)
-                d['_model'] = got.__class__.__name__
+                d["_model"] = got.__class__.__name__
 
                 # A corresponding LogProgress entry is saved in `server_tasks`.
                 send_event.delay(d, linehash)
@@ -73,6 +73,7 @@ def read_logfile_forever(
 
     Taken and modified from https://stackoverflow.com/a/25632664.
     """
+
     def openfile():
         return open(filename, "r", errors="ignore")
 
@@ -89,24 +90,31 @@ def read_logfile_forever(
                 break
 
             # Must strip the newline off the end to match contents as yielded below.
-            hashed = hash_noncrypto(line.rstrip('\n'))
+            hashed = hash_noncrypto(line.rstrip("\n"))
 
             if hashed == seek_to_cursor:
                 start_pos = current.tell()
-                log.info("Found start of logs (per cursor %s) at %s",
-                         seek_to_cursor, start_pos)
+                log.info(
+                    "Found start of logs (per cursor %s) at %s",
+                    seek_to_cursor,
+                    start_pos,
+                )
                 break
 
         if not start_pos:
             log.warning(
                 "Desired logline cursor (%s) not found in file %s - parsing all lines",
-               seek_to_cursor, filename)
+                seek_to_cursor,
+                filename,
+            )
 
     current.seek(0)
     if start_pos:
         current.seek(start_pos)
 
-    curr_line = ''
+    curr_line = ""
+    lines_processed = 0
+    LOG_AFTER = 1_000
 
     while True:
         while True:
@@ -115,18 +123,26 @@ def read_logfile_forever(
             if not got:
                 # Out of contents
                 break
-            elif '\n' in got:
+            elif "\n" in got:
                 # The chunk we retrieved may have multiple lines, so yield multiple
                 # if need be.
-                lines = got.split('\n')
+                lines = got.split("\n")
                 assert len(lines) >= 2
 
                 [end_of_current, *middle_lines, next_curr_line] = lines
 
-                yield curr_line + end_of_current
+                yield (sent_line := curr_line + end_of_current)
+                lines_processed += 1
+
+                if lines_processed > LOG_AFTER:
+                    lines_processed = 0
+                    log.info(
+                        "processed logs from %s up to %s", filename, get_time(sent_line)
+                    )
 
                 for complete_line in middle_lines:
                     yield complete_line
+                    lines_processed += 1
 
                 curr_line = next_curr_line
             else:
@@ -134,15 +150,16 @@ def read_logfile_forever(
 
         try:
             if os.stat(filename).st_ino != curino:
+                log.info("detected inode change in %s; reopening file", filename)
                 new = openfile()
                 current.close()
                 current = new
                 curino = os.fstat(current.fileno()).st_ino
             else:
-                time.sleep(0.001)
+                log.info("ran out of content to consume from %s; sleeping", filename)
+                time.sleep(0.01)
         except IOError:
             pass
-
 
 
 def hash_noncrypto(w: str) -> str:
@@ -153,12 +170,12 @@ def hash_noncrypto(w: str) -> str:
 LineHash = str
 
 
-def get_time(line: str = '', timestr: str = '') -> datetime.datetime:
+def get_time(line: str = "", timestr: str = "") -> datetime.datetime:
     """
     Return the time a log message was emitted in UTC.
     """
     if not (line or timestr):
-        raise ValueError('arg required')
+        raise ValueError("arg required")
     if not timestr:
         timestr = line.split()[0]
 
@@ -170,10 +187,10 @@ def get_time(line: str = '', timestr: str = '') -> datetime.datetime:
     return d + offset
 
 
-_FLOAT = r'\d*\.\d+'
-_HASH = r'[a-f0-9]+'
-_HEX = r'0x[a-f0-9]+'
-_NOT_QUOTE = '[^\'"]+'
+_FLOAT = r"\d*\.\d+"
+_HASH = r"[a-f0-9]+"
+_HEX = r"0x[a-f0-9]+"
+_NOT_QUOTE = "[^'\"]+"
 _UPDATE_TIP_START = "UpdateTip: "
 
 
@@ -185,91 +202,93 @@ class MempoolListener:
 
     _accept_sub_patts = {
         re.compile(r"\s+peer=(?P<peer_num>\d+)"),
-        re.compile(fr"\s+accepted (?P<txhash>{_HASH})"),
+        re.compile(rf"\s+accepted (?P<txhash>{_HASH})"),
         re.compile(r"poolsz (?P<pool_size_txns>\d+) txn, (?P<pool_size_kb>\d+) kB"),
     }
 
     def process_line(self, line):
-        if ' AcceptToMemoryPool:' in line and ' accepted ' in line:
+        if " AcceptToMemoryPool:" in line and " accepted " in line:
             matches = {}
             timestamp = get_time(line)
             for patt in self._accept_sub_patts:
-                if (match := patt.search(line)):
+                if match := patt.search(line):
                     matches.update(match.groupdict())
 
             return models.MempoolAccept(
                 host=settings.HOSTNAME,
                 timestamp=timestamp,
-                peer_num=int(matches['peer_num']),
-                txhash=matches['txhash'],
-                pool_size_kb=int(matches['pool_size_kb']),
-                pool_size_txns=int(matches['pool_size_txns']),
+                peer_num=int(matches["peer_num"]),
+                txhash=matches["txhash"],
+                pool_size_kb=int(matches["pool_size_kb"]),
+                pool_size_txns=int(matches["pool_size_txns"]),
             )
 
 
 class ConnectBlockListener:
     _detail_patts = {
-        re.compile(fr"- Load block from disk: (?P<load_block_from_disk_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Sanity checks: (?P<sanity_checks_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Fork checks: (?P<fork_checks_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Connect (?P<tx_count>\d+) transactions: (?P<connect_txs_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Verify (?P<txin_count>\d+) txins: (?P<verify_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Index writing: (?P<index_writing_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Connect total: (?P<connect_total_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Flush: (?P<flush_coins_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Writing chainstate: (?P<flush_chainstate_time_ms>{_FLOAT})ms "),
+        re.compile(
+            rf"- Load block from disk: (?P<load_block_from_disk_time_ms>{_FLOAT})ms "
+        ),
+        re.compile(rf"- Sanity checks: (?P<sanity_checks_time_ms>{_FLOAT})ms "),
+        re.compile(rf"- Fork checks: (?P<fork_checks_time_ms>{_FLOAT})ms "),
+        re.compile(
+            rf"- Connect (?P<tx_count>\d+) transactions: (?P<connect_txs_time_ms>{_FLOAT})ms "
+        ),
+        re.compile(
+            rf"- Verify (?P<txin_count>\d+) txins: (?P<verify_time_ms>{_FLOAT})ms "
+        ),
+        re.compile(rf"- Index writing: (?P<index_writing_time_ms>{_FLOAT})ms "),
+        re.compile(rf"- Connect total: (?P<connect_total_time_ms>{_FLOAT})ms "),
+        re.compile(rf"- Flush: (?P<flush_coins_time_ms>{_FLOAT})ms "),
+        re.compile(rf"- Writing chainstate: (?P<flush_chainstate_time_ms>{_FLOAT})ms "),
         # UpdateTip messages are handled below.
-        re.compile(fr"- Connect postprocess: (?P<connect_postprocess_time_ms>{_FLOAT})ms "),
-        re.compile(fr"- Connect block: (?P<connectblock_total_time_ms>{_FLOAT})ms "),
+        re.compile(
+            rf"- Connect postprocess: (?P<connect_postprocess_time_ms>{_FLOAT})ms "
+        ),
+        re.compile(rf"- Connect block: (?P<connectblock_total_time_ms>{_FLOAT})ms "),
     }
 
     # 'UpdateTip: ...' subpatterns. Grab whatever of this we can - lot of
     # variation between versions.
     _update_tip_sub_patts = {
-        re.compile(fr"new\s+best=(?P<blockhash>{_HASH})\s+"),
+        re.compile(rf"new\s+best=(?P<blockhash>{_HASH})\s+"),
         re.compile(r"\s+height=(?P<height>\d+)\s+"),
         # version only present in 0.13+
-        re.compile(fr"\s+version=(?P<version>{_HEX})\s+"),
+        re.compile(rf"\s+version=(?P<version>{_HEX})\s+"),
         re.compile(r"\s+tx=(?P<total_tx_count>\d+)\s+"),
         # Early date format
         re.compile(r"\s+date='?(?P<date>[0-9-]+ [0-9:]+)'?\s+"),
         # Later date format
-        re.compile(fr"\s+date='(?P<date>{_NOT_QUOTE})'\s+"),
-        re.compile(fr"\s+cache=(?P<cachesize_mib>{_FLOAT})MiB\((?P<cachesize_txo>\d+)txo?\)"),
-        re.compile(fr"\s+warning='(?P<warning>{_NOT_QUOTE})'"),
+        re.compile(rf"\s+date='(?P<date>{_NOT_QUOTE})'\s+"),
+        re.compile(
+            rf"\s+cache=(?P<cachesize_mib>{_FLOAT})MiB\((?P<cachesize_txo>\d+)txo?\)"
+        ),
+        re.compile(rf"\s+warning='(?P<warning>{_NOT_QUOTE})'"),
         re.compile(r"\s+cache=(?P<cachesize_txo>\d+)\s*$"),
-        re.compile(fr"\s+log2_work=(?P<log2_work>{_FLOAT}) "),
+        re.compile(rf"\s+log2_work=(?P<log2_work>{_FLOAT}) "),
     }
 
     match_types = {
         float: (
-            'load_block_from_disk_time_ms',
-            'sanity_checks_time_ms',
-            'fork_checks_time_ms',
-            'connect_txs_time_ms',
-            'verify_time_ms',
-            'index_writing_time_ms',
-            'connect_total_time_ms',
-            'flush_coins_time_ms',
-            'flush_chainstate_time_ms',
-            'connect_postprocess_time_ms',
-            'connectblock_total_time_ms',
+            "load_block_from_disk_time_ms",
+            "sanity_checks_time_ms",
+            "fork_checks_time_ms",
+            "connect_txs_time_ms",
+            "verify_time_ms",
+            "index_writing_time_ms",
+            "connect_total_time_ms",
+            "flush_coins_time_ms",
+            "flush_chainstate_time_ms",
+            "connect_postprocess_time_ms",
+            "connectblock_total_time_ms",
         ),
-        int: (
-            'tx_count',
-            'txin_count',
-            'height',
-            'cachesize_txo',
-            'total_tx_count'
-        ),
+        int: ("tx_count", "txin_count", "height", "cachesize_txo", "total_tx_count"),
         str: (
-            'blockhash',
-            'version',
-            'date',
+            "blockhash",
+            "version",
+            "date",
         ),
-        str_or_none: (
-            'warning',
-        ),
+        str_or_none: ("warning",),
     }
 
     def __init__(self):
@@ -293,40 +312,42 @@ class ConnectBlockListener:
         # (based on a single log line).
         if line.find(_UPDATE_TIP_START) != -1:
             for patt in self._update_tip_sub_patts:
-                if (match := patt.search(line)):
+                if match := patt.search(line):
                     matchgroups.update(match.groupdict())
 
             timestamp = get_time(line)
 
             # 0.12 has UpdateTip: lines that just display the warning, so skip those.
-            if 'height' not in matchgroups:
+            if "height" not in matchgroups:
                 return
 
-            self.current_height = int(matchgroups['height'])
-            self.current_blockhash = matchgroups['blockhash']
+            self.current_height = int(matchgroups["height"])
+            self.current_blockhash = matchgroups["blockhash"]
 
             cachesize_mib = (
-                float(matchgroups['cachesize_mib'])
-                if 'cachesize_mib' in matchgroups else None)
+                float(matchgroups["cachesize_mib"])
+                if "cachesize_mib" in matchgroups
+                else None
+            )
 
             return ConnectBlockEvent(
                 host=settings.HOSTNAME,
                 timestamp=timestamp,
                 blockhash=self.current_blockhash,
                 height=self.current_height,
-                log2_work=float(matchgroups['log2_work']),
-                total_tx_count=int(matchgroups['total_tx_count']),
-                version=matchgroups.get('version'),
-                date=get_time(matchgroups['date']),
+                log2_work=float(matchgroups["log2_work"]),
+                total_tx_count=int(matchgroups["total_tx_count"]),
+                version=matchgroups.get("version"),
+                date=get_time(matchgroups["date"]),
                 cachesize_mib=cachesize_mib,
-                cachesize_txo=float(matchgroups['cachesize_txo']),
-                warning=matchgroups.get('warning'),
+                cachesize_txo=float(matchgroups["cachesize_txo"]),
+                warning=matchgroups.get("warning"),
             )
 
         # The rest of the code handles creation of ConnectBlockDetails.
 
         for patt in self._detail_patts:
-            if (match := patt.search(line)):
+            if match := patt.search(line):
                 matchgroups.update(match.groupdict())
                 break
 
@@ -366,8 +387,9 @@ def dict_onto_event(d: dict, event, type_map: dict):
             v = conversion_fnc(v)
             setattr(event, k, v)
         else:
-            log.warning("[%s] matched attribute not recognized: %s",
-                        event.__class__.__name__, k)
+            log.warning(
+                "[%s] matched attribute not recognized: %s", event.__class__.__name__, k
+            )
 
 
 def parse_log_line():

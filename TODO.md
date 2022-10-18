@@ -1,3 +1,5 @@
+- [ ] monitor: redis up
+- [ ] metric: at any given time, what feerate necessary to get into n blocks
 - [ ] alert: no new tip in over 2 hours
 - [ ] install celery flower for bitcoind/server
 - [ ] separate infrastructure in different unit file

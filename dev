@@ -58,17 +58,20 @@ def reup(service: str = "", rebuild_docker: bool = False, logs: bool = False):
 
 @cli.cmd
 def watchlogs():
+    """Tail interesting logs."""
     sh("docker-compose logs -f bitcoind server-task-worker "
        "bitcoind-task-worker bitcoind-watcher")
 
 
 @cli.cmd
 def test():
+    """Run automated tests."""
     sh("docker-compose run --rm test pytest bmon")
 
 
 @cli.cmd
 def watchjs():
+    """Watch the frontend javascript and rebuild as necessary."""
     sh("docker-compose run --rm js yarn run start")
 
 
