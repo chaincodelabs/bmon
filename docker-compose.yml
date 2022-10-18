@@ -38,8 +38,15 @@ services:
   redis:
     profiles: ["server"]
     image: docker.io/library/redis
+    user: "${UID}"
     ports:
       - 6379:6379
+    volumes:
+      - ${ENV_ROOT}/redis/data:/data
+    # Configure redis for persistence with AOF;
+    # See https://redis.io/docs/manual/persistence/
+    command: redis-server --appendonly yes --loglevel warning
+
 
   grafana:
     profiles: ["server"]

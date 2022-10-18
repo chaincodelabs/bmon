@@ -285,6 +285,8 @@ def make_services_data(hostname: str | None = None):
     p(promtailp := root / "promtail").mkdir()
     p(promtailp / "config.yml").contents(promtail(hostname))
 
+    p(root / 'redis' / 'data').mkdir()
+
 
 @cli.main
 @cli.arg("envfile", "-e")
