@@ -1,8 +1,13 @@
+import datetime
+import statistics
+from dataclasses import dataclass
+
 from ninja import NinjaAPI
 from django.forms.models import model_to_dict
 
 from bmon import models
-from bmon_infra.infra import get_hosts
+from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
+from bmon_infra.infra import get_hosts, Host, get_bitcoind_hosts
 
 api = NinjaAPI()
 
@@ -42,6 +47,71 @@ def prom_scrape_config(_):
         'labels': {'job': 'server', 'hostname': server.name},
     })
     return targets
+
+
+@api.get('/hosts')
+def hosts(_):
+    out = []
+    hosts = get_bitcoind_hosts()
+    peer_info = gather_rpc(lambda r: r.getpeerinfo())
+    chain_info = gather_rpc(lambda r: r.getblockchaininfo())
+
+    for host in hosts:
+        peers = peer_info[host.name]
+        if peers == RPC_ERROR_RESULT:
+            peers = []
+
+        chain = chain_info[host.name]
+        if chain == RPC_ERROR_RESULT:
+            continue
+
+        out.append({
+            'name': host.name,
+            'peers': {p['addr']: p['subver'] for p in peers},
+            'chaininfo': chain,
+            'bitcoin_version': host.bitcoin_version,
+        })
+
+    return out
+
+
+@dataclass
+class BlockConnView:
+    height: int
+    events: list[models.ConnectBlockEvent]
+
+    def __post_init__(self):
+        if not self.events:
+            return
+
+        def fromts(ts):
+            return datetime.datetime.fromtimestamp(ts)
+
+        times = {e.host: e.timestamp.timestamp() for e in self.events}
+        self.date = self.events[0].date
+        self.avg_got_time: datetime.datetime = fromts(statistics.mean(times.values()))
+        self.stddev_got_time: float = statistics.pstdev(times.values())
+        self.min: float = min(times.values())
+        self.min_dt = fromts(self.min)
+        self.diffs: Dict[str, float] = {host: t - self.min for host, t in times.items()}
+        self.events = []
+
+
+@api.get('/blocks')
+def blocks(_):
+    out = []
+    heights = list(
+        models.ConnectBlockEvent.objects.values_list("height", flat=True)
+        .order_by("-height")
+        .distinct()[:10]
+    )
+    cbs = list(models.ConnectBlockEvent.objects.filter(height__in=heights))
+
+    for height in heights:
+        height_cbs = [cb for cb in cbs if cb.height == height]
+        out.append(BlockConnView(height, height_cbs).__dict__)
+
+    return out
 
 
 @api.get('/mempool')

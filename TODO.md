@@ -1,5 +1,5 @@
-- [ ] monitor bitcoin node disk usage
-- [ ] limit journald size with /etc/systemd/journald.conf  "SystemMaxUse=100M"
-- [ ] configure docker-compose to log into journald, rotate, etc.
-- [ ] config: monitor-host: set `/etc/sysctrl.conf` `vm.max_map_count=262144`
-- [ ] config: logstash not dockerable on arm7l
+- [ ] alert: no new tip in over 2 hours
+- [ ] install celery flower for bitcoind/server
+- [ ] separate infrastructure in different unit file
+- [ ] monitor celery queue depth with prom
+- [ ] make redis persistent

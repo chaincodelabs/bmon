@@ -93,7 +93,6 @@ services:
 
   web: &web_config
     profiles: ["server"]
-    image: web
     user: "${UID}"
     build:
       context: .
@@ -140,6 +139,7 @@ services:
       - redis
     command: celery -A bmon.server_tasks worker --beat -l INFO
 
+      
   bitcoind-exporter:
     profiles: ["bitcoind"]
     image: jvstein/bitcoin-prometheus-exporter:latest
@@ -234,6 +234,9 @@ services:
     ports:
       - 9100:9100
 
+  # dev containers
+  # -----------------------------------------------
+
   test:
     profiles: ["dev"]
     user: "${UID}"
@@ -255,5 +258,19 @@ services:
       - bitcoind
     command: ./manage.py runserver 0.0.0.0:8080
 
+  js:
+    profiles: ["dev"]
+    image: js
+    user: "${UID}"
+    build:
+      context: ./frontend
+    environment:
+      <<: *env
+    volumes:
+      - ./frontend:/src
+      - js_node_modules:/node_modules
+      - ./frontend-build:/build
+    command: yarn run build
+
 volumes:
-  db-data:
+  js_node_modules:

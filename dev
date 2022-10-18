@@ -67,5 +67,10 @@ def test():
     sh("docker-compose run --rm test pytest bmon")
 
 
+@cli.cmd
+def watchjs():
+    sh("docker-compose run --rm js yarn run start")
+
+
 if __name__ == "__main__":
     cli.run()

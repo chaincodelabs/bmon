@@ -118,10 +118,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'bmon.urls'
 
+SHARED_WITH_FRONTEND = BASE_DIR / 'frontend-build'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [SHARED_WITH_FRONTEND],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -189,7 +191,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles-build"
 STATICFILES_DIRS = [
-    os.path.join(os.path.dirname(__file__), 'static')
+    os.path.join(os.path.dirname(__file__), 'static'),
+    SHARED_WITH_FRONTEND,
 ]
 
 # Default primary key field type

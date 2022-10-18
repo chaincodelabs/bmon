@@ -1,6 +1,7 @@
 .env
 services/
 staticfiles-build/
+frontend-build/bundle\.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

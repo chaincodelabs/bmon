@@ -1,0 +1,90 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Karla&display=swap');
+ */
+
+@font-face {
+    font-family: 'ninepin';
+    src: url('/static/ninepin.ttf') format('truetype');
+}  
+
+body {
+  background-color: #f8f8f8;
+  padding: 3vw;
+}
+
+#content {
+  font-family: monospace;
+  padding-left: 1em;
+}
+
+#bmon-title {
+  font-size: 3em;
+  font-family: 'ninepin', monospace;
+  padding: 0.3em;
+  border-bottom: 1px solid #222;
+  border-left: 1px solid #222;
+  width: max-content;
+  margin-bottom: 1em;
+  background-color: #f8f8f8;
+}
+
+.block-connects, .hosts {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  justify-content: left;
+  overflow-x: scroll;
+  scrollbar-width: none;
+  padding-bottom: 17px;
+  margin-bottom: 3em;
+}
+
+.block-connects::-webkit-scrollbar, .hosts::-webkit-scrollbar {
+  display: none;
+}
+
+.block-connect, .host {
+  padding: 0.8em;
+  border: 1px solid #666;
+  background-color: #fcf3ec; 
+  filter: drop-shadow(3px 2px 2px black);
+  margin-right: 1.3em;
+}
+
+.host {
+  background-color: #f5fbfb;
+}
+
+.block-connect {
+  padding-right: 1.5rem;
+}
+
+.stats {
+  width: max-content;
+}
+
+.stats .value table {
+  font-size: 0.9rem;
+}
+
+.stats .title {
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+}
+
+.stat {
+  margin-bottom: 1em;
+}
+
+.card-title {
+  font-weight: bold;
+  font-size: 1.4em;
+  margin-bottom: 0.8em;
+}
+
+.diffs {
+  letter-spacing: -1px;
+}
+
+.diffs tr td:first-child {
+  padding-right: 1em;
+}
