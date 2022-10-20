@@ -17,22 +17,18 @@ dependencies = [
     'psycopg2',  # for postgresql support
     'django',
     'redis',
-    'celery[redis]',
-    'flower',
+    'huey',
     'walrus',
     'django-ninja',
     'whitenoise',
+    'fastavro',
+    'clii',
 ]
 version = "0.0.1"
 
 [project.scripts]
-bmon-parse = "bmon.logparse:main"
-bmon-mon = "bmon.monitor:main"
-bmon-server = "bmon.webapp:main"
-bmon-migrate = "bmon.db:init_migrate"
-bmon-watch-bitcoind = "bmon.bitcoind_worker.tasks:monitor_bitcoind_log"
-# bmon-worker-bitcoind = "bmon.bitcoind_worker.tasks:run_worker"
-# bmon-worker-server = "bmon.server_worker.tasks:run_worker"
+bmon-watch-bitcoind-logs = "bmon.bitcoind_tasks:watch_bitcoind_logs"
+bmon-util = "bmon.util_cli:main"
 
 
 [project.optional-dependencies]

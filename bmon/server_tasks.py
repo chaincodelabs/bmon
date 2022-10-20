@@ -8,11 +8,11 @@ nodes.
 from collections import defaultdict
 import os
 import logging
+import functools
 
 import django
-from celery import Celery
 from django.conf import settings
-from django.utils import timezone
+from huey import RedisHuey, crontab
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
@@ -23,18 +23,10 @@ from bmon.bitcoin.api import gather_rpc, RPC_ERROR_RESULT
 
 log = logging.getLogger(__name__)
 
-app = Celery(
-    "bmon-server-tasks",
-    broker=settings.REDIS_SERVER_URL,
-)
+server_q = RedisHuey("bmon-server", url=settings.REDIS_SERVER_URL)
 
 
-@app.on_after_configure.connect
-def setup_periodic_tasks(sender, **kwargs):
-    sender.add_periodic_task(60, check_for_overlapping_peers.s(), name="examine peers")
-
-
-@app.task
+@server_q.periodic_task(crontab(minute="*/10"))
 def check_for_overlapping_peers():
     def getpeerinfo(rpc):
         return rpc.getpeerinfo()
@@ -50,7 +42,7 @@ def check_for_overlapping_peers():
 
         hosts_contacted.append(hostname)
         for peer in peers:
-            peer_to_hosts[peer['addr']].append(hostname)
+            peer_to_hosts[peer["addr"]].append(hostname)
 
     print(
         "%d peers found across %d hosts (%s)"
@@ -61,14 +53,10 @@ def check_for_overlapping_peers():
             print("peer overlap detected for %r: %s" % (peer, hosts))
 
 
-@app.task
-def receive_bitcoind_event(event: dict, linehash: str):
+@server_q.task()
+def persist_bitcoind_event(event: dict, linehash: str):
     modelname = event.pop("_model")
     Model = getattr(models, modelname)
 
     instance = Model.objects.create(**event)
     print(f"Saved {instance}")
-
-    models.LogProgress.objects.update_or_create(
-        host=instance.host, defaults={"loghash": linehash, "timestamp": timezone.now()}
-    )

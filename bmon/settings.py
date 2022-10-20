@@ -34,6 +34,10 @@ BITCOIN_RPC_PORT = os.environ.get('BITCOIN_RPC_PORT')
 # For testing
 LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'
 
+# The location we write
+MEMPOOL_ACTIVITY_CACHE_PATH = Path(os.environ.get(
+    'MEMPOOL_ACTIVITY_CACHE_PATH', '/mempool-activity-cache'))
+
 BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
 
 # Quick-start development settings - unsuitable for production
@@ -81,6 +85,12 @@ LOGGING = {
                 'console',
                 # 'sentry',
             ],
+        },
+        'huey': {
+            # Huey already logs stuff?
+            'level': 'INFO',
+            'handlers': [],
+            'propagate': False,
         },
     },
 }

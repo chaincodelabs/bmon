@@ -60,7 +60,13 @@ def reup(service: str = "", rebuild_docker: bool = False, logs: bool = False):
 def watchlogs():
     """Tail interesting logs."""
     sh("docker-compose logs -f bitcoind server-task-worker "
-       "bitcoind-task-worker bitcoind-watcher")
+       "bitcoind-task-worker bitcoind-watcher bitcoind-mempool-worker")
+
+
+@cli.cmd
+def cleardata():
+    sh("rm -fr services/dev/*")
+    sh("bmon-config")
 
 
 @cli.cmd

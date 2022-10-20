@@ -1,6 +1,9 @@
 import datetime
+import io
 
-from . import logparse, conftest
+import fastavro
+
+from . import logparse, conftest, models
 
 
 def test_mempoollistener():
@@ -15,6 +18,12 @@ def test_mempoollistener():
     assert got.timestamp == logparse.get_time("2022-10-17T17:57:43.861480Z")
     assert got.pool_size_kb == 25560
     assert got.pool_size_txns == 11848
+
+    # Ensure we can write to avro
+    fake_avro_file = io.BytesIO()
+    fastavro.writer(
+        fake_avro_file, models.mempool_activity_avro_schema, [got.avro_record()])
+    assert len(fake_avro_file.getvalue()) > 0
 
 
 def test_connectblockevent():

@@ -145,25 +145,8 @@ services:
     links:
       - db
       - redis
-    command: celery -A bmon.server_tasks worker --beat -l INFO
+    command: huey_consumer.py bmon.server_tasks.server_q -w 8
 
-  server-flower:
-    profiles: ["server"]
-    user: "${UID}"
-    image: bmon-base-image
-    environment:
-      <<: *env
-      WAIT_FOR: "${DB_HOST}:5432,${BMON_REDIS_HOST}:6379"
-    volumes:
-      - ./:/src
-    links:
-      - db
-      - redis
-    command: celery -A bmon.server_tasks flower --address=0.0.0.0 
-    ports:
-      - 5555:5555
-
-      
   bitcoind-exporter:
     profiles: ["bitcoind"]
     image: jvstein/bitcoin-prometheus-exporter:latest
@@ -205,7 +188,7 @@ services:
     profiles: ["prod-bitcoind"]
     <<: *redis-config
 
-  bitcoind-task-worker:
+  bitcoind-task-worker: &bitcoind-worker
     profiles: ["bitcoind"]
     user: "${UID}"
     image: bmon-base-image
@@ -215,29 +198,17 @@ services:
       WAIT_FOR: "${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379"
     volumes:
       - ./:/src
+      - ${ENV_ROOT}/bmon/mempool-activity-cache:/mempool-activity-cache
     # Can't have this as a dependency because of local dev.
     # links:
     #   - redis-bitcoind
-    command: celery -A bmon.bitcoind_tasks worker -l INFO
+    command: huey_consumer.py bmon.bitcoind_tasks.events_q -w 8
 
-  bitcoind-flower:
-    profiles: ["bitcoind"]
-    user: "${UID}"
-    image: bmon-base-image
-    environment:
-      <<: *env
-      BMON_REDIS_LOCAL_URL: 
-      WAIT_FOR: "${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379"
-    links:
-      - bitcoind-task-worker
-    volumes:
-      - ./:/src
-    # Can't have this as a dependency because of local dev.
-    # links:
-    #   - redis-bitcoind
-    command: celery -A bmon.bitcoind_tasks flower --address=0.0.0.0
-    ports:
-      - 5555:5555
+  bitcoind-mempool-worker:
+    <<: *bitcoind-worker
+    # Consume mempool activity in its own worker since it's so high volume.
+    # Tell huey to -q to avoid lots of noise.
+    command: huey_consumer.py bmon.bitcoind_tasks.mempool_q -w 4 -q
 
   bitcoind-watcher:
     profiles: ["bitcoind"]
@@ -253,7 +224,7 @@ services:
       - ${BITCOIN_DATA_PATH}/debug.log:/var/log/bitcoind.log
     links:
       - bitcoind-task-worker
-    command: python manage.py watchlogs
+    command: bmon-watch-bitcoind-logs
 
   node-exporter:
     # only monitor this stuff in prod since its mountpoint needs are zealous.

@@ -287,6 +287,8 @@ def make_services_data(hostname: str | None = None):
 
     p(root / 'redis' / 'data').mkdir()
 
+    p(root / 'bmon' / 'mempool-activity-cache').mkdir()
+
 
 @cli.main
 @cli.arg("envfile", "-e")

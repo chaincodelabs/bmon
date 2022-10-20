@@ -1,3 +1,4 @@
+import fastavro
 from django.db import models
 
 
@@ -21,6 +22,8 @@ class ConnectBlockEvent(models.Model):
 
     2019-08-09T16:28:42Z UpdateTip: new best=00000000000000000001d80d14ee4400b6d9c851debe27e6777f3876edd4ad1e height=589349 version=0x20800000 log2_work=90.944215 tx=443429260 date='2019-08-09T16:27:43Z' progress=1.000000 cache=8.7MiB(64093txo) warning='44 of last 100 blocks have unexpected version'
     """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
 
@@ -36,6 +39,10 @@ class ConnectBlockEvent(models.Model):
     cachesize_mib = models.FloatField(null=True)
     cachesize_txo = models.IntegerField()
     warning = models.CharField(null=True, blank=True, max_length=1024)
+
+    @property
+    def event_type(self) -> str:
+        return 'block'
 
 
 class ConnectBlockDetails(models.Model):
@@ -56,6 +63,8 @@ class ConnectBlockDetails(models.Model):
     2019-07-29T18:34:17Z   - Connect postprocess: 70.64ms [8.14s (8.53ms/blk)]
     2019-07-29T18:34:17Z - Connect block: 136.63ms [344.92s (361.55ms/blk)]
     """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+
     host = models.CharField(max_length=200)
     # The latest logline in the connectblock measurements.
     timestamp = models.DateTimeField()
@@ -77,9 +86,39 @@ class ConnectBlockDetails(models.Model):
     connect_postprocess_time_ms = models.FloatField()
     connectblock_total_time_ms = models.FloatField()
 
+    @property
+    def event_type(self) -> str:
+        return 'block'
+
+
+mempool_event_type_enum = {
+    'type': 'enum', 'name': 'event_type', 'symbols': [
+        'mempool_accept',
+    ],
+}
+
+# Arvo schema for mempool activity
+mempool_activity_avro_schema = fastavro.parse_schema({
+    'doc': 'Bitcoind mempool activity',
+    'name': 'Mempool',
+    'type': 'record',
+    'fields': [
+        {'name': 'event_type', 'type': mempool_event_type_enum},
+        {'name': 'host', 'type': 'string'},
+        {'name': 'timestamp', 'type': 'string'},
+        {'name': 'txhash', 'type': 'string'},
+        {'name': 'peer_num', 'type': ['null', 'int']},
+        {'name': 'pool_size_txns', 'type': ['null', 'int']},
+        {'name': 'pool_size_kb', 'type': ['null', 'int']},
+    ],
+})
+
 
 class MempoolAccept(models.Model):
     """
+    TODO: This isn't actually persisted to the database, so we should probably
+    find another way of defining this data.
+
     A transaction is accepted to the mempool.
 
     2022-10-17T17:57:43.861480Z AcceptToMemoryPool: peer=11: accepted fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b (poolsz 11848 txn, 25560 kB)
@@ -90,6 +129,21 @@ class MempoolAccept(models.Model):
     peer_num = models.IntegerField()
     pool_size_txns = models.IntegerField()
     pool_size_kb = models.IntegerField()
+
+    def avro_record(self):
+        return {
+            'event_type': 'mempool_accept',
+            'host': self.host,
+            'timestamp': self.timestamp.isoformat(),
+            'txhash': self.txhash,
+            'pool_size_txns': self.pool_size_txns,
+            'pool_size_kb': self.pool_size_kb,
+            'peer_num': self.peer_num,
+        }
+
+    @property
+    def event_type(self) -> str:
+        return 'mempool'
 
 
 class ProcessLineError(models.Model):

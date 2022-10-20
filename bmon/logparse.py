@@ -8,57 +8,15 @@ import os
 import typing as t
 from pathlib import Path
 
+import walrus
 from django.conf import settings
-from django.forms.models import model_to_dict
+from django.utils import timezone
 
-from bmon.models import ConnectBlockDetails, ConnectBlockEvent, LogProgress
+from bmon.models import ConnectBlockDetails, ConnectBlockEvent
 from bmon import models
-from bmon.bitcoind_tasks import send_event
 
 
 log = logging.getLogger(__name__)
-
-
-def watch_logs(filename: str):
-    log.info(f"listening to logs at {filename}")
-
-    listeners = [
-        ConnectBlockListener(),
-        # MempoolListener(),
-    ]
-
-    log_progress = LogProgress.objects.filter(host=settings.HOSTNAME).first()
-    start_log_cursor = log_progress.loghash if log_progress else None
-
-    for line in read_logfile_forever(filename, start_log_cursor):
-        linehash = hash_noncrypto(line)
-
-        for listener in listeners:
-            try:
-                got = listener.process_line(line)
-            except Exception:
-                log.exception("Listener %s failed to process line %r", listener, line)
-                models.ProcessLineError.objects.create(
-                    host=settings.HOSTNAME,
-                    listener=listener.__class__.__name__,
-                    line=line,
-                )
-                continue
-
-            if got:
-                log.debug("Got an instance %r from line (%s) %r", got, linehash, line)
-                try:
-                    got.full_clean()
-                except Exception:
-                    log.exception("model %s failed to validate!", got)
-                    # TODO: stash the bad model somewhere for later processing.
-                    continue
-
-                d = model_to_dict(got)
-                d["_model"] = got.__class__.__name__
-
-                # A corresponding LogProgress entry is saved in `server_tasks`.
-                send_event.delay(d, linehash)
 
 
 def read_logfile_forever(
@@ -82,7 +40,7 @@ def read_logfile_forever(
     start_pos = None
 
     if seek_to_cursor:
-        log.info("Attempting to seek to logline cursor %s", seek_to_cursor)
+        log.info("attempting to seek to logline cursor %s", seek_to_cursor)
 
         while True:
             line = current.readline()
@@ -90,12 +48,12 @@ def read_logfile_forever(
                 break
 
             # Must strip the newline off the end to match contents as yielded below.
-            hashed = hash_noncrypto(line.rstrip("\n"))
+            hashed = linehash(line.rstrip("\n"))
 
             if hashed == seek_to_cursor:
                 start_pos = current.tell()
                 log.info(
-                    "Found start of logs (per cursor %s) at %s",
+                    "found start of logs (per cursor %s) at %s",
                     seek_to_cursor,
                     start_pos,
                 )
@@ -103,7 +61,7 @@ def read_logfile_forever(
 
         if not start_pos:
             log.warning(
-                "Desired logline cursor (%s) not found in file %s - parsing all lines",
+                "desired logline cursor (%s) not found in file %s - parsing all lines",
                 seek_to_cursor,
                 filename,
             )
@@ -111,10 +69,12 @@ def read_logfile_forever(
     current.seek(0)
     if start_pos:
         current.seek(start_pos)
+        log.info("starting to parse logs from pos %s", start_pos)
 
     curr_line = ""
     lines_processed = 0
     LOG_AFTER = 1_000
+    got_line_yet = False
 
     while True:
         while True:
@@ -133,6 +93,10 @@ def read_logfile_forever(
 
                 yield (sent_line := curr_line + end_of_current)
                 lines_processed += 1
+
+                if not got_line_yet:
+                    log.info("first line processed: %r", sent_line)
+                    got_line_yet = True
 
                 if lines_processed > LOG_AFTER:
                     lines_processed = 0
@@ -156,14 +120,64 @@ def read_logfile_forever(
                 current = new
                 curino = os.fstat(current.fileno()).st_ino
             else:
-                log.info("ran out of content to consume from %s; sleeping", filename)
                 time.sleep(0.01)
         except IOError:
             pass
 
 
-def hash_noncrypto(w: str) -> str:
-    """TODO: replace this with something faster if shown to be a bottleneck."""
+class LogfilePosManager:
+    """
+    Manage persisting a cursor into the bitcoind's logfile.
+
+    The cursor is cached in the bitcoind-local redis to not hinder performance, and then
+    periodically flushed into postgres.
+    """
+    REDIS_SEPARATOR = ' | '
+
+    def __init__(self, host: str, db: walrus.Database):
+        self.host = host
+        self.redis_key = f'logpos.{host}'
+        self.db = db
+        self.lock = self.db.lock(f'lock.logpos.{host}', ttl=1_000)
+
+    def getpos(self) -> None | tuple[str, datetime.datetime]:
+        with self.lock:
+            if not (got := self.db.get(self.redis_key)):
+                return None
+            linehash, dt_str = (
+                got.split(self.REDIS_SEPARATOR))
+            return (linehash, datetime.datetime.fromisoformat(dt_str))
+
+    def mark(self, linehash: str):
+        """
+        Persist logfile position in redis.
+
+        We cache in redis because some high-volume events would overwhelm the db with
+        writes to maintain this state (e.g. MempoolAccept).
+        """
+        with self.lock:
+            self.db[self.redis_key] = (
+                f'{linehash}{self.REDIS_SEPARATOR}{timezone.now().isoformat()}')
+
+    def flush(self):
+        """
+        Write the logfile pos from redis into postgres.
+        """
+        if not (got := self.getpos()):
+            return
+        linehash, dt = got
+
+        log.info("flushing logfile pos for %s (%s @ %s)", self.host, linehash, dt)
+        models.LogProgress.objects.update_or_create(
+            host=self.host,
+            defaults={"loghash": linehash, "timestamp": dt},
+        )
+
+
+def linehash(w: str) -> str:
+    """
+    A fast, non-cryptographic line hash.
+    """
     return hashlib.md5(w.encode()).hexdigest()
 
 
