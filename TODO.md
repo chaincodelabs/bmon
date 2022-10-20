@@ -1,3 +1,4 @@
+- [ ] set up sentry
 - [ ] monitor: redis up
 - [ ] metric: at any given time, what feerate necessary to get into n blocks
 - [ ] alert: no new tip in over 2 hours

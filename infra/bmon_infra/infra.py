@@ -2,6 +2,7 @@
 # vim: set sw=4 tabstop=4
 import os
 import sys
+import json
 import getpass
 import re
 import typing as t
@@ -309,20 +310,22 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl daemon-reload", sudo=True)
 
+    services_path = bmon_path / 'services' / 'prod'
+
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
     if host.bitcoin_prune:
         DATADIR_URL = f"http://{server_wg_ip}/bitcoin-pruned-550.tar.gz"
         # Load in a prepopulated pruned datadir if necessary.
         btc_size_kb = int(
-            run(f"du -s {bmon_path}/services/prod/bitcoin/data", q=True).stdout.split()[
+            run(f"du -s {services_path}/bitcoin/data", q=True).stdout.split()[
                 0
             ]
         )
         gb_in_kb = 1000**2
 
         if btc_size_kb < gb_in_kb:
-            btc_data = bmon_path / "services/prod/bitcoin/data"
+            btc_data = services_path / "bitcoin/data"
             print(f"Fetching prepopulated (pruned) datadir from {DATADIR_URL}")
             run(f"curl -s {DATADIR_URL} | tar xz -C /tmp").assert_ok()
             run(f"rm -rf {btc_data}").assert_ok()
@@ -331,6 +334,9 @@ def provision_monitored_bitcoind(
             # of it during the mount process of bitcoind-watcher.
             run(f"touch {btc_data}/debug.log")
             print(f"Installed prepopulated pruned dir at {btc_data}")
+
+    p(services_path / 'bmon' / 'credentials' / 'chaincode-gcp.json').contents(
+        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__))
 
     if (
         p(sysd / "bmon-bitcoind.service")

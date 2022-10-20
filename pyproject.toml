@@ -23,6 +23,7 @@ dependencies = [
     'whitenoise',
     'fastavro',
     'clii',
+    'google-cloud-storage',
 ]
 version = "0.0.1"
 

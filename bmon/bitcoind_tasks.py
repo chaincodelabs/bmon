@@ -54,6 +54,9 @@ def write_logfile_pos():
 # Coordinate mempool activity with a lock since we're writing out to a single file.
 mempool_activity_lock = redisdb.lock("mempool-activity", ttl=1_000)
 
+LAST_SHIPPED_KEY = "mempool.last_shipped"
+CURRENT_MEMPOOL_FILE = settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current"
+
 
 @mempool_q.task()
 def mempool_activity(avro_data: dict, linehash: str):
@@ -61,30 +64,32 @@ def mempool_activity(avro_data: dict, linehash: str):
 
     with mempool_activity_lock:
         logfile_pos.mark(linehash)
-        currfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current"
 
         mode = "a+b"
-        if not currfile.exists():
+        if not CURRENT_MEMPOOL_FILE.exists():
             mode = "wb"
 
-        with open(currfile, mode) as out:
+        with open(CURRENT_MEMPOOL_FILE, mode) as out:
             fastavro.writer(out, models.mempool_activity_avro_schema, [avro_data])
 
-        LAST_SHIPPED_KEY = "mempool.last_shipped"
         last_shipped = redisdb.get(LAST_SHIPPED_KEY)
         now = time.time()
 
         if not last_shipped:
             redisdb[LAST_SHIPPED_KEY] = time.time()
         elif (now - (SHIP_LOGS_EVERY_MINUTES * 60)) >= float(last_shipped):
-            now_str = datetime.datetime.now().isoformat()
-            shipfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"to-ship.{now_str}"
-            subprocess.check_call(f"mv {currfile} {shipfile}", shell=True)
-            log.info(
-                "moved mempool activity file %s to %s for shipment", currfile, shipfile
-            )
-            redisdb[LAST_SHIPPED_KEY] = time.time()
-            ship_activity()
+            queue_mempool_to_ship()
+
+
+def queue_mempool_to_ship():
+    now_str = datetime.datetime.now().isoformat()
+    shipfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"to-ship.{now_str}"
+    subprocess.check_call(f"mv {CURRENT_MEMPOOL_FILE} {shipfile}", shell=True)
+    log.info(
+        "moved mempool activity file %s to %s for shipment", CURRENT_MEMPOOL_FILE, shipfile
+    )
+    redisdb[LAST_SHIPPED_KEY] = time.time()
+    ship_activity()
 
 
 @mempool_q.task()

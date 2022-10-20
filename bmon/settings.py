@@ -31,6 +31,10 @@ BITCOIN_RPC_USER = os.environ.get('BITCOIN_RPC_USER')
 BITCOIN_RPC_PASSWORD = os.environ.get('BITCOIN_RPC_PASSWORD')
 BITCOIN_RPC_PORT = os.environ.get('BITCOIN_RPC_PORT')
 
+# GCP credentials for uploading mempool activity.
+CHAINCODE_GCP_CRED_PATH = os.environ.get('CHAINCODE_GCP_CRED_PATH')
+CHAINCODE_GCP_BUCKET = 'bmon-mempool-log-uploads'
+
 # For testing
 LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'
 

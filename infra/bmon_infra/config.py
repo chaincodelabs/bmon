@@ -67,6 +67,8 @@ BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
 
 PUSHOVER_USER=${pushover_user}
 PUSHOVER_TOKEN=${pushover_token}
+
+CHAINCODE_GCP_CRED_PATH=/chaincode-gcp.json
 """
 
 
@@ -288,6 +290,7 @@ def make_services_data(hostname: str | None = None):
     p(root / 'redis' / 'data').mkdir()
 
     p(root / 'bmon' / 'mempool-activity-cache').mkdir()
+    p(root / 'bmon' / 'credentials').mkdir()
 
 
 @cli.main
