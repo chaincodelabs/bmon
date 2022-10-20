@@ -192,6 +192,9 @@ services:
     profiles: ["bitcoind"]
     user: "${UID}"
     image: bmon-base-image
+    build:
+      context: .
+      dockerfile: ./docker/py.Dockerfile
     environment:
       <<: *env
       BMON_REDIS_LOCAL_URL: 
