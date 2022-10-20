@@ -85,7 +85,7 @@ def mempool_activity(avro_data: dict, linehash: str):
 
 def queue_mempool_to_ship():
     now_str = datetime.datetime.now().isoformat()
-    shipfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"to-ship.{now_str}"
+    shipfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"to-ship.{now_str}.avro"
     subprocess.check_call(f"mv {CURRENT_MEMPOOL_FILE} {shipfile}", shell=True)
     log.info(
         "moved mempool activity file %s to %s for shipment", CURRENT_MEMPOOL_FILE, shipfile
@@ -103,13 +103,13 @@ def ship_activity():
         bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
 
         for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob('to-ship*'):
-            timestr = shipfile.name.split('.')[1]
-            target = f"{settings.HOSTNAME}.{timestr}"
+            timestr = shipfile.name.split('.')[1].replace(':', '-')
+            target = f"{settings.HOSTNAME}.{timestr}.avro"
             d = bucket.blob(target)
             d.upload_from_filename(shipfile)
 
-            moved = settigs.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}'
-            subprocess.check_call("mv {shipfile} {moved}")
+            moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}.avro'
+            subprocess.check_call(f"mv {shipfile} {moved}")
             log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
 

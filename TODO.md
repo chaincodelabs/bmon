@@ -1,4 +1,5 @@
 - [ ] compare tip with e.g. mempool.space and alert if not current
+- [ ] build container in one place for deployment
 - [ ] set up sentry
 - [ ] monitor: redis up
 - [ ] metric: at any given time, what feerate necessary to get into n blocks

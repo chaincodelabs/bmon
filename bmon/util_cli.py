@@ -22,5 +22,11 @@ def showmempool():
             print(record)
 
 
+@cli.cmd
+def shipmempool():
+    """Ship off mempool activity to GCP."""
+    bitcoind_tasks.queue_mempool_to_ship()
+
+
 def main():
     cli.run()
