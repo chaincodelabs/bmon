@@ -359,15 +359,17 @@ def provision_monitored_bitcoind(
         run(f"{docker_compose} rm -f {services}").assert_ok()
         run(f"{docker_compose} up -d {services}").assert_ok()
 
+    alwaysrestart = 'bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher'
+
     match restart_spec:
         case "":
-            cycle("bitcoind-task-worker bitcoind-watcher")
+            cycle(alwaysrestart)
         case "none":
             pass
         case "all":
             run("systemctl --user restart bmon-bitcoind")
         case _:
-            cycle(f"bitcoind-task-worker bitcoind-watcher {restart_spec}")
+            cycle(f"{alwaysrestart} {restart_spec}")
 
 
 @cli.cmd

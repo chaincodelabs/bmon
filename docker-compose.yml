@@ -202,6 +202,7 @@ services:
       <<: *env
       BMON_REDIS_LOCAL_URL: 
       WAIT_FOR: "${BMON_REDIS_HOST}:6379,${BMON_REDIS_LOCAL_HOST}:6379"
+      CHAINCODE_GCP_CRED_PATH:
     volumes:
       - ./:/src
       - ${ENV_ROOT}/bmon/mempool-activity-cache:/mempool-activity-cache

@@ -106,7 +106,7 @@ def ship_activity():
             timestr = shipfile.name.split('.')[1]
             target = f"{settings.HOSTNAME}.{timestr}"
             d = bucket.blob(target)
-            d.upload_from_string(shipfile.read_text())
+            d.upload_from_filename(shipfile)
 
             moved = settigs.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}'
             subprocess.check_call("mv {shipfile} {moved}")
