@@ -1,3 +1,4 @@
+- [ ] compare tip with e.g. mempool.space and alert if not current
 - [ ] set up sentry
 - [ ] monitor: redis up
 - [ ] metric: at any given time, what feerate necessary to get into n blocks

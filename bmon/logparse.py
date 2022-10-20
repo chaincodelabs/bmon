@@ -73,7 +73,7 @@ def read_logfile_forever(
 
     curr_line = ""
     lines_processed = 0
-    LOG_AFTER = 1_000
+    LOG_AFTER = 10_000
     got_line_yet = False
 
     while True:

@@ -336,7 +336,7 @@ def provision_monitored_bitcoind(
             print(f"Installed prepopulated pruned dir at {btc_data}")
 
     p(services_path / 'bmon' / 'credentials' / 'chaincode-gcp.json').contents(
-        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__))
+        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)).chmod('600')
 
     if (
         p(sysd / "bmon-bitcoind.service")

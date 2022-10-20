@@ -11,6 +11,7 @@ import logging
 
 import walrus
 import django
+import google.cloud.storage
 from django.conf import settings
 from django.forms.models import model_to_dict
 from huey import RedisHuey, crontab
@@ -53,6 +54,7 @@ def write_logfile_pos():
 
 # Coordinate mempool activity with a lock since we're writing out to a single file.
 mempool_activity_lock = redisdb.lock("mempool-activity", ttl=1_000)
+mempool_ship_lock = redisdb.lock("mempool-log-ship")
 
 LAST_SHIPPED_KEY = "mempool.last_shipped"
 CURRENT_MEMPOOL_FILE = settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current"
@@ -95,7 +97,20 @@ def queue_mempool_to_ship():
 @mempool_q.task()
 def ship_activity():
     """Send mempool activity file to a remote server."""
-    pass
+    with mempool_ship_lock:
+        client = google.cloud.storage.Client.from_service_account_json(
+            settings.CHAINCODE_GCP_CRED_PATH)
+        bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
+
+        for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob('to-ship*'):
+            timestr = shipfile.name.split('.')[1]
+            target = f"{settings.HOSTNAME}.{timestr}"
+            d = bucket.blob(target)
+            d.upload_from_string(shipfile.read_text())
+
+            moved = settigs.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}'
+            subprocess.check_call("mv {shipfile} {moved}")
+            log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
 
 LOG_LISTENERS = (
