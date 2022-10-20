@@ -109,7 +109,7 @@ def ship_activity():
             d.upload_from_filename(shipfile)
 
             moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}.avro'
-            subprocess.check_call(f"mv {shipfile} {moved}")
+            subprocess.check_call(f"mv {shipfile} {moved}", shell=True)
             log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
 
