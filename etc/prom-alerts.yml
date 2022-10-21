@@ -31,9 +31,9 @@ groups:
 
 - name: logs_not_watched
   rules:
-  - alert: BitcoindLogsNotWatched
-    expr: (time() - bmon_last_bitcoind_log_seen_at) > 90
-    for: 5m
-    labels:
-      severity: critical
-    summary: "{{ $labels.instance }} has stopped processing bitcoind logs"
+    - alert: BitcoindLogsNotWatched
+      expr: (time() - bmon_last_bitcoind_log_seen_at) > 90
+      for: 5m
+      labels:
+        severity: critical
+      summary: "{{ $labels.instance }} has stopped processing bitcoind logs"
