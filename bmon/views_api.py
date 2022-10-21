@@ -20,11 +20,10 @@ def _get_wireguard_ip(host):
 @api.get('/prom-config-bitcoind')
 def prom_config_bitcoind(_):
     """Dynamic configuration for bitcoind prometheus monitoring endpoints."""
-    hosts = infra.get_hosts()[1].values()
-    bitcoind_hosts = [h for h in hosts if 'bitcoind' in h.tags]
+    bitcoind_hosts = [h for h in infra.get_hosts()[1].values() if 'bitcoind' in h.tags]
     out = []
 
-    for host in hosts:
+    for host in bitcoind_hosts:
         wgip = _get_wireguard_ip(host)
         targets = [
             f'{wgip}:{host.bitcoind_exporter_port}',
