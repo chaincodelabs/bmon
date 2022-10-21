@@ -164,7 +164,7 @@ services:
 
   bitcoind-exporter:
     profiles: ["bitcoind"]
-    image: jvstein/bitcoin-prometheus-exporter:latest
+    image: jamesob/bitcoin-prometheus-exporter:latest
     environment:
       <<: *env
       BITCOIN_RPC_HOST:
