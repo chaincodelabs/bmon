@@ -32,6 +32,9 @@ x-redis-config: &redis-config
 
 services:
 
+  # bmon server containers
+  # -----------------------------------------------
+
   db:
     profiles: ["server"]
     user: "${UID}"
@@ -106,7 +109,7 @@ services:
     build:
       context: .
       dockerfile: ./docker/py.Dockerfile
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
       RUN_DB_MIGRATIONS: 1
@@ -120,7 +123,7 @@ services:
     command: ./manage.py runserver 0.0.0.0:8080
 
   shell:
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     profiles: ["ops"]
     environment:
       <<: *env
@@ -134,7 +137,7 @@ services:
   server-task-worker:
     profiles: ["server"]
     user: "${UID}"
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
       WAIT_FOR: "${DB_HOST}:5432,${BMON_REDIS_HOST}:6379"
@@ -144,6 +147,20 @@ services:
       - db
       - redis
     command: huey_consumer.py bmon.server_tasks.server_q -w 8
+
+  server-monitor:
+    profiles: ["server"]
+    user: "${UID}"
+    image: docker.io/jamesob/bmon:latest
+    environment:
+      <<: *env
+      WAIT_FOR: "${BMON_REDIS_HOST}:6379,${DB_HOST}:5432"
+      BMON_REDIS_URL:
+    volumes:
+      - ./:/src
+    command: bmon-server-monitor
+    ports:
+      - 9334:9334
 
   bitcoind-exporter:
     profiles: ["bitcoind"]
@@ -155,6 +172,9 @@ services:
       - bitcoind
     ports:
       - 9332:9332
+
+  # bitcoind node containers
+  # -----------------------------------------------
 
   bitcoind:
     profiles: ["bitcoind"]
@@ -189,7 +209,7 @@ services:
   bitcoind-task-worker: &bitcoind-worker
     profiles: ["bitcoind"]
     user: "${UID}"
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     # We have to repeat the build section here because the `web` container won't
     # build on bitcoind hosts, so we have to have at least one container configured
     # to.
@@ -222,7 +242,7 @@ services:
   bitcoind-watcher:
     profiles: ["bitcoind"]
     user: "${UID}"
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
       BMON_REDIS_LOCAL_URL:
@@ -235,6 +255,23 @@ services:
       - bitcoind
       - bitcoind-task-worker
     command: bmon-watch-bitcoind-logs
+
+  bitcoind-monitor:
+    profiles: ["bitcoind"]
+    user: "${UID}"
+    image: docker.io/jamesob/bmon:latest
+    environment:
+      <<: *env
+      WAIT_FOR: "${BMON_REDIS_LOCAL_HOST}:6379,${DB_HOST}:5432"
+      BMON_REDIS_LOCAL_URL:
+      BMON_BITCOIND_LOG_PATH: /bitcoin-data/debug.log
+    volumes:
+      - ./:/src
+      - ${ENV_ROOT}/bmon/mempool-activity-cache:/mempool-activity-cache
+      - ${BITCOIN_DATA_PATH}:/bitcoin-data
+    command: bmon-bitcoind-monitor
+    ports:
+      - 9333:9333
 
   node-exporter:
     # only monitor this stuff in prod since its mountpoint needs are zealous.
@@ -259,7 +296,7 @@ services:
   test:
     profiles: ["dev"]
     user: "${UID}"
-    image: bmon-base-image
+    image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
       RUN_DB_MIGRATIONS: 1

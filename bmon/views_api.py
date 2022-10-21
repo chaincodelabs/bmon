@@ -7,30 +7,34 @@ from django.forms.models import model_to_dict
 
 from bmon import models
 from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
-from bmon_infra.infra import get_hosts, Host, get_bitcoind_hosts
+from bmon_infra import infra
 
 api = NinjaAPI()
 
 
-@api.get('/prom-config')
-def prom_scrape_config(_):
-    def get_wireguard_ip(host):
-        bmon_wg = host.wireguards['wg-bmon']
-        return bmon_wg.ip
+def _get_wireguard_ip(host):
+    bmon_wg = host.wireguards['wg-bmon']
+    return bmon_wg.ip
 
-    hosts = get_hosts()[1].values()
+
+@api.get('/prom-config-bitcoind')
+def prom_config_bitcoind(_):
+    """Dynamic configuration for bitcoind prometheus monitoring endpoints."""
+    hosts = infra.get_hosts()[1].values()
     bitcoind_hosts = [h for h in hosts if 'bitcoind' in h.tags]
-    [server] = [h for h in hosts if 'server' in h.tags]
+    out = []
 
-    targets = [
-        {
-            'targets': list(filter(None, [
-                f'{get_wireguard_ip(host)}:{host.bitcoind_exporter_port}',
-                (
-                    f'{get_wireguard_ip(host)}:{host.prom_exporter_port}' if
-                    host.prom_exporter_port else ''
-                ),
-            ])),
+    for host in hosts:
+        wgip = _get_wireguard_ip(host)
+        targets = [
+            f'{wgip}:{host.bitcoind_exporter_port}',
+            f'{wgip}:{infra.BMON_BITCOIND_EXPORTER_PORT}',
+        ]
+        if host.prom_exporter_port:
+            targets.append(f'{wgip}:{host.prom_exporter_port}')
+
+        out.append({
+            'targets': targets,
             'labels': {
                 'job': 'bitcoind',
                 'hostname': host.name,
@@ -38,21 +42,31 @@ def prom_scrape_config(_):
                 'bitcoin_dbcache': str(host.bitcoin_dbcache),
                 'bitcoin_prune': str(host.bitcoin_prune),
             },
-        }
-        for host in bitcoind_hosts
-    ]
+        })
 
-    targets.append({
-        'targets': [f'{get_wireguard_ip(server)}:{server.prom_exporter_port}'],
+    return out
+
+
+@api.get('/prom-config-server')
+def prom_config_server(_):
+    """Dynamic configuration for bmon server prometheus monitoring endpoints."""
+    hosts = infra.get_hosts()[1].values()
+    [server] = [h for h in hosts if 'server' in h.tags]
+    wgip = _get_wireguard_ip(server)
+
+    return [{
+        'targets': [
+            f'{wgip}:{server.prom_exporter_port}',
+            f'{wgip}:{infra.SERVER_EXPORTER_PORT}',
+        ],
         'labels': {'job': 'server', 'hostname': server.name},
-    })
-    return targets
+    }]
 
 
 @api.get('/hosts')
 def hosts(_):
     out = []
-    hosts = get_bitcoind_hosts()
+    hosts = infra.get_bitcoind_hosts()
     peer_info = gather_rpc(lambda r: r.getpeerinfo())
     chain_info = gather_rpc(lambda r: r.getblockchaininfo())
 

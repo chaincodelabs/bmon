@@ -30,6 +30,10 @@ VENV_PATH = Path.home() / ".venv"
 fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
 
 
+BMON_BITCOIND_EXPORTER_PORT = 9333
+SERVER_EXPORTER_PORT = 9334
+
+
 class Host(wireguard.Host):
     def __init__(
         self,
@@ -48,6 +52,7 @@ class Host(wireguard.Host):
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         self.outbound_wireguard = outbound_wireguard
+
         super().__init__(*args, **kwargs)
 
     @property
@@ -115,7 +120,6 @@ def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Ho
 def main_remote(
     host: Host,
     parent: fscm.remote.Parent,
-    rebuild_docker: bool,
     wgmap: t.Dict[str, wireguard.Server],
     server_wg_ip: str,
     restart_spec: str = "",
@@ -188,17 +192,16 @@ def main_remote(
         run("systemctl restart systemd-journald", sudo=True).assert_ok()
 
     if "server" in host.tags:
-        provision_bmon_server(host, parent, rebuild_docker, server_wg_ip, restart_spec)
+        provision_bmon_server(host, parent, server_wg_ip, restart_spec)
     elif "bitcoind" in host.tags:
         provision_monitored_bitcoind(
-            host, parent, rebuild_docker, server_wg_ip, restart_spec
+            host, parent, server_wg_ip, restart_spec
         )
 
 
 def provision_bmon_server(
     host: Host,
     parent: fscm.remote.Parent,
-    rebuild_docker: bool,
     server_wg_ip: str,
     restart_spec: str,
 ):
@@ -210,9 +213,6 @@ def provision_bmon_server(
     run("bmon-config -t prod")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
-
-    if rebuild_docker:
-        run(f"{docker_compose} --profile server --profile prod build")
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
@@ -244,6 +244,9 @@ def provision_bmon_server(
     # Files, like pruned datadirs, will be served out of here.
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
+    # Update the docker image.
+    run(f"{docker_compose} pull web")
+
     def cycle(services):
         run(f"{docker_compose} stop {services}").assert_ok()
         run(f"{docker_compose} rm -f {services}").assert_ok()
@@ -263,7 +266,6 @@ def provision_bmon_server(
 def provision_monitored_bitcoind(
     host: Host,
     parent: fscm.remote.Parent,
-    rebuild_docker: bool,
     server_wg_ip: str,
     restart_spec: str,
 ):
@@ -274,9 +276,6 @@ def provision_monitored_bitcoind(
     run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
-
-    if rebuild_docker:
-        run(f"{docker_compose} --profile bitcoind --profile prod build").assert_ok()
 
     p("/etc/logrotate.d/bmon-bitcoind.conf", sudo=True).contents(
         parent.template(
@@ -352,6 +351,9 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl --user daemon-reload")
 
+    # Update the docker image.
+    run(f"{docker_compose} pull bitcoind-watcher")
+
     systemd.enable_service("bmon-bitcoind")
 
     def cycle(services):
@@ -384,6 +386,9 @@ def deploy(
         restart: 'all', 'none', or specify services to restart. By default only
             restart "app" services.
     """
+    if rebuild_docker:
+        run("docker-compose build && docker-compose push")
+
     wgsmap, hostmap = get_hosts_for_cli()
     hosts = list(hostmap.values())
     includes_server = any("server" in h.tags for h in hosts)

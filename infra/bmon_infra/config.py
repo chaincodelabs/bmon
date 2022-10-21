@@ -43,7 +43,7 @@ BMON_REDIS_SERVER_URL=redis://${redis_server_host}:6379/1
 PROM_ADDRESS=${prom_address}
 PROM_EXPORTER_PORT=${prom_exporter_port}
 BITCOIND_EXPORTER_PORT=${bitcoind_exporter_port}
-PROM_SCRAPE_SD_URL=${prom_scrape_sd_url}
+WEB_API_URL=${web_api_url}
 
 BITCOIN_RPC_HOST=${bitcoin_rpc_host}
 BITCOIN_RPC_PORT=${bitcoin_rpc_port}
@@ -84,7 +84,7 @@ dev_settings = dict(
     prom_address="prom:9090",
     prom_exporter_port=9100,
     bitcoind_exporter_port=9332,
-    prom_scrape_sd_url="http://web:8080/api/prom-config",
+    web_api_url="http://web:8080/",
     bitcoin_rpc_host="bitcoind",
     bitcoin_rpc_port=18443,
     bitcoin_rpc_user="foo",
@@ -135,21 +135,20 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_dbcache=host.bitcoin_dbcache,
         bitcoin_version=host.bitcoin_version,
         bitcoin_docker_tag=(host.bitcoin_version or '?').lstrip('v'),
+        bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
         bmon_hostnmae=host.name,
+            bitcoin_rpc_port=8332,
+            bitcoin_rpc_user="bmon",
     )
 
     if 'server' in host.tags:
         # Many of these services are running in compose.
         settings.update(
             compose_profiles='server,prod',
-            root="./services/prod",
             db_host="db",
             redis_server_host="redis",
             prom_address="prom:9090",
-            prom_scrape_sd_url="http://web:8080/api/prom-config",
-            bitcoin_rpc_port=8332,
-            bitcoin_rpc_user="bmon",
-            bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
+            web_api_url="http://web:8080",
             loki_host="loki",
             alertman_address="alertman:9093",
             pushover_user=host.secrets.pushover.user,
@@ -163,10 +162,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             redis_server_host=server_wireguard_ip,
             redis_local_host="redis-bitcoind",
             prom_address=f"{server_wireguard_ip}:9090",
-            prom_scrape_sd_url=f"http://{server_wireguard_ip}/api/prom-config",
-            bitcoin_rpc_port=8332,
-            bitcoin_rpc_user="bmon",
-            bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
+            web_api_url=f"http://{server_wireguard_ip}:8080",
             loki_host=server_wireguard_ip,
             alertman_address=f"{server_wireguard_ip}:9093",
         )
@@ -196,7 +192,8 @@ def grafana_datasources():
 def prom():
     return Template(Path("./etc/prom-template.yml").read_text()).substitute(
         ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
-        PROM_SCRAPE_SD_URL=ENV.PROM_SCRAPE_SD_URL,
+        PROM_SCRAPE_BITCOIND_URL=ENV.PROM_SCRAPE_BITCOIND_URL,
+        PROM_SCRAPE_SERVER_URL=ENV.PROM_SCRAPE_SERVER_URL,
     )
 
 

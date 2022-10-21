@@ -14,4 +14,8 @@ alerting:
 scrape_configs:
   - job_name: bitcoind
     http_sd_configs:
-      - url: ${PROM_SCRAPE_SD_URL}
+      - url: ${WEB_API_URL}/api/prom-config-bitcoind
+
+  - job_name: server
+    http_sd_configs:
+      - url: ${WEB_API_URL}/api/prom-config-server

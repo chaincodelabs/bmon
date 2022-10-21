@@ -24,12 +24,15 @@ dependencies = [
     'fastavro',
     'clii',
     'google-cloud-storage',
+    'prometheus-client',
 ]
 version = "0.0.1"
 
 [project.scripts]
 bmon-watch-bitcoind-logs = "bmon.bitcoind_tasks:watch_bitcoind_logs"
 bmon-util = "bmon.util_cli:main"
+bmon-bitcoind-monitor = "bmon.bitcoind_monitor:main"
+bmon-server-monitor = "bmon.server_monitor:main"
 
 
 [project.optional-dependencies]

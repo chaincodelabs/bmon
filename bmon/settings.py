@@ -55,6 +55,12 @@ DEBUG = os.environ.get('BMON_DEBUG') == "1"
 
 ALLOWED_HOSTS = ['*']
 
+NO_LOG = {
+    'level': 'WARNING',
+    'handlers': [],
+    'propagate': False,
+}
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -90,12 +96,9 @@ LOGGING = {
                 # 'sentry',
             ],
         },
-        'huey': {
-            # Huey already logs stuff?
-            'level': 'INFO',
-            'handlers': [],
-            'propagate': False,
-        },
+        'huey': NO_LOG,
+        'parso': NO_LOG,
+        'clii': NO_LOG,
     },
 }
 
