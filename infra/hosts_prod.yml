@@ -13,7 +13,8 @@ hosts:
 
   bmon:
     tags: [server]
-    ssh_hostname: bmon.j.co
+    ssh_hostname: 10.33.0.2
+    check_host_keys: accept
     wireguard:
       wg-bmon: 
         ip: 10.33.0.2
@@ -22,6 +23,7 @@ hosts:
 
   bitcoin-01: 
     tags: [bitcoind]
+    ssh_hostname: 10.33.0.3
     check_host_keys: accept
     outbound_wireguard: wg-switzerland-01
     wireguard:
@@ -34,10 +36,9 @@ hosts:
 
   b-01.slug:
     tags: [bitcoind, vagrant]
-    ssh_hostname: slug.j.co
-    ssh_port: 2222
+    ssh_hostname: 10.33.0.20
     username: vagrant
-    check_host_keys: ignore
+    check_host_keys: accept
     wireguard:
       wg-bmon:
         ip: 10.33.0.20
@@ -50,9 +51,8 @@ hosts:
 
   b-02.slug:
     tags: [bitcoind, vagrant]
-    ssh_hostname: slug.j.co
-    ssh_port: 2223
-    check_host_keys: ignore
+    ssh_hostname: 10.33.0.21
+    check_host_keys: accept
     username: vagrant
     wireguard:
       wg-bmon:
@@ -66,9 +66,8 @@ hosts:
         
   b-03.slug:
     tags: [bitcoind, vagrant]
-    ssh_hostname: slug.j.co
-    ssh_port: 2224
-    check_host_keys: ignore
+    ssh_hostname: 10.33.0.22
+    check_host_keys: accept
     outbound_wireguard: wg-australia-01
     username: vagrant
     wireguard:
@@ -83,9 +82,8 @@ hosts:
 
   b-04.slug:
     tags: [bitcoind, vagrant]
-    ssh_hostname: slug.j.co
-    ssh_port: 2225
-    check_host_keys: ignore
+    ssh_hostname: 10.33.0.23
+    check_host_keys: accept
     outbound_wireguard: wg-japan-01
     username: vagrant
     wireguard:

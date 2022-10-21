@@ -122,7 +122,7 @@ def main_remote(
 ):
     user = getpass.getuser()
     fscm.s.pkgs_install(
-        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap"
+        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp"
     )
     fscm.s.group_member(user, "docker")
     p(docker := Path.home() / ".docker").mkdir()
@@ -446,7 +446,10 @@ def runall(cmd: str, sudo: bool = False):
 
 
 def _run_cmd(cmd: str, sudo: bool):
-    return fscm.run(cmd, sudo=sudo)
+    os.chdir(Path.home() / 'bmon')
+    path = os.environ['PATH']
+    os.environ['PATH'] = f"{Path.home() / '.venv/bin'}:{path}"
+    return fscm.run(f"bash -c '{cmd}'", sudo=sudo, env=os.environ)
 
 
 def main():
