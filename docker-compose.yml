@@ -228,11 +228,11 @@ services:
     environment:
       <<: *env
       BMON_REDIS_LOCAL_URL:
-      BMON_BITCOIND_LOG_PATH: /var/log/bitcoind.log
+      BMON_BITCOIND_LOG_PATH: /bitcoin-data/debug.log
       WAIT_FOR: "${BMON_REDIS_HOST}:6379,${DB_HOST}:5432"
     volumes:
       - ./:/src
-      - ${BITCOIN_DATA_PATH}/debug.log:/var/log/bitcoind.log
+      - ${BITCOIN_DATA_PATH}/debug.log:/bitcoin-data
     links:
       - bitcoind-task-worker
     command: bmon-watch-bitcoind-logs
