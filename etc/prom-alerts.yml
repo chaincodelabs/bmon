@@ -36,4 +36,5 @@ groups:
       for: 5m
       labels:
         severity: critical
-      summary: "{{ $labels.instance }} has stopped processing bitcoind logs"
+      annotations:
+        summary: "{{ $labels.instance }} has stopped processing bitcoind logs"
