@@ -192,8 +192,7 @@ def grafana_datasources():
 def prom():
     return Template(Path("./etc/prom-template.yml").read_text()).substitute(
         ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
-        PROM_SCRAPE_BITCOIND_URL=ENV.PROM_SCRAPE_BITCOIND_URL,
-        PROM_SCRAPE_SERVER_URL=ENV.PROM_SCRAPE_SERVER_URL,
+        WEB_API_URL=ENV.WEB_API_URL,
     )
 
 

@@ -404,7 +404,6 @@ def deploy(
                 server_result := exec.run_on_hosts(
                     lambda h: "server" in h.tags,
                     main_remote,
-                    rebuild_docker,
                     wgsmap,
                     server_wg_ip,
                     restart,
@@ -419,7 +418,6 @@ def deploy(
         exec.run_on_hosts(
             lambda h: "server" not in h.tags,
             main_remote,
-            rebuild_docker,
             wgsmap,
             server_wg_ip,
             restart,
