@@ -13,43 +13,57 @@ def sh(cmd, **kwargs):
 
 
 def brpc(cmd, **kwargs):
-    return sh("docker-compose exec bitcoind "
-              f"bitcoin-cli -regtest -datadir=/bitcoin/data {cmd}", **kwargs)
+    return sh(
+        "docker-compose exec bitcoind "
+        f"bitcoin-cli -regtest -datadir=/bitcoin/data {cmd}",
+        **kwargs,
+    )
 
 
 @cli.cmd
 def bitcoinrpc(*cmd):
-    return brpc(' '.join(cmd))
+    return brpc(" ".join(cmd))
 
 
 @cli.cmd
 def generateblock():
     wallets = json.loads(brpc("listwallets", capture_output=True).stdout)
-    if 'test' not in wallets:
+    if "test" not in wallets:
         brpc("createwallet test false false '' false true true")
 
     if '"test"' not in brpc("getwalletinfo", capture_output=True, text=True).stdout:
         brpc("loadwallet test")
 
-    sh("docker-compose exec bitcoind bitcoin-cli -regtest -datadir=/bitcoin/data -generate")
+    sh(
+        "docker-compose exec bitcoind bitcoin-cli -regtest -datadir=/bitcoin/data -generate"
+    )
 
 
 @cli.cmd
 def managepy(*cmd):
-    sh(f"docker-compose run --rm shell python manage.py {' '.join(cmd)}")
+    sh(f"docker-compose run --rm web python manage.py {' '.join(cmd)}")
 
 
 @cli.cmd
 def shell():
-    managepy('shell')
+    managepy("shell")
 
 
 @cli.cmd
-def reup(service: str = "", rebuild_docker: bool = False, logs: bool = False):
+def reup(
+    service: str = "",
+    rebuild_docker: bool = False,
+    logs: bool = False,
+    data: bool = False,
+):
     sh(f"docker-compose down {service} ; docker-compose rm -f {service} ")
     if rebuild_docker:
         sh("docker-compose build")
 
+    if data:
+        cleardata()
+
+    managepy('migrate')
     sh(f"docker-compose up -d {service}")
 
     if logs:
@@ -59,13 +73,15 @@ def reup(service: str = "", rebuild_docker: bool = False, logs: bool = False):
 @cli.cmd
 def watchlogs():
     """Tail interesting logs."""
-    sh("docker-compose logs -f bitcoind server-task-worker "
-       "bitcoind-task-worker bitcoind-watcher bitcoind-mempool-worker")
+    sh(
+        "docker-compose logs -f bitcoind server-task-worker "
+        "bitcoind-task-worker bitcoind-watcher bitcoind-mempool-worker"
+    )
 
 
 @cli.cmd
 def cleardata():
-    sh("rm -fr services/dev/*")
+    sh("sudo rm -fr services/dev/*")
     sh("bmon-config")
 
 

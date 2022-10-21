@@ -14,11 +14,20 @@ doing realtime analysis (via logs and RPC) on a collection of bitcoind nodes.
     - `pip install docker-compose`
 1. Install the local infrastructure tools:
     - `pip install -e ./infra`
+
+### Easy way
+
+1. Bring everything up with `./dev reup`
+
+### Manual way
+
 1. Build local config tree: `bmon-config`
+1. Run the database migrations: `./dev managepy migrate`
 1. Bring docker-compose up: `docker-compose up [-d]`
-1. Browse to `http://localhost:3000` to access Grafana; use the default admin
-  credentials `admin`/`admin`. You should see a nice little sample dashboard
-  displaying bitcoind logs etc.
+
+Then browse to `http://localhost:3000` to access Grafana; use the default admin
+credentials `admin`/`admin`. You should see a nice little sample dashboard displaying
+bitcoind logs etc.
 
 
 ## Running tests

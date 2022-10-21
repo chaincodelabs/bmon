@@ -282,6 +282,7 @@ def make_services_data(hostname: str | None = None):
     p(am / "config.yml").contents(alertman())
 
     p(btcdata := root / "bitcoin" / "data").mkdir()
+    p(btcdata / "regtest").mkdir()
     p(btcdata / "bitcoin.conf").contents(bitcoind())
 
     p(promtailp := root / "promtail").mkdir()

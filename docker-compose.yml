@@ -129,8 +129,6 @@ services:
     volumes:
       - ./:/src
       - ${ENV_ROOT}/ipython:/var/lib/ipython
-    links:
-      - db
     command: ./manage.py shell
 
   server-task-worker:
@@ -232,8 +230,9 @@ services:
       WAIT_FOR: "${BMON_REDIS_HOST}:6379,${DB_HOST}:5432"
     volumes:
       - ./:/src
-      - ${BITCOIN_DATA_PATH}/debug.log:/bitcoin-data
+      - ${BITCOIN_DATA_PATH}:/bitcoin-data
     links:
+      - bitcoind
       - bitcoind-task-worker
     command: bmon-watch-bitcoind-logs
 
