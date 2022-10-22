@@ -2,6 +2,7 @@ import datetime
 import io
 
 import fastavro
+import pytest
 
 from . import logparse, conftest, models
 
@@ -26,6 +27,7 @@ def test_mempoollistener():
     assert len(fake_avro_file.getvalue()) > 0
 
 
+@pytest.mark.django_db
 def test_reorg():
     listeners = [
         logparse.BlockConnectedListener(),
@@ -100,6 +102,11 @@ def test_reorg():
     assert isinstance(bc4, models.BlockConnectedEvent)
     assert bc4.blockhash == '7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d'
     assert bc4.height == 3
+
+    for model in got:
+        model.full_clean()
+
+    reorg.save()
 
 
 def test_connectblockevent():
