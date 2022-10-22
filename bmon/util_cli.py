@@ -42,8 +42,6 @@ def run_listener(listener_name: str):
         for line in f:
             bitcoind_tasks.process_line(line, listeners=listeners)
 
-
-
 @cli.cmd
 def shipmempool():
     """Ship off mempool activity to GCP."""
