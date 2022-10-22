@@ -9,6 +9,17 @@ def _repr(instance, attrs):
     return f'{instance.__class__.__name__}({" ".join(attr_strs)})'
 
 
+class BaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def event_type(self) -> str:
+        return ''
+
+
 class LogProgress(models.Model):
     """
     Records the latest hash of a log line responsible for generating an event on a
@@ -26,8 +37,7 @@ class LogProgress(models.Model):
     __str__ = __repr__
 
 
-class Peer(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+class Peer(BaseModel):
     host = models.CharField(max_length=200)
     addr = models.CharField(max_length=256)
     connection_type = models.CharField(max_length=256)
@@ -46,11 +56,10 @@ class Peer(models.Model):
     __str__ = __repr__
 
 
-class RequestBlockEvent(models.Model):
+class RequestBlockEvent(BaseModel):
     """
     node0 2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0
     """
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
@@ -70,7 +79,7 @@ class RequestBlockEvent(models.Model):
     __str__ = __repr__
 
 
-class BlockDisconnectedEvent(models.Model):
+class BlockDisconnectedEvent(BaseModel):
     """
     2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui
 ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
@@ -81,39 +90,49 @@ ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b4
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
+    @property
+    def event_type(self) -> str:
+        return 'block'
+
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
 
     __str__ = __repr__
 
 
-class BlockConnectedEvent(models.Model):
+class BlockConnectedEvent(BaseModel):
     """
     [operator()] [validation] BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
     """
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
+    @property
+    def event_type(self) -> str:
+        return 'block'
+
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
 
     __str__ = __repr__
 
 
-class ReorgEvent(models.Model):
+class ReorgEvent(BaseModel):
     """
     A series of BlockDisconnected events capped off by a ConnectBlockEvent.
     """
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
     finished_timestamp = models.DateTimeField()
     host = models.CharField(max_length=200)
     min_height = models.IntegerField()
     max_height = models.IntegerField()
     old_blockhashes = models.JSONField()
     new_blockhashes = models.JSONField()
+
+    @property
+    def event_type(self) -> str:
+        return 'block'
 
     def __repr__(self):
         return _repr(
@@ -122,7 +141,7 @@ class ReorgEvent(models.Model):
     __str__ = __repr__
 
 
-class ConnectBlockEvent(models.Model):
+class ConnectBlockEvent(BaseModel):
     """
     From UpdateTip
 
@@ -130,8 +149,6 @@ class ConnectBlockEvent(models.Model):
 
     2019-08-09T16:28:42Z UpdateTip: new best=00000000000000000001d80d14ee4400b6d9c851debe27e6777f3876edd4ad1e height=589349 version=0x20800000 log2_work=90.944215 tx=443429260 date='2019-08-09T16:27:43Z' progress=1.000000 cache=8.7MiB(64093txo) warning='44 of last 100 blocks have unexpected version'
     """
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
-
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
 
@@ -158,7 +175,7 @@ class ConnectBlockEvent(models.Model):
     __str__ = __repr__
 
 
-class ConnectBlockDetails(models.Model):
+class ConnectBlockDetails(BaseModel):
     """
     ConnectBlock measurements
 
@@ -176,8 +193,6 @@ class ConnectBlockDetails(models.Model):
     2019-07-29T18:34:17Z   - Connect postprocess: 70.64ms [8.14s (8.53ms/blk)]
     2019-07-29T18:34:17Z - Connect block: 136.63ms [344.92s (361.55ms/blk)]
     """
-    created_at = models.DateTimeField(auto_now_add=True, blank=True)
-
     host = models.CharField(max_length=200)
     # The latest logline in the connectblock measurements.
     timestamp = models.DateTimeField()
