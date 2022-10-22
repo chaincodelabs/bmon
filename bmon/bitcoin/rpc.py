@@ -126,20 +126,25 @@ class BitcoinRpc(object):
             timeout=timeout,
         )
 
-    def _call(self, service_name, *args, **kwargs):
+    def call(self, rpc_str: str, **kwargs) -> dict:
+        """Call a method with a string."""
+        [meth, *args] = rpc_str.split()
+        return self._call(meth, *args, **kwargs)
+
+    def _call(self, rpc_call_name, *args, **kwargs):
         self.__id_count += 1
         kwargs.setdefault("timeout", self.timeout)
 
         postdata = json.dumps(
             {
                 "version": "1.1",
-                "method": service_name,
+                "method": rpc_call_name,
                 "params": args,
                 "id": self.__id_count,
             }
         )
 
-        log.debug(f"[{self.public_url}] calling %s%s", service_name, args)
+        log.debug(f"[{self.public_url}] calling %s%s", rpc_call_name, args)
 
         headers = {
             "Host": self._parsed_url.hostname,

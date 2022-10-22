@@ -29,14 +29,25 @@ def get_rpc(hosts: t.Tuple[Host]) -> t.Dict[str, BitcoinRpc]:
 RPC_ERROR_RESULT = object()
 
 
-def gather_rpc(rpc_call_func: t.Callable) -> t.Dict[str, t.Any]:
+def gather_rpc(rpc_call_arg: str | t.Callable) -> t.Dict[str, t.Any]:
+    """
+    Gather RPC resuls from all bitcoin hosts.
+
+    Args:
+        rpc_call_arg: either a string that represents the RPC call or a
+            function that takes the RPC object as its only argument.
+    """
     rpcmap = get_rpc(get_bitcoind_hosts())
     promises = {}
     results = {}
 
     with ThreadPoolExecutor(max_workers=10) as e:
         for hostname, rpc in rpcmap.items():
-            promises[hostname] = e.submit(rpc_call_func, rpc)
+
+            if isinstance(rpc_call_arg, str):
+                promises[hostname] = e.submit(rpc.call, rpc_call_arg)
+            else:
+                promises[hostname] = e.submit(rpc_call_arg, rpc)
 
         for hostname, promise in promises.items():
             try:
@@ -45,7 +56,7 @@ def gather_rpc(rpc_call_func: t.Callable) -> t.Dict[str, t.Any]:
                 log.exception(
                     "host %r encountered an error running %s: %s",
                     hostname,
-                    rpc_call_func,
+                    rpc_call_arg,
                     e,
                 )
                 results[hostname] = RPC_ERROR_RESULT

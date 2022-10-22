@@ -90,7 +90,7 @@ def refresh_metrics():
             os.path.getsize(bitcoind_log) / (1024 ** 2))
 
 
-def sigterm_handler(signal, frame):
+def sigterm_handler(*_):
     print("exiting")
     sys.exit(0)
 

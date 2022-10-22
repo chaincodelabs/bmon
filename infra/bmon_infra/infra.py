@@ -33,6 +33,9 @@ fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
 BMON_BITCOIND_EXPORTER_PORT = 9333
 SERVER_EXPORTER_PORT = 9334
 
+BMON_SSHKEY = Path.home() / ".ssh" / "bmon-ed25519"
+BMON_SSHPUBKEY = Path.home() / ".ssh" / "bmon-ed25519.pub"
+
 
 class Host(wireguard.Host):
     def __init__(
@@ -52,6 +55,9 @@ class Host(wireguard.Host):
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         self.outbound_wireguard = outbound_wireguard
+
+        if BMON_SSHKEY.exists():
+            kwargs.setdefault('ssh_identity_file', BMON_SSHKEY)
 
         super().__init__(*args, **kwargs)
 
@@ -84,32 +90,37 @@ def get_server_wireguard_ip() -> str:
     return str(server_host.bmon_ip)
 
 
-def get_hosts_for_cli() -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
+def get_hosts_for_cli(
+    need_secrets=True, hostname_filter=None
+) -> t.Tuple[t.Dict[str, wireguard.Server], t.Dict[str, Host]]:
     wg_servers, hosts = get_hosts()
+
+    hostname_filter = hostname_filter or cli.args.hostname_filter
 
     if cli.args.tag_filter:
         hosts = {name: h for name, h in hosts.items() if cli.args.tag_filter in h.tags}
-    if cli.args.hostname_filter:
+    if hostname_filter:
         hosts = {
-            name: h
-            for name, h in hosts.items()
-            if re.search(cli.args.hostname_filter, name)
+            name: h for name, h in hosts.items() if re.search(hostname_filter, name)
         }
 
-    secrets = fscm.get_secrets(["*"], "fscm/bmon")
-    host_secrets = secrets.pop("_hosts")
+    if need_secrets:
+        secrets = fscm.get_secrets(["*"], "fscm/bmon")
+        host_secrets = secrets.pop("_hosts")
 
-    for host in hosts.values():
-        host.secrets.update(secrets).update(
-            getattr(host_secrets, host.name, fscm.Secrets())
-        )
+        for host in hosts.values():
+            host.secrets.update(secrets).update(
+                getattr(host_secrets, host.name, fscm.Secrets())
+            )
 
-        if host.outbound_wireguard:
-            print(f"loading outbound wireguard {host.outbound_wireguard!r} for {host}")
-            host.secrets.outbound_wireguard = run(
-                f"pass show fscm/bmon/{host.outbound_wireguard}",
-                q=True,
-            ).stdout
+            if host.outbound_wireguard:
+                print(
+                    f"loading outbound wireguard {host.outbound_wireguard!r} for {host}"
+                )
+                host.secrets.outbound_wireguard = run(
+                    f"pass show fscm/bmon/{host.outbound_wireguard}",
+                    q=True,
+                ).stdout
 
     for host in hosts.values():
         host.check_host_keys = "accept"
@@ -123,6 +134,7 @@ def main_remote(
     wgmap: t.Dict[str, wireguard.Server],
     server_wg_ip: str,
     restart_spec: str = "",
+    ssh_pubkey: str = "",
 ):
     user = getpass.getuser()
     fscm.s.pkgs_install(
@@ -146,6 +158,11 @@ def main_remote(
         ).chmod("600")
         systemd.enable_service(
             "wg-quick@%s" % wgname, start=True, restart=True, sudo=True
+        )
+
+    if ssh_pubkey:
+        lineinfile(
+            Path.home() / ".ssh" / "authorized_keys", ssh_pubkey, regex=ssh_pubkey[:40]
         )
 
     if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
@@ -194,9 +211,7 @@ def main_remote(
     if "server" in host.tags:
         provision_bmon_server(host, parent, server_wg_ip, restart_spec)
     elif "bitcoind" in host.tags:
-        provision_monitored_bitcoind(
-            host, parent, server_wg_ip, restart_spec
-        )
+        provision_monitored_bitcoind(host, parent, server_wg_ip, restart_spec)
 
 
 def provision_bmon_server(
@@ -260,6 +275,7 @@ def provision_bmon_server(
         case "all":
             run("systemctl --user restart bmon-server")
         case _:
+            run(f"{docker_compose} pull {restart_spec}")
             cycle(f"web server-task-worker {restart_spec}")
 
 
@@ -309,7 +325,7 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl daemon-reload", sudo=True)
 
-    services_path = bmon_path / 'services' / 'prod'
+    services_path = bmon_path / "services" / "prod"
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
@@ -317,9 +333,7 @@ def provision_monitored_bitcoind(
         DATADIR_URL = f"http://{server_wg_ip}/bitcoin-pruned-550.tar.gz"
         # Load in a prepopulated pruned datadir if necessary.
         btc_size_kb = int(
-            run(f"du -s {services_path}/bitcoin/data", q=True).stdout.split()[
-                0
-            ]
+            run(f"du -s {services_path}/bitcoin/data", q=True).stdout.split()[0]
         )
         gb_in_kb = 1000**2
 
@@ -334,8 +348,9 @@ def provision_monitored_bitcoind(
             run(f"touch {btc_data}/debug.log")
             print(f"Installed prepopulated pruned dir at {btc_data}")
 
-    p(services_path / 'bmon' / 'credentials' / 'chaincode-gcp.json').contents(
-        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)).chmod('600')
+    p(services_path / "bmon" / "credentials" / "chaincode-gcp.json").contents(
+        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)
+    ).chmod("600")
 
     if (
         p(sysd / "bmon-bitcoind.service")
@@ -361,7 +376,7 @@ def provision_monitored_bitcoind(
         run(f"{docker_compose} rm -f {services}").assert_ok()
         run(f"{docker_compose} up -d {services}").assert_ok()
 
-    alwaysrestart = 'bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher'
+    alwaysrestart = "bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher"
 
     match restart_spec:
         case "":
@@ -371,6 +386,7 @@ def provision_monitored_bitcoind(
         case "all":
             run("systemctl --user restart bmon-bitcoind")
         case _:
+            run(f"{docker_compose} pull {restart_spec}")
             cycle(f"{alwaysrestart} {restart_spec}")
 
 
@@ -394,8 +410,12 @@ def deploy(
     includes_server = any("server" in h.tags for h in hosts)
     server_wg_ip = get_server_wireguard_ip()
 
+    ssh_pubkey = ''
+    if BMON_SSHPUBKEY.exists():
+        ssh_pubkey = BMON_SSHPUBKEY.read_text()
+
     with executor(*hosts) as exec:
-        exec.allow_file_access("./etc/*", "./etc/**/*")
+        exec.allow_file_access("./etc/*", "./etc/**/*", str(BMON_SSHPUBKEY))
 
         # Deploy to server first to run database migrations.
         if (
@@ -407,6 +427,7 @@ def deploy(
                     wgsmap,
                     server_wg_ip,
                     restart,
+                    ssh_pubkey=ssh_pubkey,
                 )
             ).ok
         ):
@@ -421,6 +442,7 @@ def deploy(
             wgsmap,
             server_wg_ip,
             restart,
+            ssh_pubkey=ssh_pubkey,
         )
 
 
@@ -439,7 +461,7 @@ def bitcoind_logs():
 @cli.cmd
 def runall(cmd: str, sudo: bool = False):
     """Run some command across all hosts."""
-    _, hostmap = get_hosts_for_cli()
+    _, hostmap = get_hosts_for_cli(need_secrets=sudo)
     hosts = list(hostmap.values())
 
     with executor(*hosts) as exec:
@@ -448,10 +470,21 @@ def runall(cmd: str, sudo: bool = False):
             sys.exit(1)
 
 
-def _run_cmd(cmd: str, sudo: bool):
-    os.chdir(Path.home() / 'bmon')
-    path = os.environ['PATH']
-    os.environ['PATH'] = f"{Path.home() / '.venv/bin'}:{path}"
+@cli.cmd
+def rpc(cmd: str, sudo: bool = False):
+    """Run a bitcoind RPC command across all bitcoind hosts."""
+    _, hostmap = get_hosts_for_cli(need_secrets=False, hostname_filter='bmon')
+    [server] = list(hostmap.values())
+
+    with executor(server) as exec:
+        exec.run(_run_cmd, f'docker-compose run --rm shell bmon-util rpc {cmd}')
+
+
+
+def _run_cmd(cmd: str, sudo: bool = False):
+    os.chdir(Path.home() / "bmon")
+    path = os.environ["PATH"]
+    os.environ["PATH"] = f"{Path.home() / '.venv/bin'}:{path}"
     return fscm.run(f"bash -c '{cmd}'", sudo=sudo, env=os.environ)
 
 

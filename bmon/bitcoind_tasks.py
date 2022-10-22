@@ -62,6 +62,10 @@ CURRENT_MEMPOOL_FILE = settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current"
 
 @mempool_q.task()
 def mempool_activity(avro_data: dict, linehash: str):
+    """
+    Persist some mempool activity in the local cache; ship them off to
+    some remote server periodically.
+    """
     SHIP_LOGS_EVERY_MINUTES = 120
 
     with mempool_activity_lock:

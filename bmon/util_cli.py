@@ -1,9 +1,16 @@
-
 from clii import App
+import pprint
 
-from . import bitcoind_tasks
 import fastavro
 from django.conf import settings
+
+# If we're not on a bitcoind host, this import will fail - that's okay.
+try:
+    from . import bitcoind_tasks
+except Exception:
+    bitcoind_tasks = None
+
+from .bitcoin.api import gather_rpc
 
 cli = App()
 
@@ -11,12 +18,14 @@ cli = App()
 @cli.cmd
 def feedline(line: str):
     """Manually process a logline. Useful for testing in dev."""
+    assert bitcoind_tasks
     bitcoind_tasks.process_line(line)
 
 
 @cli.cmd
 def showmempool():
     """Show the current mempool avro data."""
+    assert bitcoind_tasks
     with open(settings.MEMPOOL_ACTIVITY_CACHE_PATH / 'current', 'rb') as f:
         for record in fastavro.reader(f):
             print(record)
@@ -25,7 +34,14 @@ def showmempool():
 @cli.cmd
 def shipmempool():
     """Ship off mempool activity to GCP."""
+    assert bitcoind_tasks
     bitcoind_tasks.queue_mempool_to_ship()
+
+
+@cli.cmd
+def rpc(cmd):
+    """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
+    pprint.pprint(gather_rpc(cmd))
 
 
 def main():
