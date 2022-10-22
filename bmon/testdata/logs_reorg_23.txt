@@ -1,0 +1,395 @@
+
+
+
+
+
+2022-10-22T14:22:49.157136Z [init] [init/common.cpp:149] [LogPackageVersion] Bitcoin Core version v24.99.0-bfa09aa10d08 (debug build)
+2022-10-22T14:22:49.157262Z [init] [init.cpp:664] [InitParameterInteraction] InitParameterInteraction: parameter interaction: -bind set -> setting -listen=1
+2022-10-22T14:22:49.159116Z [init] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "init"
+2022-10-22T14:22:49.159151Z [init] [init.cpp:1043] [AppInitParameterInteraction] Experimental syscall sandbox enabled (-sandbox=log-and-abort): bitcoind will terminate if an unexpected (not allowlisted) syscall is invoked.
+2022-10-22T14:22:49.159251Z [init] [kernel/context.cpp:21] [Context] Using the 'sse4(1way),sse41(4way),avx2(8way)' SHA256 implementation
+2022-10-22T14:22:49.159281Z [init] [random.cpp:100] [ReportHardwareRand] Using RdSeed as an additional entropy source
+2022-10-22T14:22:49.159292Z [init] [random.cpp:103] [ReportHardwareRand] Using RdRand as an additional entropy source
+2022-10-22T14:22:49.162585Z [init] [init/common.cpp:120] [StartLogging] Default data directory /home/james/.bitcoin
+2022-10-22T14:22:49.162606Z [init] [init/common.cpp:121] [StartLogging] Using data directory /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest
+2022-10-22T14:22:49.162670Z [init] [init/common.cpp:126] [StartLogging] Config file: /tmp/bitcoin_func_test_d_dpqxlb/node0/bitcoin.conf
+2022-10-22T14:22:49.162695Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: regtest="1"
+2022-10-22T14:22:49.162712Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] bind="127.0.0.1"
+2022-10-22T14:22:49.162726Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] connect="0"
+2022-10-22T14:22:49.162740Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] discover="0"
+2022-10-22T14:22:49.162753Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] dnsseed="0"
+2022-10-22T14:22:49.162768Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] fallbackfee="0.0002"
+2022-10-22T14:22:49.162781Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] fixedseeds="0"
+2022-10-22T14:22:49.162795Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] keypool="1"
+2022-10-22T14:22:49.162808Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] listenonion="0"
+2022-10-22T14:22:49.162825Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] natpmp="0"
+2022-10-22T14:22:49.162840Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] peertimeout="999999999"
+2022-10-22T14:22:49.162854Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] port="11339"
+2022-10-22T14:22:49.162868Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] printtoconsole="0"
+2022-10-22T14:22:49.162883Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] rpcdoccheck="1"
+2022-10-22T14:22:49.162898Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] rpcport="16339"
+2022-10-22T14:22:49.162913Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] server="1"
+2022-10-22T14:22:49.162927Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] shrinkdebugfile="0"
+2022-10-22T14:22:49.162941Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] unsafesqlitesync="1"
+2022-10-22T14:22:49.162957Z [init] [util/system.cpp:1105] [logArgsPrefix] Config file arg: [regtest] upnp="0"
+2022-10-22T14:22:49.162971Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: datadir="/tmp/bitcoin_func_test_d_dpqxlb/node0"
+2022-10-22T14:22:49.162986Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: debug=""
+2022-10-22T14:22:49.163000Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: debugexclude="libevent"
+2022-10-22T14:22:49.163014Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: debugexclude="leveldb"
+2022-10-22T14:22:49.163028Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: loglevel="trace"
+2022-10-22T14:22:49.163056Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: logsourcelocations=""
+2022-10-22T14:22:49.163071Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: logthreadnames=""
+2022-10-22T14:22:49.163085Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: logtimemicros=""
+2022-10-22T14:22:49.163098Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: sandbox="log-and-abort"
+2022-10-22T14:22:49.163113Z [init] [util/system.cpp:1105] [logArgsPrefix] Command-line arg: uacomment="testnode0"
+2022-10-22T14:22:49.163142Z [init] [init.cpp:1115] [AppInitMain] Using at most 125 automatic connections (1024 file descriptors available)
+2022-10-22T14:22:49.184196Z [init] [script/sigcache.cpp:103] [InitSignatureCache] Using 16 MiB out of 16 MiB requested for signature cache, able to store 524288 elements
+2022-10-22T14:22:49.199896Z [init] [validation.cpp:1671] [InitScriptExecutionCache] Using 16 MiB out of 16 MiB requested for script execution cache, able to store 524288 elements
+2022-10-22T14:22:49.199958Z [init] [init.cpp:1147] [AppInitMain] Script verification uses 7 additional threads
+2022-10-22T14:22:49.200321Z [scriptch.0] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.0"
+2022-10-22T14:22:49.200384Z [scriptch.1] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.1"
+2022-10-22T14:22:49.200452Z [scriptch.4] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.4"
+2022-10-22T14:22:49.200562Z [scheduler] [util/thread.cpp:20] [TraceThread] scheduler thread start
+2022-10-22T14:22:49.200609Z [scriptch.5] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.5"
+2022-10-22T14:22:49.200713Z [scriptch.6] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.6"
+2022-10-22T14:22:49.200768Z [scriptch.3] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.3"
+2022-10-22T14:22:49.200816Z [scriptch.2] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scriptch.2"
+2022-10-22T14:22:49.200920Z [scheduler] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "scheduler"
+2022-10-22T14:22:49.208945Z [init] [httpserver.cpp:185] [InitHTTPAllowList] [http] Allowing HTTP connections from: 127.0.0.0/8 ::1/128 
+2022-10-22T14:22:49.209044Z [init] [httpserver.cpp:323] [HTTPBindAddresses] Binding RPC on address ::1 port 16339
+2022-10-22T14:22:49.209227Z [init] [httpserver.cpp:323] [HTTPBindAddresses] Binding RPC on address 127.0.0.1 port 16339
+2022-10-22T14:22:49.209335Z [init] [httpserver.cpp:403] [InitHTTPServer] [http] Initialized HTTP server
+2022-10-22T14:22:49.209354Z [init] [httpserver.cpp:405] [InitHTTPServer] [http] creating work queue of depth 16
+2022-10-22T14:22:49.209366Z [init] [rpc/server.cpp:289] [StartRPC] [rpc] Starting RPC
+2022-10-22T14:22:49.209388Z [init] [httprpc.cpp:296] [StartHTTPRPC] [rpc] Starting HTTP RPC server
+2022-10-22T14:22:49.209404Z [init] [httprpc.cpp:245] [InitRPCAuthentication] Using random cookie authentication.
+2022-10-22T14:22:49.209846Z [init] [rpc/request.cpp:106] [GenerateAuthCookie] Generated RPC authentication cookie /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/.cookie
+2022-10-22T14:22:49.209878Z [init] [httpserver.cpp:678] [RegisterHTTPHandler] [http] Registering HTTP handler for / (exactmatch 1)
+2022-10-22T14:22:49.209889Z [init] [httpserver.cpp:678] [RegisterHTTPHandler] [http] Registering HTTP handler for /wallet/ (exactmatch 0)
+2022-10-22T14:22:49.209898Z [init] [httpserver.cpp:427] [StartHTTPServer] [http] Starting HTTP server
+2022-10-22T14:22:49.209905Z [init] [httpserver.cpp:429] [StartHTTPServer] [http] starting 4 worker threads
+2022-10-22T14:22:49.210440Z [httpworker.0] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "httpworker.0"
+2022-10-22T14:22:49.210590Z [init] [wallet/load.cpp:51] [VerifyWallets] Using wallet directory /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/wallets
+2022-10-22T14:22:49.210612Z [init] [noui.cpp:56] [noui_InitMessage] init message: Verifying wallet(s)…
+2022-10-22T14:22:49.210705Z [init] [init.cpp:1233] [AppInitMain] Using /16 prefix for IP bucketing
+2022-10-22T14:22:49.210728Z [init] [noui.cpp:56] [noui_InitMessage] init message: Loading P2P addresses…
+2022-10-22T14:22:49.210763Z [http] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "http"
+2022-10-22T14:22:49.210797Z [http] [httpserver.cpp:289] [ThreadHTTP] [http] Entering http event loop
+2022-10-22T14:22:49.210823Z [httpworker.1] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "httpworker.1"
+2022-10-22T14:22:49.210887Z [httpworker.2] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "httpworker.2"
+2022-10-22T14:22:49.210963Z [httpworker.3] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "httpworker.3"
+2022-10-22T14:22:49.211316Z [init] [addrdb.cpp:198] [LoadAddrman] Creating peers.dat because the file was not found ("/tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/peers.dat")
+2022-10-22T14:22:49.219865Z [init] [noui.cpp:56] [noui_InitMessage] init message: Loading banlist…
+2022-10-22T14:22:49.219904Z [init] [banman.cpp:41] [LoadBanlist] Recreating the banlist database
+2022-10-22T14:22:49.219978Z [init] [banman.cpp:67] [DumpBanlist] [net] Flushed 0 banned node addresses/subnets to disk  0ms
+2022-10-22T14:22:49.220016Z [init] [net.cpp:1534] [SetTryNewOutboundPeer] [net] setting try another outbound peer=false
+2022-10-22T14:22:49.220034Z [init] [net.cpp:2195] [SetNetworkActive] SetNetworkActive: true
+2022-10-22T14:22:49.220849Z [init] [policy/fees.cpp:551] [CBlockPolicyEstimator] Failed to read fee estimates from /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/fee_estimates.dat. Continue anyway.
+2022-10-22T14:22:49.220933Z [init] [init.cpp:1442] [AppInitMain] Cache configuration:
+2022-10-22T14:22:49.220954Z [init] [init.cpp:1443] [AppInitMain] * Using 2.0 MiB for block index database
+2022-10-22T14:22:49.220970Z [init] [init.cpp:1451] [AppInitMain] * Using 8.0 MiB for chain state database
+2022-10-22T14:22:49.221004Z [init] [init.cpp:1469] [AppInitMain] * Using 440.0 MiB for in-memory UTXO set (plus up to 286.1 MiB of unused mempool space)
+2022-10-22T14:22:49.221063Z [init] [noui.cpp:56] [noui_InitMessage] init message: Loading block index…
+2022-10-22T14:22:49.221078Z [init] [node/chainstate.cpp:144] [LoadChainstate] Validating signatures for all blocks.
+2022-10-22T14:22:49.221092Z [init] [node/chainstate.cpp:146] [LoadChainstate] Setting nMinimumChainWork=0000000000000000000000000000000000000000000000000000000000000000
+2022-10-22T14:22:49.221322Z [init] [dbwrapper.cpp:150] [CDBWrapper] Opening LevelDB in /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/blocks/index
+2022-10-22T14:22:49.244778Z [init] [dbwrapper.cpp:158] [CDBWrapper] Opened LevelDB successfully
+2022-10-22T14:22:49.244812Z [init] [dbwrapper.cpp:183] [CDBWrapper] Using obfuscation key for /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/blocks/index: 0000000000000000
+2022-10-22T14:22:49.244834Z [init] [node/blockstorage.cpp:331] [LoadBlockIndexDB] LoadBlockIndexDB: last block file = 0
+2022-10-22T14:22:49.244853Z [init] [node/blockstorage.cpp:335] [LoadBlockIndexDB] LoadBlockIndexDB: last block file info: CBlockFileInfo(blocks=0, size=0, heights=0...0, time=1970-01-01...1970-01-01)
+2022-10-22T14:22:49.244864Z [init] [node/blockstorage.cpp:346] [LoadBlockIndexDB] Checking all blk files are present...
+2022-10-22T14:22:49.244877Z [init] [validation.cpp:4377] [LoadBlockIndex] Initializing databases...
+2022-10-22T14:22:49.244975Z [init] [flatfile.cpp:69] [Allocate] [validation] Pre-allocating up to position 0x1000000 in blk00000.dat
+2022-10-22T14:22:49.246025Z [init] [node/chainstate.cpp:84] [CompleteChainstateInitialization] Initializing chainstate Chainstate [ibd] @ height -1 (null)
+2022-10-22T14:22:49.246185Z [init] [dbwrapper.cpp:150] [CDBWrapper] Opening LevelDB in /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/chainstate
+2022-10-22T14:22:49.270454Z [init] [dbwrapper.cpp:158] [CDBWrapper] Opened LevelDB successfully
+2022-10-22T14:22:49.270523Z [init] [dbwrapper.cpp:180] [CDBWrapper] Wrote new obfuscate key for /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/chainstate: 99b106324059e793
+2022-10-22T14:22:49.270539Z [init] [dbwrapper.cpp:183] [CDBWrapper] Using obfuscation key for /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/chainstate: 99b106324059e793
+2022-10-22T14:22:49.270580Z [init] [validation.cpp:5406] [MaybeRebalanceCaches] [snapshot] allocating all cache to the IBD chainstate
+2022-10-22T14:22:49.270627Z [init] [dbwrapper.cpp:150] [CDBWrapper] Opening LevelDB in /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/chainstate
+2022-10-22T14:22:49.301525Z [init] [dbwrapper.cpp:158] [CDBWrapper] Opened LevelDB successfully
+2022-10-22T14:22:49.301578Z [init] [dbwrapper.cpp:183] [CDBWrapper] Using obfuscation key for /tmp/bitcoin_func_test_d_dpqxlb/node0/regtest/chainstate: 99b106324059e793
+2022-10-22T14:22:49.301613Z [init] [validation.cpp:4791] [ResizeCoinsCaches] [Chainstate [ibd] @ height -1 (null)] resized coinsdb cache to 8.0 MiB
+2022-10-22T14:22:49.301634Z [init] [validation.cpp:4793] [ResizeCoinsCaches] [Chainstate [ibd] @ height -1 (null)] resized coinstip cache to 440.0 MiB
+2022-10-22T14:22:49.301666Z [init] [noui.cpp:56] [noui_InitMessage] init message: Verifying blocks…
+2022-10-22T14:22:49.301694Z [init] [init.cpp:1515] [AppInitMain]  block index              80ms
+2022-10-22T14:22:49.303248Z [init] [init.cpp:1604] [AppInitMain] Setting NODE_NETWORK on non-prune mode
+2022-10-22T14:22:49.303372Z [loadblk] [util/thread.cpp:20] [TraceThread] loadblk thread start
+2022-10-22T14:22:49.303580Z [loadblk] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "loadblk"
+2022-10-22T14:22:49.303777Z [loadblk] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.12ms [0.00s (infms/blk)]
+2022-10-22T14:22:49.303824Z [loadblk] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 state=Valid
+2022-10-22T14:22:49.303857Z [loadblk] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.09ms [0.00s (0.09ms/blk)]
+2022-10-22T14:22:49.303876Z [loadblk] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.02ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.303897Z [loadblk] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.02ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.303947Z [loadblk] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 height=0 version=0x00000001 log2_work=1.000000 tx=1 date='2011-02-02T23:16:42Z' progress=1.000000 cache=0.0MiB(0txo)
+2022-10-22T14:22:49.303966Z [loadblk] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.07ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.303981Z [loadblk] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.32ms [0.00s (0.32ms/blk)]
+2022-10-22T14:22:49.303998Z [loadblk] [txmempool.cpp:694] [check] [mempool] Checking mempool with 0 transactions and 0 inputs
+2022-10-22T14:22:49.304026Z [loadblk] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 block height=0
+2022-10-22T14:22:49.304057Z [loadblk] [validationinterface.cpp:202] [UpdatedBlockTip] [validation] Enqueuing UpdatedBlockTip: new block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 fork block hash=null (in IBD=true)
+2022-10-22T14:22:49.304105Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 block height=0
+2022-10-22T14:22:49.304140Z [loadblk] [kernel/mempool_persist.cpp:47] [LoadMempool] Failed to open mempool file from disk. Continuing anyway.
+2022-10-22T14:22:49.304165Z [loadblk] [util/thread.cpp:22] [TraceThread] loadblk thread exit
+2022-10-22T14:22:49.304182Z [init] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, init.cpp:1672 started
+2022-10-22T14:22:49.304205Z [init] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, init.cpp:1672 completed (2μs)
+2022-10-22T14:22:49.304222Z [scheduler] [validationinterface.cpp:202] [operator()] [validation] UpdatedBlockTip: new block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 fork block hash=null (in IBD=true)
+2022-10-22T14:22:49.304244Z [init] [init.cpp:1673] [AppInitMain] block tree size = 1
+2022-10-22T14:22:49.304264Z [init] [init.cpp:1685] [AppInitMain] nBestHeight = 0
+2022-10-22T14:22:49.304362Z [init] [net.cpp:2128] [BindListenPort] Bound to 127.0.0.1:11339
+2022-10-22T14:22:49.304404Z [init] [net.cpp:2125] [BindListenPort] [net:error] Unable to bind to 127.0.0.1:18445 on this computer. Bitcoin Core is probably already running.
+2022-10-22T14:22:49.304433Z [init] [noui.cpp:56] [noui_InitMessage] init message: Starting network threads…
+2022-10-22T14:22:49.304505Z [init] [net.cpp:2334] [Start] DNS seeding disabled
+2022-10-22T14:22:49.304528Z [net] [util/thread.cpp:20] [TraceThread] net thread start
+2022-10-22T14:22:49.304607Z [addcon] [util/thread.cpp:20] [TraceThread] addcon thread start
+2022-10-22T14:22:49.304829Z [init] [noui.cpp:56] [noui_InitMessage] init message: Done loading
+2022-10-22T14:22:49.304849Z [msghand] [util/thread.cpp:20] [TraceThread] msghand thread start
+2022-10-22T14:22:49.304886Z [net] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "net"
+2022-10-22T14:22:49.305069Z [addcon] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "addcon"
+2022-10-22T14:22:49.305114Z [msghand] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "msghand"
+2022-10-22T14:22:49.305191Z [init] [util/syscall_sandbox.cpp:925] [SetSyscallSandboxPolicy] [util] Syscall filter installed for thread "init"
+2022-10-22T14:22:49.307543Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.307614Z [httpworker.0] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getblockcount user=__cookie__
+2022-10-22T14:22:49.308334Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.308396Z [httpworker.1] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getmempoolinfo user=__cookie__
+2022-10-22T14:22:49.311466Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.311544Z [httpworker.2] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=generatetoaddress user=__cookie__
+2022-10-22T14:22:49.311660Z [httpworker.2] [node/miner.cpp:163] [CreateNewBlock] CreateNewBlock(): block weight: 896 txs: 0 fees: 0 sigops 400
+2022-10-22T14:22:49.311715Z [httpworker.2] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.311739Z [httpworker.2] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.03ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.311764Z [httpworker.2] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.02ms (0.022ms/tx, 0.000ms/txin) [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.311794Z [httpworker.2] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.05ms (0.000ms/txin) [0.00s (0.03ms/blk)]
+2022-10-22T14:22:49.311814Z [httpworker.2] [node/miner.cpp:181] [CreateNewBlock] [bench] CreateNewBlock() packages: 0.01ms (0 packages, 0 updated descendants), validity: 0.17ms (total 0.19ms)
+2022-10-22T14:22:49.311949Z [httpworker.2] [validation.cpp:2747] [ConnectTip] [bench]   - Using cached block
+2022-10-22T14:22:49.311968Z [httpworker.2] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.02ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.311993Z [httpworker.2] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.312011Z [httpworker.2] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.02ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.312035Z [httpworker.2] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.02ms (0.021ms/tx, 0.000ms/txin) [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.312062Z [httpworker.2] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.05ms (0.000ms/txin) [0.00s (0.03ms/blk)]
+2022-10-22T14:22:49.312140Z [httpworker.2] [flatfile.cpp:69] [Allocate] [validation] Pre-allocating up to position 0x100000 in rev00000.dat
+2022-10-22T14:22:49.312354Z [httpworker.2] [validation.cpp:2299] [ConnectBlock] [bench]     - Write undo data: 0.29ms [0.00s (0.10ms/blk)]
+2022-10-22T14:22:49.312372Z [httpworker.2] [validation.cpp:2314] [ConnectBlock] [bench]     - Index writing: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.312390Z [httpworker.2] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f state=Valid
+2022-10-22T14:22:49.312412Z [httpworker.2] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.45ms [0.00s (0.18ms/blk)]
+2022-10-22T14:22:49.312429Z [httpworker.2] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.312448Z [httpworker.2] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.312533Z [httpworker.2] [policy/fees.cpp:667] [processBlock] [estimatefee] Blockpolicy estimates updated by 0 of 0 block txs, since last block 0 of 0 tracked, mempool map size 0, max target 0 from current
+2022-10-22T14:22:49.312558Z [httpworker.2] [validation.cpp:1553] [IsInitialBlockDownload] Leaving InitialBlockDownload (latching to false)
+2022-10-22T14:22:49.312592Z [httpworker.2] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f height=1 version=0x20000000 log2_work=2.000000 tx=2 date='2022-10-22T14:22:49Z' progress=1.000000 cache=0.0MiB(1txo)
+2022-10-22T14:22:49.312609Z [httpworker.2] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.16ms [0.00s (0.08ms/blk)]
+2022-10-22T14:22:49.312625Z [httpworker.2] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.66ms [0.00s (0.32ms/blk)]
+2022-10-22T14:22:49.312642Z [httpworker.2] [txmempool.cpp:694] [check] [mempool] Checking mempool with 0 transactions and 0 inputs
+2022-10-22T14:22:49.312679Z [httpworker.2] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f block height=1
+2022-10-22T14:22:49.312700Z [httpworker.2] [validationinterface.cpp:202] [UpdatedBlockTip] [validation] Enqueuing UpdatedBlockTip: new block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f fork block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 (in IBD=false)
+2022-10-22T14:22:49.312739Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f block height=1
+2022-10-22T14:22:49.312759Z [httpworker.2] [node/miner.cpp:163] [CreateNewBlock] CreateNewBlock(): block weight: 896 txs: 0 fees: 0 sigops 400
+2022-10-22T14:22:49.312776Z [scheduler] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, net_processing.cpp:1823 started
+2022-10-22T14:22:49.312796Z [httpworker.2] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.312823Z [httpworker.2] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.03ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.312844Z [httpworker.2] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.02ms (0.020ms/tx, 0.000ms/txin) [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.312874Z [httpworker.2] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.05ms (0.000ms/txin) [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.312897Z [httpworker.2] [node/miner.cpp:181] [CreateNewBlock] [bench] CreateNewBlock() packages: 0.00ms (0 packages, 0 updated descendants), validity: 0.14ms (total 0.15ms)
+2022-10-22T14:22:49.312922Z [scheduler] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, net_processing.cpp:1823 completed (129μs)
+2022-10-22T14:22:49.312944Z [httpworker.2] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, validation.cpp:3928 started
+2022-10-22T14:22:49.312964Z [httpworker.2] [logging/timer.h:57] [Log] [lock] Enter: lock contention cs_main, validation.cpp:3928 completed (3μs)
+2022-10-22T14:22:49.312980Z [scheduler] [validationinterface.cpp:202] [operator()] [validation] UpdatedBlockTip: new block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f fork block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 (in IBD=false)
+2022-10-22T14:22:49.313004Z [httpworker.2] [validationinterface.cpp:257] [NewPoWValidBlock] [validation] NewPoWValidBlock: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f
+2022-10-22T14:22:49.313108Z [httpworker.2] [validation.cpp:2747] [ConnectTip] [bench]   - Using cached block
+2022-10-22T14:22:49.313128Z [httpworker.2] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.02ms [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.313155Z [httpworker.2] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.313169Z [httpworker.2] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.02ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.313187Z [httpworker.2] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.02ms (0.015ms/tx, 0.000ms/txin) [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.313203Z [httpworker.2] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.03ms (0.000ms/txin) [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.313254Z [httpworker.2] [validation.cpp:2299] [ConnectBlock] [bench]     - Write undo data: 0.05ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.313269Z [httpworker.2] [validation.cpp:2314] [ConnectBlock] [bench]     - Index writing: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.313308Z [httpworker.2] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f state=Valid
+2022-10-22T14:22:49.313331Z [httpworker.2] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.20ms [0.00s (0.15ms/blk)]
+2022-10-22T14:22:49.313349Z [httpworker.2] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.313371Z [httpworker.2] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.313470Z [httpworker.2] [policy/fees.cpp:667] [processBlock] [estimatefee] Blockpolicy estimates updated by 0 of 0 block txs, since last block 0 of 0 tracked, mempool map size 0, max target 0 from current
+2022-10-22T14:22:49.313500Z [httpworker.2] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f height=2 version=0x20000000 log2_work=2.584963 tx=3 date='2022-10-22T14:22:50Z' progress=1.000000 cache=0.0MiB(2txo)
+2022-10-22T14:22:49.313516Z [httpworker.2] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.15ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.313531Z [httpworker.2] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.41ms [0.00s (0.28ms/blk)]
+2022-10-22T14:22:49.313555Z [httpworker.2] [txmempool.cpp:694] [check] [mempool] Checking mempool with 0 transactions and 0 inputs
+2022-10-22T14:22:49.313593Z [httpworker.2] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=2
+2022-10-22T14:22:49.313641Z [httpworker.2] [validationinterface.cpp:202] [UpdatedBlockTip] [validation] Enqueuing UpdatedBlockTip: new block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f fork block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f (in IBD=false)
+2022-10-22T14:22:49.313677Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=2
+2022-10-22T14:22:49.313725Z [scheduler] [validationinterface.cpp:202] [operator()] [validation] UpdatedBlockTip: new block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f fork block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f (in IBD=false)
+2022-10-22T14:22:49.318258Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.318324Z [httpworker.3] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getpeerinfo user=__cookie__
+2022-10-22T14:22:49.319845Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.319909Z [httpworker.0] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=addnode user=__cookie__
+2022-10-22T14:22:49.319966Z [httpworker.0] [net.cpp:455] [ConnectNode] [net:debug] trying connection 127.0.0.1:11340 lastseen=0.0hrs
+2022-10-22T14:22:49.320185Z [httpworker.0] [net.cpp:2762] [CNode] [net] Added connection peer=0
+2022-10-22T14:22:49.320294Z [httpworker.0] [net.cpp:2775] [PushMessage] [net] sending version (114 bytes) peer=0
+2022-10-22T14:22:49.320355Z [httpworker.0] [net_processing.cpp:1392] [PushNodeVersion] [net] send version message: version 70016, blocks=2, txrelay=1, peer=0
+2022-10-22T14:22:49.320913Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.321074Z [httpworker.1] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getpeerinfo user=__cookie__
+2022-10-22T14:22:49.355140Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: version (114 bytes) peer=0
+2022-10-22T14:22:49.355174Z [msghand] [net.cpp:2775] [PushMessage] [net] sending wtxidrelay (0 bytes) peer=0
+2022-10-22T14:22:49.355220Z [msghand] [net.cpp:2775] [PushMessage] [net] sending sendaddrv2 (0 bytes) peer=0
+2022-10-22T14:22:49.355634Z [msghand] [net.cpp:2775] [PushMessage] [net] sending verack (0 bytes) peer=0
+2022-10-22T14:22:49.355700Z [msghand] [net.cpp:2775] [PushMessage] [net] sending getaddr (0 bytes) peer=0
+2022-10-22T14:22:49.355729Z [msghand] [net_processing.cpp:3363] [ProcessMessage] [net] receive version message: /Satoshi:24.99.0(testnode1)/: version 70016, blocks=3, us=[::]:0, txrelay=1, peer=0
+2022-10-22T14:22:49.355742Z [msghand] [timedata.cpp:57] [AddTimeData] [net] added time data, samples 2, offset +0 (+0 minutes)
+2022-10-22T14:22:49.355775Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: wtxidrelay (0 bytes) peer=0
+2022-10-22T14:22:49.355821Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: sendaddrv2 (0 bytes) peer=0
+2022-10-22T14:22:49.355835Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: verack (0 bytes) peer=0
+2022-10-22T14:22:49.355844Z [msghand] [net_processing.cpp:3406] [ProcessMessage] New outbound peer connected: version: 70016, blocks=3, peer=0 (manual)
+2022-10-22T14:22:49.355860Z [msghand] [net.cpp:2775] [PushMessage] [net] sending sendcmpct (9 bytes) peer=0
+2022-10-22T14:22:49.355906Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 started
+2022-10-22T14:22:49.355935Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 completed (3μs)
+2022-10-22T14:22:49.355965Z [msghand] [net.cpp:2775] [PushMessage] [net] sending ping (8 bytes) peer=0
+2022-10-22T14:22:49.356002Z [msghand] [logging/timer.h:57] [Log] [lock] Enter: lock contention node.m_sock_mutex, net.cpp:823 started
+2022-10-22T14:22:49.356018Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 started
+2022-10-22T14:22:49.356043Z [msghand] [logging/timer.h:57] [Log] [lock] Enter: lock contention node.m_sock_mutex, net.cpp:823 completed (2μs)
+2022-10-22T14:22:49.356094Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 completed (55μs)
+2022-10-22T14:22:49.356153Z [msghand] [net.cpp:2775] [PushMessage] [net] sending getheaders (101 bytes) peer=0
+2022-10-22T14:22:49.356192Z [msghand] [logging/timer.h:57] [Log] [lock] Enter: lock contention node.m_sock_mutex, net.cpp:823 started
+2022-10-22T14:22:49.356205Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 started
+2022-10-22T14:22:49.356234Z [msghand] [logging/timer.h:57] [Log] [lock] Enter: lock contention node.m_sock_mutex, net.cpp:823 completed (1μs)
+2022-10-22T14:22:49.356278Z [msghand] [net_processing.cpp:5412] [SendMessages] [net] initial getheaders (1) to peer=0 (startheight:3)
+2022-10-22T14:22:49.356299Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->cs_vSend, net.cpp:1209 completed (54μs)
+2022-10-22T14:22:49.356363Z [msghand] [net.cpp:2775] [PushMessage] [net] sending feefilter (8 bytes) peer=0
+2022-10-22T14:22:49.356420Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->m_sock_mutex, net.cpp:1275 started
+2022-10-22T14:22:49.356450Z [net] [logging/timer.h:57] [Log] [lock] Enter: lock contention pnode->m_sock_mutex, net.cpp:1275 completed (3μs)
+2022-10-22T14:22:49.356470Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: sendcmpct (9 bytes) peer=0
+2022-10-22T14:22:49.356521Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: ping (8 bytes) peer=0
+2022-10-22T14:22:49.356540Z [msghand] [net.cpp:2775] [PushMessage] [net] sending pong (8 bytes) peer=0
+2022-10-22T14:22:49.356598Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: getheaders (133 bytes) peer=0
+2022-10-22T14:22:49.356621Z [msghand] [net_processing.cpp:3935] [ProcessMessage] [net] getheaders 1 to end from peer=0
+2022-10-22T14:22:49.356640Z [msghand] [net.cpp:2775] [PushMessage] [net] sending headers (163 bytes) peer=0
+2022-10-22T14:22:49.356692Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: feefilter (8 bytes) peer=0
+2022-10-22T14:22:49.356715Z [msghand] [net_processing.cpp:4757] [ProcessMessage] [net] received: feefilter of 0.00001000 BTC/kvB from peer=0
+2022-10-22T14:22:49.356746Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: pong (8 bytes) peer=0
+2022-10-22T14:22:49.356779Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: headers (244 bytes) peer=0
+2022-10-22T14:22:49.356858Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb from  peer=0
+2022-10-22T14:22:49.356876Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 from  peer=0
+2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0
+2022-10-22T14:22:49.356906Z [msghand] [net_processing.cpp:2657] [HeadersDirectFetchBlocks] [net] Downloading blocks toward 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d (3) via headers direct fetch
+2022-10-22T14:22:49.356922Z [msghand] [net.cpp:2775] [PushMessage] [net] sending getdata (109 bytes) peer=0
+2022-10-22T14:22:49.356966Z [msghand] [net.cpp:2775] [PushMessage] [net] sending sendheaders (0 bytes) peer=0
+2022-10-22T14:22:49.357025Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: sendheaders (0 bytes) peer=0
+2022-10-22T14:22:49.357172Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: block (251 bytes) peer=0
+2022-10-22T14:22:49.357202Z [msghand] [net_processing.cpp:4512] [ProcessMessage] [net] received block 1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb peer=0
+2022-10-22T14:22:49.357410Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: block (251 bytes) peer=0
+2022-10-22T14:22:49.357436Z [msghand] [net_processing.cpp:4512] [ProcessMessage] [net] received block 54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 peer=0
+2022-10-22T14:22:49.357540Z [msghand] [net_processing.cpp:3146] [ProcessMessage] [net] received: block (251 bytes) peer=0
+2022-10-22T14:22:49.357563Z [msghand] [net_processing.cpp:4512] [ProcessMessage] [net] received block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d peer=0
+2022-10-22T14:22:49.357737Z [msghand] [validation.cpp:2639] [DisconnectTip] [bench] - Disconnect block: 0.06ms
+2022-10-22T14:22:49.357764Z [msghand] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f height=1 version=0x20000000 log2_work=2.000000 tx=2 date='2022-10-22T14:22:49Z' progress=1.000000 cache=0.0MiB(2txo)
+2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueuing BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=2
+2022-10-22T14:22:49.357857Z [scheduler] [validationinterface.cpp:239] [operator()] [validation] BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=2
+2022-10-22T14:22:49.357908Z [msghand] [validation.cpp:2639] [DisconnectTip] [bench] - Disconnect block: 0.07ms
+2022-10-22T14:22:49.357930Z [msghand] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 height=0 version=0x00000001 log2_work=1.000000 tx=1 date='2011-02-02T23:16:42Z' progress=1.000000 cache=0.0MiB(2txo)
+2022-10-22T14:22:49.357939Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueuing BlockDisconnected: block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f block height=1
+2022-10-22T14:22:49.357983Z [msghand] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.03ms [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.358005Z [msghand] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.358020Z [msghand] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.02ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.358033Z [scheduler] [validationinterface.cpp:239] [operator()] [validation] BlockDisconnected: block hash=04fb55cec0a7e506d64b16ed26eefc2ccf66a927d6f1a3bb113df1630d59859f block height=1
+2022-10-22T14:22:49.358057Z [msghand] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.01ms (0.013ms/tx, 0.000ms/txin) [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.358075Z [msghand] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.05ms (0.000ms/txin) [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.358116Z [msghand] [validation.cpp:2299] [ConnectBlock] [bench]     - Write undo data: 0.04ms [0.00s (0.06ms/blk)]
+2022-10-22T14:22:49.358125Z [msghand] [validation.cpp:2314] [ConnectBlock] [bench]     - Index writing: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358133Z [msghand] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb state=Valid
+2022-10-22T14:22:49.358149Z [msghand] [net.cpp:2775] [PushMessage] [net] sending sendcmpct (9 bytes) peer=0
+2022-10-22T14:22:49.358198Z [msghand] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.21ms [0.00s (0.16ms/blk)]
+2022-10-22T14:22:49.358214Z [msghand] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.02ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358223Z [msghand] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358256Z [msghand] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb height=1 version=0x20000000 log2_work=2.000000 tx=2 date='2022-10-22T14:22:49Z' progress=1.000000 cache=0.0MiB(3txo)
+2022-10-22T14:22:49.358264Z [msghand] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.04ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.358271Z [msghand] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.31ms [0.00s (0.28ms/blk)]
+2022-10-22T14:22:49.358315Z [msghand] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.03ms [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.358334Z [msghand] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.358344Z [msghand] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.01ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.358355Z [msghand] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.01ms (0.009ms/tx, 0.000ms/txin) [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358367Z [msghand] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.02ms (0.000ms/txin) [0.00s (0.04ms/blk)]
+2022-10-22T14:22:49.358399Z [msghand] [validation.cpp:2299] [ConnectBlock] [bench]     - Write undo data: 0.03ms [0.00s (0.06ms/blk)]
+2022-10-22T14:22:49.358407Z [msghand] [validation.cpp:2314] [ConnectBlock] [bench]     - Index writing: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358415Z [msghand] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 state=Valid
+2022-10-22T14:22:49.358426Z [msghand] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.11ms [0.00s (0.15ms/blk)]
+2022-10-22T14:22:49.358434Z [msghand] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358443Z [msghand] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358457Z [msghand] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 height=2 version=0x20000000 log2_work=2.584963 tx=3 date='2022-10-22T14:22:50Z' progress=1.000000 cache=0.0MiB(4txo)
+2022-10-22T14:22:49.358464Z [msghand] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.02ms [0.00s (0.06ms/blk)]
+2022-10-22T14:22:49.358471Z [msghand] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.19ms [0.00s (0.27ms/blk)]
+2022-10-22T14:22:49.358478Z [msghand] [validation.cpp:2747] [ConnectTip] [bench]   - Using cached block
+2022-10-22T14:22:49.358484Z [msghand] [validation.cpp:2758] [ConnectTip] [bench]   - Load block from disk: 0.01ms [0.00s (0.03ms/blk)]
+2022-10-22T14:22:49.358499Z [msghand] [validation.cpp:2074] [ConnectBlock] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2022-10-22T14:22:49.358507Z [msghand] [validation.cpp:2177] [ConnectBlock] [bench]     - Fork checks: 0.01ms [0.00s (0.02ms/blk)]
+2022-10-22T14:22:49.358517Z [msghand] [validation.cpp:2267] [ConnectBlock] [bench]       - Connect 1 transactions: 0.01ms (0.008ms/tx, 0.000ms/txin) [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358525Z [msghand] [validation.cpp:2285] [ConnectBlock] [bench]     - Verify 0 txins: 0.02ms (0.000ms/txin) [0.00s (0.03ms/blk)]
+2022-10-22T14:22:49.358556Z [msghand] [validation.cpp:2299] [ConnectBlock] [bench]     - Write undo data: 0.03ms [0.00s (0.06ms/blk)]
+2022-10-22T14:22:49.358564Z [msghand] [validation.cpp:2314] [ConnectBlock] [bench]     - Index writing: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358572Z [msghand] [validationinterface.cpp:252] [BlockChecked] [validation] BlockChecked: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d state=Valid
+2022-10-22T14:22:49.358588Z [msghand] [validation.cpp:2774] [ConnectTip] [bench]   - Connect total: 0.10ms [0.00s (0.15ms/blk)]
+2022-10-22T14:22:49.358596Z [msghand] [validation.cpp:2783] [ConnectTip] [bench]   - Flush: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358604Z [msghand] [validation.cpp:2793] [ConnectTip] [bench]   - Writing chainstate: 0.01ms [0.00s (0.01ms/blk)]
+2022-10-22T14:22:49.358680Z [msghand] [policy/fees.cpp:667] [processBlock] [estimatefee] Blockpolicy estimates updated by 0 of 0 block txs, since last block 0 of 0 tracked, mempool map size 0, max target 0 from current
+2022-10-22T14:22:49.358694Z [msghand] [validation.cpp:2555] [UpdateTipLog] UpdateTip: new best=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d height=3 version=0x20000000 log2_work=3.000000 tx=4 date='2022-10-22T14:22:50Z' progress=1.000000 cache=0.0MiB(5txo)
+2022-10-22T14:22:49.358702Z [msghand] [validation.cpp:2809] [ConnectTip] [bench]   - Connect postprocess: 0.10ms [0.00s (0.07ms/blk)]
+2022-10-22T14:22:49.358708Z [msghand] [validation.cpp:2813] [ConnectTip] [bench] - Connect block: 0.22ms [0.00s (0.26ms/blk)]
+2022-10-22T14:22:49.358726Z [msghand] [txmempool.cpp:694] [check] [mempool] Checking mempool with 0 transactions and 0 inputs
+2022-10-22T14:22:49.358745Z [msghand] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
+2022-10-22T14:22:49.358757Z [msghand] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 block height=2
+2022-10-22T14:22:49.358767Z [msghand] [validationinterface.cpp:229] [BlockConnected] [validation] Enqueuing BlockConnected: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d block height=3
+2022-10-22T14:22:49.358778Z [msghand] [validationinterface.cpp:202] [UpdatedBlockTip] [validation] Enqueuing UpdatedBlockTip: new block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d fork block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 (in IBD=false)
+2022-10-22T14:22:49.358796Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
+2022-10-22T14:22:49.358839Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=54d205ef4c87ce25fddb28b0c792f44b308613e75d88b61d71906aed70c64b48 block height=2
+2022-10-22T14:22:49.358884Z [scheduler] [validationinterface.cpp:229] [operator()] [validation] BlockConnected: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d block height=3
+2022-10-22T14:22:49.358920Z [scheduler] [validationinterface.cpp:202] [operator()] [validation] UpdatedBlockTip: new block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d fork block hash=0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206 (in IBD=false)
+2022-10-22T14:22:49.372422Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.372518Z [httpworker.2] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getpeerinfo user=__cookie__
+2022-10-22T14:22:49.374404Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.374489Z [httpworker.3] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getpeerinfo user=__cookie__
+2022-10-22T14:22:49.376389Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.376433Z [httpworker.0] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getbestblockhash user=__cookie__
+2022-10-22T14:22:49.377258Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.377328Z [httpworker.1] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=getrawmempool user=__cookie__
+2022-10-22T14:22:49.378315Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.378398Z [httpworker.2] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=syncwithvalidationinterfacequeue user=__cookie__
+2022-10-22T14:22:49.430474Z [http] [httpserver.cpp:242] [http_request_cb] [http] Received a POST request for / from 127.0.0.1:48796
+2022-10-22T14:22:49.430567Z [httpworker.3] [rpc/request.cpp:179] [parse] [rpc] ThreadRPCServer method=stop user=__cookie__
+2022-10-22T14:22:49.430617Z [init] [httpserver.cpp:439] [InterruptHTTPServer] [http] Interrupting HTTP server
+2022-10-22T14:22:49.430646Z [init] [httprpc.cpp:314] [InterruptHTTPRPC] [rpc] Interrupting HTTP RPC server
+2022-10-22T14:22:49.430659Z [init] [rpc/server.cpp:299] [operator()] [rpc] Interrupting RPC
+2022-10-22T14:22:49.430699Z [addcon] [util/thread.cpp:22] [TraceThread] addcon thread exit
+2022-10-22T14:22:49.430728Z [init] [init.cpp:217] [Shutdown] Shutdown: In progress...
+2022-10-22T14:22:49.430757Z [shutoff] [httprpc.cpp:319] [StopHTTPRPC] [rpc] Stopping HTTP RPC server
+2022-10-22T14:22:49.430781Z [shutoff] [httpserver.cpp:693] [UnregisterHTTPHandler] [http] Unregistering HTTP handler for / (exactmatch 1)
+2022-10-22T14:22:49.430801Z [shutoff] [httpserver.cpp:693] [UnregisterHTTPHandler] [http] Unregistering HTTP handler for /wallet/ (exactmatch 0)
+2022-10-22T14:22:49.430827Z [shutoff] [rpc/server.cpp:311] [operator()] [rpc] Stopping RPC
+2022-10-22T14:22:49.430938Z [shutoff] [init.cpp:383] [OnRPCStopped] [rpc] RPC stopped.
+2022-10-22T14:22:49.430960Z [shutoff] [httpserver.cpp:451] [StopHTTPServer] [http] Stopping HTTP server
+2022-10-22T14:22:49.430977Z [shutoff] [httpserver.cpp:453] [StopHTTPServer] [http] Waiting for HTTP worker threads to exit
+2022-10-22T14:22:49.431021Z [shutoff] [httpserver.cpp:466] [StopHTTPServer] [http] Waiting for HTTP event thread to exit
+2022-10-22T14:22:49.431038Z [http] [httpserver.cpp:292] [ThreadHTTP] [http] Exited http event loop
+2022-10-22T14:22:49.431315Z [shutoff] [httpserver.cpp:478] [StopHTTPServer] [http] Stopped HTTP server
+2022-10-22T14:22:49.457458Z [net] [util/thread.cpp:22] [TraceThread] net thread exit
+2022-10-22T14:22:49.459024Z [msghand] [util/thread.cpp:22] [TraceThread] msghand thread exit
+2022-10-22T14:22:49.465804Z [shutoff] [net.cpp:1506] [DumpAddresses] [net] Flushed 0 addresses to peers.dat  6ms
+2022-10-22T14:22:49.466166Z [shutoff] [net.cpp:572] [CloseSocketDisconnect] [net] disconnecting peer=0
+2022-10-22T14:22:49.466407Z [shutoff] [net_processing.cpp:1528] [FinalizeNode] [net] Cleared nodestate for peer=0
+2022-10-22T14:22:49.466474Z [scheduler] [util/thread.cpp:22] [TraceThread] scheduler thread exit
+2022-10-22T14:22:49.467267Z [shutoff] [kernel/mempool_persist.cpp:168] [DumpMempool] Writing 0 unbroadcast transactions to disk.
+2022-10-22T14:22:49.471924Z [shutoff] [kernel/mempool_persist.cpp:181] [DumpMempool] Dumped mempool: 7.199e-06s to copy, 0.00469666s to dump
+2022-10-22T14:22:49.471956Z [shutoff] [policy/fees.cpp:1011] [FlushUnconfirmed] [estimatefee] Recorded 0 unconfirmed txs from mempool in 4.466e-06s
+2022-10-22T14:22:49.474359Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block and undo data to disk started
+2022-10-22T14:22:49.486450Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block and undo data to disk completed (12.06ms)
+2022-10-22T14:22:49.486484Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block index to disk started
+2022-10-22T14:22:49.489759Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block index to disk completed (3.25ms)
+2022-10-22T14:22:49.489796Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write coins cache to disk (5 coins, 0kB) started
+2022-10-22T14:22:49.489830Z [shutoff] [txdb.cpp:169] [BatchWrite] [coindb] Writing final batch of 0.00 MiB
+2022-10-22T14:22:49.489862Z [shutoff] [txdb.cpp:171] [BatchWrite] [coindb] Committed 5 changed transaction outputs (out of 5) to coin database...
+2022-10-22T14:22:49.489873Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write coins cache to disk (5 coins, 0kB) completed (0.07ms)
+2022-10-22T14:22:49.489882Z [shutoff] [validationinterface.cpp:247] [ChainStateFlushed] [validation] Enqueuing ChainStateFlushed: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d
+2022-10-22T14:22:49.489898Z [shutoff] [validationinterface.cpp:247] [operator()] [validation] ChainStateFlushed: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d
+2022-10-22T14:22:49.489917Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block and undo data to disk started
+2022-10-22T14:22:49.499095Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block and undo data to disk completed (9.16ms)
+2022-10-22T14:22:49.499124Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block index to disk started
+2022-10-22T14:22:49.502414Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write block index to disk completed (3.26ms)
+2022-10-22T14:22:49.502457Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write coins cache to disk (0 coins, 0kB) started
+2022-10-22T14:22:49.502499Z [shutoff] [txdb.cpp:169] [BatchWrite] [coindb] Writing final batch of 0.00 MiB
+2022-10-22T14:22:49.502527Z [shutoff] [txdb.cpp:171] [BatchWrite] [coindb] Committed 0 changed transaction outputs (out of 0) to coin database...
+2022-10-22T14:22:49.502549Z [shutoff] [logging/timer.h:57] [Log] [bench] FlushStateToDisk: write coins cache to disk (0 coins, 0kB) completed (0.07ms)
+2022-10-22T14:22:49.502567Z [shutoff] [validationinterface.cpp:247] [ChainStateFlushed] [validation] Enqueuing ChainStateFlushed: block hash=7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d
+2022-10-22T14:22:49.502963Z [shutoff] [init.cpp:334] [Shutdown] Shutdown: done

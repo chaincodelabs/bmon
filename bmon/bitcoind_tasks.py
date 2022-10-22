@@ -120,6 +120,9 @@ def ship_activity():
 LOG_LISTENERS = (
     logparse.ConnectBlockListener(),
     logparse.MempoolListener(),
+    logparse.BlockConnectedListener(),
+    logparse.BlockDisconnectedListener(),
+    logparse.ReorgListener(),
 )
 
 
