@@ -25,6 +25,103 @@ class LogProgress(models.Model):
 
     __str__ = __repr__
 
+
+class Peer(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    host = models.CharField(max_length=200)
+    addr = models.CharField(max_length=256)
+    connection_type = models.CharField(max_length=256)
+    # Called "id" in getpeerinfo()
+    num = models.IntegerField()
+    inbound = models.BooleanField()
+    network = models.CharField(max_length=256)
+    services = models.CharField(max_length=256)
+    servicesnames = models.JSONField()
+    subver = models.CharField(max_length=256)
+    version = models.IntegerField()
+
+    def __repr__(self):
+        return _repr(self, ['host', 'addr', 'num', 'subver'])
+
+    __str__ = __repr__
+
+
+class RequestBlockEvent(models.Model):
+    """
+    node0 2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0
+    """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField()
+    blockhash = models.CharField(max_length=80)
+
+    # Sometimes we're told the height "(height)" e.g. sending getdata, other times not.
+    height = models.IntegerField(null=True, blank=True)
+
+    peer_num = models.IntegerField()
+    peer = models.ForeignKey(Peer, null=True, on_delete=models.SET_NULL)
+
+    # E.g. HeadersDirectFetchBlocks
+    method = models.CharField(max_length=256)
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'blockhash'])
+
+    __str__ = __repr__
+
+
+class BlockDisconnectedEvent(models.Model):
+    """
+    2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui
+ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
+    """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField()
+    blockhash = models.CharField(max_length=80)
+    height = models.IntegerField()
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
+
+    __str__ = __repr__
+
+
+class BlockConnectedEvent(models.Model):
+    """
+    [operator()] [validation] BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
+    """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField()
+    blockhash = models.CharField(max_length=80)
+    height = models.IntegerField()
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
+
+    __str__ = __repr__
+
+
+class ReorgEvent(models.Model):
+    """
+    A series of BlockDisconnected events capped off by a ConnectBlockEvent.
+    """
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
+    finished_timestamp = models.DateTimeField()
+    host = models.CharField(max_length=200)
+    min_height = models.IntegerField()
+    max_height = models.IntegerField()
+    old_blockhashes = models.JSONField()
+    new_blockhashes = models.JSONField()
+
+    def __repr__(self):
+        return _repr(
+            self, ['min_height', 'max_height', 'old_blockhashes', 'new_blockhashes'])
+
+    __str__ = __repr__
+
+
 class ConnectBlockEvent(models.Model):
     """
     From UpdateTip
