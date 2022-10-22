@@ -2,6 +2,13 @@ import fastavro
 from django.db import models
 
 
+def _repr(instance, attrs):
+    attr_strs = []
+    for attr in attrs:
+        attr_strs.append(f"{attr}='{getattr(instance, attr)}'")
+    return f'{instance.__class__.__name__}({" ".join(attr_strs)})'
+
+
 class LogProgress(models.Model):
     """
     Records the latest hash of a log line responsible for generating an event on a
@@ -13,6 +20,10 @@ class LogProgress(models.Model):
     timestamp = models.DateTimeField()
     loghash = models.CharField(max_length=200)
 
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'loghash'])
+
+    __str__ = __repr__
 
 class ConnectBlockEvent(models.Model):
     """
@@ -43,6 +54,11 @@ class ConnectBlockEvent(models.Model):
     @property
     def event_type(self) -> str:
         return 'block'
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
+
+    __str__ = __repr__
 
 
 class ConnectBlockDetails(models.Model):
@@ -89,6 +105,11 @@ class ConnectBlockDetails(models.Model):
     @property
     def event_type(self) -> str:
         return 'block'
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
+
+    __str__ = __repr__
 
 
 mempool_event_type_enum = {
@@ -154,3 +175,8 @@ class ProcessLineError(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, blank=True)
     listener = models.CharField(max_length=240)
     line = models.CharField(max_length=2048)
+
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'line', 'listener'])
+
+    __str__ = __repr__
