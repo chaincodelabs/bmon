@@ -239,6 +239,119 @@ class MempoolListener:
             )
 
 
+class _BlockEventListener:
+    """
+    2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
+    """
+
+    event_type: str = ""
+    event_class = None
+
+    _patts = {
+        re.compile(r"\s+height=(?P<height>\d+)"),
+        re.compile(rf"\s+hash=(?P<blockhash>{_HASH})"),
+    }
+
+    def process_line(self, line):
+        # Ignore the duplicate "Enqueuing" lines.
+        if f" {self.event_type}: " in line and " Enqueuing " not in line:
+            matches = {}
+            timestamp = get_time(line)
+            for patt in self._patts:
+                if match := patt.search(line):
+                    matches.update(match.groupdict())
+
+            return self.event_class(
+                host=settings.HOSTNAME,
+                timestamp=timestamp,
+                height=int(matches["height"]),
+                blockhash=matches["blockhash"],
+            )
+
+
+class BlockDisconnectedListener(_BlockEventListener):
+    event_type: str = "BlockDisconnected"
+    event_class = models.BlockDisconnectedEvent
+
+
+class BlockConnectedListener(_BlockEventListener):
+    event_type: str = "BlockConnected"
+    event_class = models.BlockConnectedEvent
+
+
+class ReorgListener:
+    def __init__(self):
+        self.disconnects: list[models.BlockDisconnectedEvent] = []
+        self.replacements: list[models.BlockConnectedEvent] = []
+        self.disconnect_listener = BlockDisconnectedListener()
+        self.connect_listener = BlockConnectedListener()
+
+    @property
+    def max_height(self) -> None | int:
+        if self.disconnects:
+            return self.disconnects[-1].height
+        return None
+
+    def process_line(self, line: str) -> None | models.ReorgEvent:
+        got = None
+        for listener in (self.disconnect_listener, self.connect_listener):
+            if got := listener.process_line(line):
+                break
+
+        if not got:
+            return
+
+        if isinstance(got, models.BlockDisconnectedEvent):
+            self.disconnects.insert(0, got)
+
+            if len(self.disconnects) == 1:
+                log.info(
+                    "started to detect a reorg at height %s (%s)",
+                    got.height,
+                    got.blockhash,
+                )
+        elif isinstance(got, models.BlockConnectedEvent):
+            # If we don't have any outstanding disconnects, this is just a regular
+            # connection event.
+            if not self.disconnects:
+                return
+
+            if got.height <= self.max_height:
+                self.replacements.append(got)
+
+                if got.height < self.max_height:
+                    # We haven't yet completed the reorg; we're still connecting
+                    # substitute blocks.
+                    return
+
+            # If we're here, we have completed the reorg.
+
+            len_mismatch = len(self.replacements) != len(self.disconnects)
+            d_heights = [i.height for i in self.disconnects]
+            r_heights = [i.height for i in self.replacements]
+            if len_mismatch or d_heights != r_heights:
+                log.error(
+                    "WARNING: reorg detection looks broken; "
+                    "disconnects: %s vs. replacements: %s",
+                    self.disconnects,
+                    self.replacements,
+                )
+
+            reorg = models.ReorgEvent(
+                host=settings.HOSTNAME,
+                finished_timestamp=self.replacements[-1].timestamp,
+                min_height=self.disconnects[0].height,
+                max_height=self.max_height,
+                old_blockhashes=[d.blockhash for d in self.disconnects],
+                new_blockhashes=[r.blockhash for r in self.replacements],
+            )
+            self.disconnects = []
+            self.replacements = []
+
+            log.info("Reorg finished: %s", reorg)
+            return reorg
+
+
 class ConnectBlockListener:
     _detail_patts = {
         re.compile(
