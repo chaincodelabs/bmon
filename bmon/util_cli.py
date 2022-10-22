@@ -11,6 +11,7 @@ except Exception:
     bitcoind_tasks = None
 
 from .bitcoin.api import gather_rpc
+from . import logparse
 
 cli = App()
 
@@ -29,6 +30,18 @@ def showmempool():
     with open(settings.MEMPOOL_ACTIVITY_CACHE_PATH / 'current', 'rb') as f:
         for record in fastavro.reader(f):
             print(record)
+
+
+@cli.cmd
+def run_listener(listener_name: str):
+    """Rerun a listener over all bitcoind log lines."""
+    assert bitcoind_tasks
+    listeners = [getattr(logparse, listener_name)()]
+
+    with open(settings.BITCOIND_LOG_PATH, 'r', errors='ignore') as f:
+        for line in f:
+            bitcoind_tasks.process_line(line, listeners=listeners)
+
 
 
 @cli.cmd

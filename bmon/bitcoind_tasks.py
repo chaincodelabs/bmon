@@ -143,10 +143,11 @@ def watch_bitcoind_logs():
         process_line(line)
 
 
-def process_line(line: str):
+def process_line(line: str, listeners: None | list = None):
     linehash = logparse.linehash(line)
+    listeners = listeners or LOG_LISTENERS
 
-    for listener in LOG_LISTENERS:
+    for listener in listeners:
         try:
             got = listener.process_line(line)
         except Exception:
