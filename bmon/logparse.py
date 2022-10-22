@@ -132,20 +132,20 @@ class LogfilePosManager:
     The cursor is cached in the bitcoind-local redis to not hinder performance, and then
     periodically flushed into postgres.
     """
-    REDIS_SEPARATOR = ' | '
+
+    REDIS_SEPARATOR = " | "
 
     def __init__(self, host: str, db: walrus.Database):
         self.host = host
-        self.redis_key = f'logpos.{host}'
+        self.redis_key = f"logpos.{host}"
         self.db = db
-        self.lock = self.db.lock(f'lock.logpos.{host}', ttl=1_000)
+        self.lock = self.db.lock(f"lock.logpos.{host}", ttl=1_000)
 
     def getpos(self) -> None | tuple[str, datetime.datetime]:
         with self.lock:
             if not (got := self.db.get(self.redis_key)):
                 return None
-            linehash, dt_str = (
-                got.split(self.REDIS_SEPARATOR))
+            linehash, dt_str = got.split(self.REDIS_SEPARATOR)
             return (linehash, datetime.datetime.fromisoformat(dt_str))
 
     def mark(self, linehash: str):
@@ -156,8 +156,9 @@ class LogfilePosManager:
         writes to maintain this state (e.g. MempoolAccept).
         """
         with self.lock:
-            self.db[self.redis_key] = (
-                f'{linehash}{self.REDIS_SEPARATOR}{timezone.now().isoformat()}')
+            self.db[
+                self.redis_key
+            ] = f"{linehash}{self.REDIS_SEPARATOR}{timezone.now().isoformat()}"
 
     def flush(self):
         """
