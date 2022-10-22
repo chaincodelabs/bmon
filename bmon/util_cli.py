@@ -39,9 +39,9 @@ def shipmempool():
 
 
 @cli.cmd
-def rpc(cmd):
+def rpc(*cmd):
     """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
-    pprint.pprint(gather_rpc(cmd))
+    pprint.pprint(gather_rpc(' '.join(cmd)))
 
 
 def main():
