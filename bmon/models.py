@@ -1,5 +1,6 @@
 import fastavro
 from django.db import models
+from django.conf import settings
 
 
 def _repr(instance, attrs):
@@ -37,6 +38,21 @@ class LogProgress(models.Model):
     __str__ = __repr__
 
 
+PEER_UNIQUE_TOGETHER_FIELDS = (
+    'host',
+    'num',
+    'addr',
+    'connection_type',
+    'inbound',
+    'network',
+    'services',
+    'subver',
+    'version',
+    'relaytxes',
+    'bip152_hb_from',
+    'bip152_hb_to',
+)
+
 class Peer(BaseModel):
     host = models.CharField(max_length=200)
     addr = models.CharField(max_length=256)
@@ -49,6 +65,27 @@ class Peer(BaseModel):
     servicesnames = models.JSONField()
     subver = models.CharField(max_length=256)
     version = models.IntegerField()
+    relaytxes = models.BooleanField()
+    bip152_hb_to = models.BooleanField()
+    bip152_hb_from = models.BooleanField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=PEER_UNIQUE_TOGETHER_FIELDS,
+                name='unique_peer',
+            ),
+        ]
+
+    @classmethod
+    def peerinfo_data(cls, p: dict) -> tuple[dict, dict]:
+        """Return the subset of getpeerinfo data that is relevant to this model."""
+        out = {k: p[k] for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
+        out['num'] = p['id']
+        out['host'] = settings.HOSTNAME
+        defaults = {k: p[k] for k in ['servicesnames']}
+
+        return out, defaults
 
     def __repr__(self):
         return _repr(self, ['host', 'addr', 'num', 'subver'])
