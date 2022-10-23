@@ -27,6 +27,7 @@ REDIS_LOCAL_HOST = os.environ.get('BMON_REDIS_LOCAL_HOST')
 REDIS_SERVER_URL = os.environ['BMON_REDIS_SERVER_URL']
 REDIS_SERVER_HOST = os.environ['BMON_REDIS_HOST']
 
+BITCOIN_RPC_HOST = os.environ.get('BITCOIN_RPC_HOST')
 BITCOIN_RPC_USER = os.environ.get('BITCOIN_RPC_USER')
 BITCOIN_RPC_PASSWORD = os.environ.get('BITCOIN_RPC_PASSWORD')
 BITCOIN_RPC_PORT = os.environ.get('BITCOIN_RPC_PORT')
@@ -101,12 +102,6 @@ LOGGING = {
         'clii': NO_LOG,
     },
 }
-
-
-
-def get_redis():
-    return Walrus(host=(REDIS_LOCAL_HOST or REDIS_SERVER_HOST), port=6379, db=0)
-
 
 
 # Application definition

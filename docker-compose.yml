@@ -12,6 +12,7 @@ x-service-config: &service
     BMON_HOSTNAME:
     DB_HOST:
     DB_PASSWORD:
+    BITCOIN_RPC_HOST:
     BITCOIN_RPC_PASSWORD:
     BITCOIN_RPC_PORT:
     BITCOIN_RPC_USER:
@@ -327,6 +328,15 @@ services:
       - js_node_modules:/node_modules
       - ./frontend-build:/build
     command: yarn run build
+
+  bitcoind-02:
+    profiles: ["dev"]
+    image: jamesob/bitcoind:${BITCOIN_DOCKER_TAG}
+    user: "${UID}"
+    volumes:
+      - ${ENV_ROOT}/bitcoin-02/data:/bitcoin/data
+      - ${ENV_ROOT}/bitcoin-02/data/bitcoin.conf:/bitcoin/bitcoin.conf
+    command: bitcoind -datadir=/bitcoin/data ${BITCOIN_FLAGS}
 
 volumes:
   js_node_modules:

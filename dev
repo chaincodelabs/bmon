@@ -41,7 +41,7 @@ def generateblock():
 
 @cli.cmd
 def managepy(*cmd):
-    sh(f"docker-compose run --rm web python manage.py {' '.join(cmd)}")
+    sh(f"docker-compose run --rm shell python manage.py {' '.join(cmd)}")
 
 
 @cli.cmd
@@ -63,6 +63,7 @@ def reup(
     if data:
         cleardata()
 
+    sh(f"docker-compose up -d db")
     managepy('migrate')
     sh(f"docker-compose up -d {service}")
 
@@ -71,11 +72,11 @@ def reup(
 
 
 @cli.cmd
-def watchlogs():
+def watchlogs(others: str = ""):
     """Tail interesting logs."""
     sh(
         "docker-compose logs -f bitcoind server-task-worker "
-        "bitcoind-task-worker bitcoind-watcher bitcoind-mempool-worker"
+        f"bitcoind-task-worker bitcoind-watcher bitcoind-mempool-worker {others}"
     )
 
 

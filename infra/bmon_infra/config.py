@@ -243,7 +243,7 @@ def get_bitcoind_auth_line(username: str, password: str):
     return f"rpcauth={username}:{salt}${password_hmac}"
 
 
-def make_services_data(hostname: str | None = None):
+def make_services_data(envtype: str, hostname: str | None = None):
     user = getpass.getuser()
     p(root := Path(ENV.ENV_ROOT)).mkdir()
 
@@ -281,6 +281,11 @@ def make_services_data(hostname: str | None = None):
     p(btcdata / "regtest").mkdir()
     p(btcdata / "bitcoin.conf").contents(bitcoind())
 
+    if envtype == 'dev':
+        p(btcdata2 := root / "bitcoin-02" / "data").mkdir()
+        p(btcdata2 / "regtest").mkdir()
+        p(btcdata2 / "bitcoin.conf").contents(bitcoind())
+
     p(promtailp := root / "promtail").mkdir()
     p(promtailp / "config.yml").contents(promtail(hostname))
 
@@ -314,7 +319,7 @@ def make_env(
 
     global ENV
     ENV = SimpleNamespace(**envdict)
-    make_services_data(hostname)
+    make_services_data(envtype, hostname)
 
 
 def main():

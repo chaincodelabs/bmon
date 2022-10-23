@@ -7,6 +7,14 @@ import pytest
 from . import logparse, conftest, models
 
 
+def test_ponglistener():
+    listener = logparse.PongListener()
+
+    got = listener.process_line(
+        "2022-10-23T13:21:28.681866Z received: pong (8 bytes) peer=3")
+    assert got == 3
+
+
 def test_mempoollistener():
     listener = logparse.MempoolListener()
 
