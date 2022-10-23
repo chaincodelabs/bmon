@@ -208,6 +208,8 @@ _HEX = r"0x[a-f0-9]+"
 _NOT_QUOTE = "[^'\"]+"
 _UPDATE_TIP_START = "UpdateTip: "
 
+_PEER_PATT = re.compile(r"\s+peer=(?P<peer_num>\d+)")
+
 
 def str_or_none(s):
     return str(s) if s else None
@@ -216,7 +218,7 @@ def str_or_none(s):
 class MempoolListener:
 
     _accept_sub_patts = {
-        re.compile(r"\s+peer=(?P<peer_num>\d+)"),
+        _PEER_PATT,
         re.compile(rf"\s+accepted (?P<txhash>{_HASH})"),
         re.compile(r"poolsz (?P<pool_size_txns>\d+) txn, (?P<pool_size_kb>\d+) kB"),
     }
@@ -237,6 +239,23 @@ class MempoolListener:
                 pool_size_kb=int(matches["pool_size_kb"]),
                 pool_size_txns=int(matches["pool_size_txns"]),
             )
+
+
+class PongListener:
+    """
+    Listen for pong messages; this is a convenient way of determining when we
+    should refresh cached peer information.
+
+    2022-10-23T13:21:28.681866Z received: pong (8 bytes) peer=3
+    """
+    def process_line(self, line):
+        if ' received: pong ' not in line:
+            return
+
+        if (match := _PEER_PATT.search(line)):
+            return int(match.groups()[0])
+        else:
+            log.warning("malformed pong message: %s", line)
 
 
 class _BlockEventListener:

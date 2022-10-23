@@ -19,13 +19,13 @@ from huey import RedisHuey, crontab
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
 
-from bmon import server_tasks, logparse, models
+from bmon import server_tasks, logparse, models, util
+from bmon.bitcoin.api import get_rpc
+
 
 log = logging.getLogger(__name__)
 
-redisdb = walrus.Database.from_url(
-    settings.REDIS_LOCAL_URL, decode_responses=True
-)
+redisdb = walrus.Database.from_url(settings.REDIS_LOCAL_URL, decode_responses=True)
 
 events_q = RedisHuey("bmon-bitcoind-events", url=settings.REDIS_LOCAL_URL)
 
@@ -50,6 +50,80 @@ def write_logfile_pos():
     e.g. with mempool activity, since it would overwhelm the db.
     """
     logfile_pos.flush()
+
+
+# ID to peerinfo
+peerinfo_cache = redisdb.Hash("peerinfo")
+
+# A map of bitcoind peer IDs to the current bmon Peer ID; new bmon Peer models are
+# created if the underlying bitcoind peer changes substantially (e.g. subver).
+peer_id_map = redisdb.Hash("peer_id_map")
+
+
+def get_bmon_peer_id(bitcoind_peer_id: int) -> int:
+    """
+    Return the bmon.models.Peer id for a bitcoind peer.
+
+    TODO needs tests
+
+    Syncs the peer cache if necessary.
+    """
+    if bitcoind_peer_id not in peer_id_map:
+        result = sync_peer_data(bitcoind_peer_id)
+        result(blocking=True)
+
+    if bitcoind_peer_id not in peer_id_map:
+        raise RuntimeError(
+            "can't find bmon peer ID for bitcoind peer %d", bitcoind_peer_id
+        )
+
+    return int(peer_id_map[bitcoind_peer_id])
+
+
+@events_q.periodic_task(crontab(minute="*"))
+def sync_peer_data(peer_id: None | int = None):
+    """
+    Periodically cache our getpeerinfo in redis.
+
+    TODO needs tests
+
+    Kwargs:
+        peer_id: if given, only process this peer ID
+    """
+    log.info("syncing peer data (peer_id=%s)", peer_id)
+    try:
+        peerinfo = get_rpc().getpeerinfo()
+    except Exception:
+        log.exception("failed to get peerinfo")
+        return
+
+    for peer in peerinfo:
+        if "addr" not in peer or "id" not in peer:
+            log.warning("malformed peer, skipping: %s", peer)
+            continue
+
+        peerinfo_cache[peer["id"]] = util.json_dumps(peer)
+
+    if peer_id is not None:
+        peerinfo = [p for p in peerinfo if p["id"] == peer_id]
+
+    commit_peers_db(peerinfo)
+
+
+def commit_peers_db(peerinfo: list[dict]):
+    """
+    Sync getpeerinfo output with the database.
+    """
+    for peer in peerinfo:
+        kwargs, defaults = models.Peer.peerinfo_data(peer)
+        obj, created = models.Peer.objects.get_or_create(
+            defaults=defaults, **kwargs
+        )
+        if created:
+            log.info(
+                "synced peer %d (num=%d) to database: %s", obj.id, obj.num, kwargs
+            )
+            peer_id_map[obj.num] = obj.id
 
 
 # Coordinate mempool activity with a lock since we're writing out to a single file.
@@ -92,27 +166,30 @@ def queue_mempool_to_ship():
     shipfile = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"to-ship.{now_str}.avro"
     subprocess.check_call(f"mv {CURRENT_MEMPOOL_FILE} {shipfile}", shell=True)
     log.info(
-        "moved mempool activity file %s to %s for shipment", CURRENT_MEMPOOL_FILE, shipfile
+        "moved mempool activity file %s to %s for shipment",
+        CURRENT_MEMPOOL_FILE,
+        shipfile,
     )
     redisdb[LAST_SHIPPED_KEY] = time.time()
-    ship_activity()
+    ship_mempool_activity()
 
 
 @mempool_q.task()
-def ship_activity():
+def ship_mempool_activity():
     """Send mempool activity file to a remote server."""
     with mempool_ship_lock:
         client = google.cloud.storage.Client.from_service_account_json(
-            settings.CHAINCODE_GCP_CRED_PATH)
+            settings.CHAINCODE_GCP_CRED_PATH
+        )
         bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
 
-        for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob('to-ship*'):
-            timestr = shipfile.name.split('.')[1].replace(':', '-')
+        for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob("to-ship*"):
+            timestr = shipfile.name.split(".")[1].replace(":", "-")
             target = f"{settings.HOSTNAME}.{timestr}.avro"
             d = bucket.blob(target)
             d.upload_from_filename(shipfile)
 
-            moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f'shipped.{timestr}.avro'
+            moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"shipped.{timestr}.avro"
             subprocess.check_call(f"mv {shipfile} {moved}", shell=True)
             log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
@@ -123,6 +200,7 @@ LOG_LISTENERS = (
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),
+    logparse.PongListener(),
 )
 
 
@@ -136,6 +214,8 @@ def watch_bitcoind_logs():
     assert filename
     log.info(f"listening to logs at {filename}")
 
+    sync_peer_data()
+
     log_progress = models.LogProgress.objects.filter(host=settings.HOSTNAME).first()
     start_log_cursor = log_progress.loghash if log_progress else None
 
@@ -144,6 +224,9 @@ def watch_bitcoind_logs():
 
 
 def process_line(line: str, listeners: None | list = None):
+    """
+    Process a single bitcoind log line, prompting async tasks when necessary.
+    """
     linehash = logparse.linehash(line)
     listeners = listeners or LOG_LISTENERS
 
@@ -159,32 +242,41 @@ def process_line(line: str, listeners: None | list = None):
             )
             continue
 
-        if got:
-            log.debug("Got an instance %r from line (%s) %r", got, linehash, line)
-            try:
-                got.full_clean()
-            except Exception:
-                log.exception("model %s failed to validate!", got)
-                # TODO: stash the bad model somewhere for later processing.
-                continue
+        if got is None:
+            continue
 
-            if got.event_type == "mempool":
-                mempool_activity(got.avro_record(), linehash)
-            else:
-                d = model_to_dict(got)
-                d["_model"] = got.__class__.__name__
+        log.debug("Got an instance %r from line (%s) %r", got, linehash, line)
 
-                send_event(d, linehash)
+        if isinstance(listener, logparse.PongListener):
+            # We got a peer ID, not a model instance.
+            assert isinstance(got, int)
+            sync_peer_data(got)
+            continue
 
-                # This isn't totally correct because we don't know for a fact that
-                # the server actually persisted the event we sent it, but it's
-                # okay as a rough approximation.
-                #
-                # We can't have the server task
-                # do this because then we have to store logfile pos redis data
-                # in the central server, which would make actually maintaining
-                # that redis state slow for bitcoind servers on slow network links.
-                #
-                # TODO somehow make this truly synchronous with the server.
-                logfile_pos.mark(linehash)
-                write_logfile_pos()
+        try:
+            got.full_clean()
+        except Exception:
+            log.exception("model %s failed to validate!", got)
+            # TODO: stash the bad model somewhere for later processing.
+            continue
+
+        if got.event_type == "mempool":
+            mempool_activity(got.avro_record(), linehash)
+        else:
+            d = model_to_dict(got)
+            d["_model"] = got.__class__.__name__
+
+            send_event(d, linehash)
+
+            # This isn't totally correct because we don't know for a fact that
+            # the server actually persisted the event we sent it, but it's
+            # okay as a rough approximation.
+            #
+            # We can't have the server task
+            # do this because then we have to store logfile pos redis data
+            # in the central server, which would make actually maintaining
+            # that redis state slow for bitcoind servers on slow network links.
+            #
+            # TODO somehow make this truly synchronous with the server.
+            logfile_pos.mark(linehash)
+            write_logfile_pos()
