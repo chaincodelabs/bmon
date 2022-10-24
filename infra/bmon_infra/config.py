@@ -69,6 +69,8 @@ PUSHOVER_USER=${pushover_user}
 PUSHOVER_TOKEN=${pushover_token}
 
 CHAINCODE_GCP_CRED_PATH=/chaincode-gcp.json
+
+SENTRY_DSN=${sentry_dsn}
 """
 
 
@@ -104,6 +106,7 @@ dev_settings = dict(
     pushover_user="",
     pushover_token="",
     debug=1,
+    sentry_dsn="",
 )
 
 
@@ -139,6 +142,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bmon_hostnmae=host.name,
         bitcoin_rpc_port=8332,
         bitcoin_rpc_user="bmon",
+        sentry_dsn=host.secrets.sentry_dsn,
     )
 
     if 'server' in host.tags:

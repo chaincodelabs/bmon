@@ -25,6 +25,7 @@ dependencies = [
     'clii',
     'google-cloud-storage',
     'prometheus-client',
+    'sentry-sdk',
 ]
 version = "0.0.1"
 

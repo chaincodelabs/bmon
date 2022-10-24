@@ -1,0 +1,14 @@
+[Unit]
+Description=bmon sentry
+
+[Service]
+Type=oneshot
+WorkingDirectory=${sentry_dir}
+StandardOutput=journal
+RemainAfterExit=true
+
+ExecStart=${docker_compose_path} up -d --remove-orphans
+ExecStop=${docker_compose_path} rm -fs
+
+[Install]
+WantedBy=default.target
