@@ -247,6 +247,25 @@ def provision_bmon_server(
 
     systemd.enable_service("bmon-server")
 
+    # Optional Sentry installation
+    sentry_dir = Path.home() / 'sentry'
+    if sentry_dir.exists():
+        if (
+            p(sysd / "bmon-sentry.service")
+            .contents(
+                parent.template(
+                    "./etc/systemd-server-sentry-unit.service",
+                    user=username,
+                    sentry_dir=sentry_dir,
+                    docker_compose_path=docker_compose,
+                )
+            )
+            .changes
+        ):
+            run("systemctl --user daemon-reload")
+
+        systemd.enable_service("bmon-sentry")
+
     fscm.s.pkgs_install("nginx")
     p("/etc/nginx/sites-enabled/default", sudo=True).rm()
     if (

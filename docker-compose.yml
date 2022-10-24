@@ -18,6 +18,7 @@ x-service-config: &service
     BITCOIN_RPC_USER:
     BMON_REDIS_SERVER_URL:
     BMON_REDIS_HOST:
+    SENTRY_DSN:
     PYTHONUNBUFFERED: 1
 
 x-redis-config: &redis-config
