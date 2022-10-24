@@ -88,20 +88,29 @@ def cleardata():
 
 
 @cli.cmd
-def test(lint: bool = True):
+def test(mypy: bool = False):
     """Run automated tests."""
-    lint_ok = True
-    if lint:
-        lint_ok = sh(
+    mypy_ok = True
+
+    lint_ok = sh(
+        'docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '
+       "'flake8 bmon/ && flake8 infra/'"
+    ).returncode == 0
+
+    if mypy:
+        mypy_ok = sh(
             'docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '
-           "'flake8 bmon/ && flake8 infra/ && mypy bmon/ && mypy infra/'"
+           "'mypy bmon/ && mypy infra/'"
         ).returncode == 0
+
     test_ok = sh("docker-compose run --rm test pytest bmon").returncode == 0
 
     if not lint_ok:
         sys.exit(1)
     if not test_ok:
         sys.exit(2)
+    if not mypy_ok:
+        sys.exit(3)
 
 
 @cli.cmd
