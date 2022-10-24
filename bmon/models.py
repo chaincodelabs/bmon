@@ -53,6 +53,7 @@ PEER_UNIQUE_TOGETHER_FIELDS = (
     'bip152_hb_to',
 )
 
+
 class Peer(BaseModel):
     host = models.CharField(max_length=200)
     addr = models.CharField(max_length=256)
