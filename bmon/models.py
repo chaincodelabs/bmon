@@ -63,7 +63,6 @@ class Peer(BaseModel):
     inbound = models.BooleanField()
     network = models.CharField(max_length=256)
     services = models.CharField(max_length=256)
-    servicesnames = models.JSONField()
     subver = models.CharField(max_length=256)
     version = models.IntegerField()
     relaytxes = models.BooleanField()
@@ -71,6 +70,7 @@ class Peer(BaseModel):
     # Versions <= 0.19 lack this.
     bip152_hb_to = models.BooleanField(null=True, blank=True)
     bip152_hb_from = models.BooleanField(null=True, blank=True)
+    servicesnames = models.JSONField(null=True, blank=True)
 
     class Meta:
         constraints = [
