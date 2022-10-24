@@ -67,8 +67,10 @@ class Peer(BaseModel):
     subver = models.CharField(max_length=256)
     version = models.IntegerField()
     relaytxes = models.BooleanField()
-    bip152_hb_to = models.BooleanField()
-    bip152_hb_from = models.BooleanField()
+
+    # Versions <= 0.19 lack this.
+    bip152_hb_to = models.BooleanField(null=True, blank=True)
+    bip152_hb_from = models.BooleanField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -81,10 +83,14 @@ class Peer(BaseModel):
     @classmethod
     def peerinfo_data(cls, p: dict) -> tuple[dict, dict]:
         """Return the subset of getpeerinfo data that is relevant to this model."""
-        out = {k: p[k] for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
+        out = {k: p.get(k) for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
         out['num'] = p['id']
         out['host'] = settings.HOSTNAME
-        defaults = {k: p[k] for k in ['servicesnames']}
+
+        defaults = {}
+        # Versions pre 0.19 don't have servicesnames.
+        if 'servicesnames' in p:
+            defaults['servicesnames'] = p['servicesnames']
 
         return out, defaults
 
