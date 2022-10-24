@@ -1,18 +1,16 @@
 import os
 import signal
 import sys
-from pathlib import Path
 from wsgiref.simple_server import make_server
 import logging
 
 import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
-from django.conf import settings
 from clii import App
-from prometheus_client import make_wsgi_app, Gauge, Counter
+from prometheus_client import make_wsgi_app, Gauge
 
-from . import server_tasks, models
+from . import server_tasks
 from bmon_infra import infra
 
 
@@ -31,7 +29,7 @@ def refresh_metrics():
     SERVER_EVENT_QUEUE_DEPTH.set(len(server_tasks.server_q))
 
 
-def sigterm_handler(signal, frame):
+def sigterm_handler(*_):
     print("exiting")
     sys.exit(0)
 

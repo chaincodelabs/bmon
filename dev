@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import sys
 import subprocess
 
 import clii
@@ -63,7 +64,7 @@ def reup(
     if data:
         cleardata()
 
-    sh(f"docker-compose up -d db")
+    sh("docker-compose up -d db")
     managepy('migrate')
     sh(f"docker-compose up -d {service}")
 
@@ -87,9 +88,20 @@ def cleardata():
 
 
 @cli.cmd
-def test():
+def test(lint: bool = True):
     """Run automated tests."""
-    sh("docker-compose run --rm test pytest bmon")
+    lint_ok = True
+    if lint:
+        lint_ok = sh(
+            'docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '
+           "'flake8 bmon/ && flake8 infra/ && mypy bmon/ && mypy infra/'"
+        ).returncode == 0
+    test_ok = sh("docker-compose run --rm test pytest bmon").returncode == 0
+
+    if not lint_ok:
+        sys.exit(1)
+    if not test_ok:
+        sys.exit(2)
 
 
 @cli.cmd

@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 
 from .rpc import BitcoinRpc
-from bmon_infra.infra import Host, get_bitcoind_hosts
+from bmon_infra.infra import Host, get_bitcoind_hosts  # type: ignore
 
 from django.conf import settings
 
@@ -14,13 +14,13 @@ log = logging.getLogger(__name__)
 
 
 @lru_cache
-def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int = 5):
+def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int = 5) -> BitcoinRpc:
     """
     Return an RPC object to bitcoind.
 
     Will block until successfully connected.
     """
-    host = host or settings.BITCOIN_RPC_HOST
+    host = host or settings.BITCOIN_RPC_HOST  # type: ignore
     url = (
         f"http://{settings.BITCOIN_RPC_USER}:"
         f"{settings.BITCOIN_RPC_PASSWORD}@{host}"
@@ -46,7 +46,6 @@ def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int =
     raise RuntimeError(f"couldn't boot RPC {url}")
 
 
-
 @lru_cache
 def get_rpc_for_hosts(hosts: t.Tuple[Host]) -> t.Dict[str, BitcoinRpc]:
     # TODO: assumes that all hosts use same ports, credentials
@@ -56,7 +55,7 @@ def get_rpc_for_hosts(hosts: t.Tuple[Host]) -> t.Dict[str, BitcoinRpc]:
 RPC_ERROR_RESULT = object()
 
 
-def gather_rpc(rpc_call_arg: str | t.Callable) -> t.Dict[str, t.Any]:
+def gather_rpc(rpc_call_arg: str | t.Callable[[BitcoinRpc], t.Any]) -> t.Dict[str, t.Any]:
     """
     Gather RPC resuls from all bitcoin hosts.
 
@@ -66,7 +65,7 @@ def gather_rpc(rpc_call_arg: str | t.Callable) -> t.Dict[str, t.Any]:
     """
     rpcmap = get_rpc_for_hosts(get_bitcoind_hosts())
     promises = {}
-    results = {}
+    results: dict[str, t.Any] = {}
 
     with ThreadPoolExecutor(max_workers=10) as e:
         for hostname, rpc in rpcmap.items():

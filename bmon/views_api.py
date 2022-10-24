@@ -106,7 +106,7 @@ class BlockConnView:
         self.stddev_got_time: float = statistics.pstdev(times.values())
         self.min: float = min(times.values())
         self.min_dt = fromts(self.min)
-        self.diffs: Dict[str, float] = {host: t - self.min for host, t in times.items()}
+        self.diffs: dict[str, float] = {host: t - self.min for host, t in times.items()}
         self.events = []
 
 

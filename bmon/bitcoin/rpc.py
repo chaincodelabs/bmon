@@ -17,9 +17,7 @@ import json
 import base64
 import re
 import urllib.parse as urlparse
-import os
 import logging
-import typing as t
 from decimal import Decimal
 from typing import IO
 

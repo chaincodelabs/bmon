@@ -137,8 +137,8 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_docker_tag=(host.bitcoin_version or '?').lstrip('v'),
         bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
         bmon_hostnmae=host.name,
-            bitcoin_rpc_port=8332,
-            bitcoin_rpc_user="bmon",
+        bitcoin_rpc_port=8332,
+        bitcoin_rpc_user="bmon",
     )
 
     if 'server' in host.tags:

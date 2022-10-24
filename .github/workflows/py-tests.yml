@@ -1,0 +1,39 @@
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.10]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install .[tests]
+
+    - name: flake8
+      run: |
+        flake8 bmon/ --count --show-source --statistics
+        flake8 infra/ --count --show-source --statistics
+
+    - name: pytest
+      run: |
+        pytest -vv bmon/
+
+    - name: mypy
+      run: |
+        mypy bmon/
+        mypy infra/
