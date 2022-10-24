@@ -39,7 +39,39 @@ bmon-server-monitor = "bmon.server_monitor:main"
 tests = [
     'pytest',
     'pytest-django',
+    'django-stubs',
+    'mypy',
+    'flake8',
 ]
 
 [tool.setuptools]
 packages = ["bmon"]
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+exclude = [
+    "migrations/*",
+    "bitcoin/rpc.py",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    'walrus',
+    'huey',
+    'pygments',
+    'pygments.*',
+    'sqlparse',
+    'clii',
+    'google.*',
+    'bmon_infra',
+    'fscm.*',
+]
+ignore_missing_imports = true
+
+[tool.pylsp-mypy]
+enabled = true
+live_mode = true
+strict = false
+
+[tool.django-stubs]
+django_settings_module = "bmon.settings"

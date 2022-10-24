@@ -1,6 +1,4 @@
-import os
-
-from bmon.settings import *
+from bmon.settings import *  # noqa
 
 DEBUG = True
 TESTING = True

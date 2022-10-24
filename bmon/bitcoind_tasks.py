@@ -6,9 +6,10 @@ import os
 import datetime
 import subprocess
 import time
-import fastavro
 import logging
+import typing as t
 
+import fastavro
 import walrus
 import django
 import google.cloud.storage
@@ -194,7 +195,8 @@ def ship_mempool_activity():
             log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
 
-LOG_LISTENERS = (
+ListenerList = t.Sequence[logparse.Listener]
+LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
     logparse.MempoolListener(),
     logparse.BlockConnectedListener(),
@@ -223,14 +225,14 @@ def watch_bitcoind_logs():
         process_line(line)
 
 
-def process_line(line: str, listeners: None | list = None):
+def process_line(line: str, listeners: None | ListenerList = None):
     """
     Process a single bitcoind log line, prompting async tasks when necessary.
     """
     linehash = logparse.linehash(line)
-    listeners = listeners or LOG_LISTENERS
+    ls: ListenerList = listeners or LOG_LISTENERS
 
-    for listener in listeners:
+    for listener in ls:
         try:
             got = listener.process_line(line)
         except Exception:

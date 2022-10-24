@@ -10,7 +10,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
 from django.conf import settings
 from clii import App
-from prometheus_client import make_wsgi_app, Gauge, Counter
+from prometheus_client import make_wsgi_app, Gauge
 
 from . import bitcoind_tasks, models
 from bmon_infra import infra

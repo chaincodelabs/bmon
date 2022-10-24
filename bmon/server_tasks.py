@@ -8,7 +8,6 @@ nodes.
 from collections import defaultdict
 import os
 import logging
-import functools
 
 import django
 from django.conf import settings

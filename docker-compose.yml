@@ -297,7 +297,12 @@ services:
   test:
     profiles: ["dev"]
     user: "${UID}"
-    image: docker.io/jamesob/bmon:latest
+    image: docker.io/jamesob/bmon:test-latest
+    build:
+      context: .
+      dockerfile: ./docker/py.Dockerfile
+      args:
+        PYTHON_PKG: .[tests]
     environment:
       <<: *env
       RUN_DB_MIGRATIONS: 1

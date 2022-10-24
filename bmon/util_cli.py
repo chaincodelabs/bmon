@@ -8,7 +8,7 @@ from django.conf import settings
 try:
     from . import bitcoind_tasks
 except Exception:
-    bitcoind_tasks = None
+    bitcoind_tasks = None  # type: ignore
 
 from .bitcoin.api import gather_rpc
 from . import logparse
@@ -17,14 +17,14 @@ cli = App()
 
 
 @cli.cmd
-def feedline(line: str):
+def feedline(line: str) -> None:
     """Manually process a logline. Useful for testing in dev."""
     assert bitcoind_tasks
     bitcoind_tasks.process_line(line)
 
 
 @cli.cmd
-def showmempool():
+def showmempool() -> None:
     """Show the current mempool avro data."""
     assert bitcoind_tasks
     with open(settings.MEMPOOL_ACTIVITY_CACHE_PATH / 'current', 'rb') as f:
@@ -33,27 +33,29 @@ def showmempool():
 
 
 @cli.cmd
-def run_listener(listener_name: str):
+def run_listener(listener_name: str) -> None:
     """Rerun a listener over all bitcoind log lines."""
     assert bitcoind_tasks
     listeners = [getattr(logparse, listener_name)()]
 
+    assert settings.BITCOIND_LOG_PATH
     with open(settings.BITCOIND_LOG_PATH, 'r', errors='ignore') as f:
         for line in f:
             bitcoind_tasks.process_line(line, listeners=listeners)
 
+
 @cli.cmd
-def shipmempool():
+def shipmempool() -> None:
     """Ship off mempool activity to GCP."""
     assert bitcoind_tasks
     bitcoind_tasks.queue_mempool_to_ship()
 
 
 @cli.cmd
-def rpc(*cmd):
+def rpc(*cmd) -> None:
     """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
     pprint.pprint(gather_rpc(' '.join(cmd)))
 
 
-def main():
+def main() -> None:
     cli.run()

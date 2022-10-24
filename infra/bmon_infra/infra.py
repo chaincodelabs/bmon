@@ -80,7 +80,7 @@ def get_hosts() -> tuple[dict[str, wireguard.Server], dict[str, Host]]:
     return wg_servers, hosts
 
 
-def get_bitcoind_hosts() -> t.Tuple[Host]:
+def get_bitcoind_hosts() -> t.Tuple[Host, ...]:
     hosts = get_hosts()[1].values()
     return tuple(h for h in hosts if "bitcoind" in h.tags)
 
@@ -471,14 +471,13 @@ def runall(cmd: str, sudo: bool = False):
 
 
 @cli.cmd
-def rpc(cmd: str, sudo: bool = False):
+def rpc(cmd: str):
     """Run a bitcoind RPC command across all bitcoind hosts."""
     _, hostmap = get_hosts_for_cli(need_secrets=False, hostname_filter='bmon')
     [server] = list(hostmap.values())
 
     with executor(server) as exec:
         exec.run(_run_cmd, f'docker-compose run --rm shell bmon-util rpc {cmd}')
-
 
 
 def _run_cmd(cmd: str, sudo: bool = False):

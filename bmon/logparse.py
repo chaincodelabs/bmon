@@ -32,7 +32,7 @@ def read_logfile_forever(
     Taken and modified from https://stackoverflow.com/a/25632664.
     """
 
-    def openfile():
+    def openfile() -> t.IO[str]:
         return open(filename, "r", errors="ignore")
 
     current = openfile()
@@ -148,7 +148,7 @@ class LogfilePosManager:
             linehash, dt_str = got.split(self.REDIS_SEPARATOR)
             return (linehash, datetime.datetime.fromisoformat(dt_str))
 
-    def mark(self, linehash: str):
+    def mark(self, linehash: str) -> None:
         """
         Persist logfile position in redis.
 
@@ -160,7 +160,7 @@ class LogfilePosManager:
                 self.redis_key
             ] = f"{linehash}{self.REDIS_SEPARATOR}{timezone.now().isoformat()}"
 
-    def flush(self):
+    def flush(self) -> None:
         """
         Write the logfile pos from redis into postgres.
         """
@@ -211,8 +211,13 @@ _UPDATE_TIP_START = "UpdateTip: "
 _PEER_PATT = re.compile(r"\s+peer=(?P<peer_num>\d+)")
 
 
-def str_or_none(s):
+def str_or_none(s: t.Any) -> None | str:
     return str(s) if s else None
+
+
+class Listener(t.Protocol):
+    def process_line(self, line: str) -> t.Any:
+        pass
 
 
 class MempoolListener:
@@ -223,7 +228,7 @@ class MempoolListener:
         re.compile(r"poolsz (?P<pool_size_txns>\d+) txn, (?P<pool_size_kb>\d+) kB"),
     }
 
-    def process_line(self, line):
+    def process_line(self, line: str) -> None | models.MempoolAccept:
         if " AcceptToMemoryPool:" in line and " accepted " in line:
             matches = {}
             timestamp = get_time(line)
@@ -239,6 +244,7 @@ class MempoolListener:
                 pool_size_kb=int(matches["pool_size_kb"]),
                 pool_size_txns=int(matches["pool_size_txns"]),
             )
+        return None
 
 
 class PongListener:
@@ -258,20 +264,25 @@ class PongListener:
             log.warning("malformed pong message: %s", line)
 
 
-class _BlockEventListener:
+BlockEvent = (
+    models.BlockDisconnectedEvent
+    | models.BlockConnectedEvent
+)
+
+
+class _BlockEventListener(t.Protocol):
     """
     2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
     """
+    event_type: str
+    event_class: t.Type[BlockEvent]
 
-    event_type: str = ""
-    event_class = None
-
-    _patts = {
+    _patts: set[re.Pattern[str]] = {
         re.compile(r"\s+height=(?P<height>\d+)"),
         re.compile(rf"\s+hash=(?P<blockhash>{_HASH})"),
     }
 
-    def process_line(self, line):
+    def process_line(self, line: str) -> None | BlockEvent:
         # Ignore the duplicate "Enqueuing" lines.
         if f" {self.event_type}: " in line and " Enqueuing " not in line:
             matches = {}
@@ -280,12 +291,14 @@ class _BlockEventListener:
                 if match := patt.search(line):
                     matches.update(match.groupdict())
 
-            return self.event_class(
+            assert self.event_class
+            return self.event_class(  # typing: ignore
                 host=settings.HOSTNAME,
                 timestamp=timestamp,
                 height=int(matches["height"]),
                 blockhash=matches["blockhash"],
             )
+        return None
 
 
 class BlockDisconnectedListener(_BlockEventListener):
@@ -299,7 +312,7 @@ class BlockConnectedListener(_BlockEventListener):
 
 
 class ReorgListener:
-    def __init__(self):
+    def __init__(self) -> None:
         self.disconnects: list[models.BlockDisconnectedEvent] = []
         self.replacements: list[models.BlockConnectedEvent] = []
         self.disconnect_listener = BlockDisconnectedListener()
@@ -318,7 +331,7 @@ class ReorgListener:
                 break
 
         if not got:
-            return
+            return None
 
         if isinstance(got, models.BlockDisconnectedEvent):
             self.disconnects.insert(0, got)
@@ -333,15 +346,18 @@ class ReorgListener:
             # If we don't have any outstanding disconnects, this is just a regular
             # connection event.
             if not self.disconnects:
-                return
+                return None
 
-            if got.height <= self.max_height:
+            max_height = self.max_height
+            assert isinstance(max_height, int)
+
+            if got.height <= max_height:
                 self.replacements.append(got)
 
-                if got.height < self.max_height:
+                if got.height < max_height:
                     # We haven't yet completed the reorg; we're still connecting
                     # substitute blocks.
-                    return
+                    return None
 
             # If we're here, we have completed the reorg.
 
@@ -360,7 +376,7 @@ class ReorgListener:
                 host=settings.HOSTNAME,
                 finished_timestamp=self.replacements[-1].timestamp,
                 min_height=self.disconnects[0].height,
-                max_height=self.max_height,
+                max_height=max_height,
                 old_blockhashes=[d.blockhash for d in self.disconnects],
                 new_blockhashes=[r.blockhash for r in self.replacements],
             )
@@ -369,6 +385,7 @@ class ReorgListener:
 
             log.info("Reorg finished: %s", reorg)
             return reorg
+        return None
 
 
 class ConnectBlockListener:
@@ -438,10 +455,10 @@ class ConnectBlockListener:
         str_or_none: ("warning",),
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.next_details = ConnectBlockDetails()
-        self.current_height = None
-        self.current_blockhash = None
+        self.current_height: None | int = None
+        self.current_blockhash: None | str = None
 
     def process_line(
         self, line: str
@@ -466,7 +483,7 @@ class ConnectBlockListener:
 
             # 0.12 has UpdateTip: lines that just display the warning, so skip those.
             if "height" not in matchgroups:
-                return
+                return None
 
             self.current_height = int(matchgroups["height"])
             self.current_blockhash = matchgroups["blockhash"]
@@ -499,12 +516,15 @@ class ConnectBlockListener:
                 break
 
         if not matchgroups:
-            return
+            return None
 
         dict_onto_event(matchgroups, self.next_details, self.match_types)
 
         # Event is ready for persisting!
         if self.next_details.connectblock_total_time_ms is not None:
+            assert self.current_blockhash
+            assert isinstance(self.current_height, int)
+
             self.next_details.host = settings.HOSTNAME
             self.next_details.blockhash = self.current_blockhash
             self.next_details.height = self.current_height
@@ -519,7 +539,7 @@ class ConnectBlockListener:
         return None
 
 
-def dict_onto_event(d: dict, event, type_map: dict):
+def dict_onto_event(d: dict[str, str], event: t.Any, type_map: t.Any) -> None:
     """
     Take the entries in a dictionary and map them onto a database event.
 
@@ -539,37 +559,35 @@ def dict_onto_event(d: dict, event, type_map: dict):
             )
 
 
-def parse_log_line():
+"""
+# TODO
 
-    # got inv: tx {txid}  new peer={peer_id}
+got inv: tx {txid}  new peer={peer_id}
 
-    # Expired {count} transactions from the memory pool
+Expired {count} transactions from the memory pool
 
-    # Regular block reception (GotBlockEvent)
-    # Compact block reception (GotBlockEvent)
+Regular block reception (GotBlockEvent)
+Compact block reception (GotBlockEvent)
 
-    # Valid fork found
-    # -------------------
-    # Warning: Large valid fork found
-    #   forking the chain at height %d ({blockhash})
-    #   lasting to height %d ({blockhash}).
-    # Chain state database corruption likely.
+Valid fork found
+-------------------
+Warning: Large valid fork found
+  forking the chain at height %d ({blockhash})
+  lasting to height %d ({blockhash}).
+Chain state database corruption likely.
 
-    # Invalid chain found
-    # -------------------
-    # Warning: Found invalid chain at least ~6 blocks longer than our best chain.
+Invalid chain found
+-------------------
+Warning: Found invalid chain at least ~6 blocks longer than our best chain.
 
-    # Invalid block found
-    # -------------------
-    # {funcname}: invalid block={blockhash}  height={height}  log2_work={work}  date={block_datetime}
+Invalid block found
+-------------------
+{funcname}: invalid block={blockhash}  height={height}  log2_work={work}  date={block_datetime}
 
-    # Compact blocks
-    # -------------------
-    # Successfully reconstructed block {blockhash} with {n} txn prefilled, {n} txn from mempool (incl at least {n} from extra pool) and {n} txn requested
+Compact blocks
+-------------------
+# Successfully reconstructed block {blockhash} with {n} txn prefilled, {n} txn from mempool (incl at least {n} from extra pool) and {n} txn requested
 
-    ########
-    # TODO
-    ########
 
-    # replacing tx %s with %s for %s BTC additional fees, %d delta bytes
-    pass
+# replacing tx %s with %s for %s BTC additional fees, %d delta bytes
+"""

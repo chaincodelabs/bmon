@@ -16,7 +16,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-HOSTNAME = os.environ['BMON_HOSTNAME']
+HOSTNAME = os.environ.get('BMON_HOSTNAME', 'FIXME')
 TESTING = bool(os.environ.get('BMON_TESTING', False))
 
 # Only bitcoind-monitoring nodes have a local Redis cache.
@@ -24,8 +24,8 @@ REDIS_LOCAL_URL = os.environ.get('BMON_REDIS_LOCAL_URL')
 REDIS_LOCAL_HOST = os.environ.get('BMON_REDIS_LOCAL_HOST')
 
 # All installations must know about the central Redis instance.
-REDIS_SERVER_URL = os.environ['BMON_REDIS_SERVER_URL']
-REDIS_SERVER_HOST = os.environ['BMON_REDIS_HOST']
+REDIS_SERVER_URL = os.environ.get('BMON_REDIS_SERVER_URL', 'FIXME')
+REDIS_SERVER_HOST = os.environ.get('BMON_REDIS_HOST', 'FIXME')
 
 BITCOIN_RPC_HOST = os.environ.get('BITCOIN_RPC_HOST')
 BITCOIN_RPC_USER = os.environ.get('BITCOIN_RPC_USER')
@@ -104,8 +104,6 @@ LOGGING = {
 }
 
 
-# Application definition
-
 INSTALLED_APPS = [
     'bmon',
     'django.contrib.admin',
@@ -159,8 +157,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'bmon'),
         'USER': os.environ.get('DB_USERNAME', 'bmon'),
-        'PASSWORD': os.environ['DB_PASSWORD'],
-        'HOST': os.environ['DB_HOST'],
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'FIXME'),
+        'HOST': os.environ.get('DB_HOST', 'FIXME'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     },
 }
