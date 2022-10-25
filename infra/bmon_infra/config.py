@@ -324,10 +324,9 @@ def make_env(
 
 def get_env_object(envfile: str | Path = '.env') -> SimpleNamespace:
     """Return the contents of the .env file in a namespace."""
-    envdict = dict(
-        i.split("=", 1)
-        for i in filter(None, Path(envfile).read_text().splitlines())
-    )
+    lines = filter(None, Path(envfile).read_text().splitlines())
+    lines = [line for line in lines if not line.startswith('#')]
+    envdict = dict(i.split("=", 1) for i in lines)
 
     return SimpleNamespace(**envdict)
 
