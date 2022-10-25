@@ -281,9 +281,17 @@ class MempoolReject(BaseModel):
     timestamp = models.DateTimeField()
     txhash = models.CharField(max_length=80)
     peer_num = models.IntegerField()
-    peer = models.ForeignKey(Peer, null=True, on_delete=models.SET_NULL)
+    peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
     reason = models.CharField(max_length=1024)
     reason_data = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['host', 'timestamp', 'txhash', 'peer_num'],
+                name='unique_reject',
+            ),
+        ]
 
 
 class MempoolAccept(models.Model):

@@ -277,6 +277,12 @@ def process_line(line: str, listeners: None | ListenerList = None):
                     log.error(
                         "unable to find bmon Peer for bitcoind peer %d", got.peer_num)
 
+            if not peer_id:
+                # TODO handle this differently? It's conservative to not to allow
+                # dangling Peer references, but maybe not the right approach?
+                log.error("discarding logline due to lack of peer data: %r", line)
+                return None
+
             got.peer_id = int(peer_id)  # type: ignore
 
         try:
