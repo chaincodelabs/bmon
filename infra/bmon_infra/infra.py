@@ -17,7 +17,7 @@ from fscm.remote import executor
 from fscm.contrib import wireguard
 from fscm import run, p, lineinfile, systemd
 
-from .config import prod_env
+from . import config
 
 
 cli = App()
@@ -57,7 +57,7 @@ class Host(wireguard.Host):
         self.outbound_wireguard = outbound_wireguard
 
         if BMON_SSHKEY.exists():
-            kwargs.setdefault('ssh_identity_file', BMON_SSHKEY)
+            kwargs.setdefault("ssh_identity_file", BMON_SSHKEY)
 
         super().__init__(*args, **kwargs)
 
@@ -77,7 +77,7 @@ def get_hosts() -> tuple[dict[str, wireguard.Server], dict[str, Host]]:
         for name, d in (data.get("wireguard") or {}).items()
     }
 
-    return wg_servers, hosts
+    return wg_servers, hosts  # type: ignore
 
 
 def get_bitcoind_hosts() -> t.Tuple[Host, ...]:
@@ -136,7 +136,8 @@ def main_remote(
     restart_spec: str = "",
     ssh_pubkey: str = "",
 ):
-    user = getpass.getuser()
+    assert (user := getpass.getuser()) != 'root'
+
     fscm.s.pkgs_install(
         "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp"
     )
@@ -208,24 +209,21 @@ def main_remote(
     ):
         run("systemctl restart systemd-journald", sudo=True).assert_ok()
 
+    p(bmon_path / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
+    run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
+
     if "server" in host.tags:
-        provision_bmon_server(host, parent, server_wg_ip, restart_spec)
+        provision_bmon_server(parent, restart_spec)
     elif "bitcoind" in host.tags:
         provision_monitored_bitcoind(host, parent, server_wg_ip, restart_spec)
 
 
 def provision_bmon_server(
-    host: Host,
     parent: fscm.remote.Parent,
-    server_wg_ip: str,
     restart_spec: str,
 ):
-    assert (username := getpass.getuser()) != "root"
-
+    assert (username := getpass.getuser()) != 'root'
     os.chdir(bmon_path := Path.home() / "bmon")
-
-    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod("600")
-    run("bmon-config -t prod")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
@@ -248,7 +246,7 @@ def provision_bmon_server(
     systemd.enable_service("bmon-server")
 
     # Optional Sentry installation
-    sentry_dir = Path.home() / 'sentry'
+    sentry_dir = Path.home() / "sentry"
     if sentry_dir.exists():
         if (
             p(sysd / "bmon-sentry.service")
@@ -304,11 +302,8 @@ def provision_monitored_bitcoind(
     server_wg_ip: str,
     restart_spec: str,
 ):
-    assert (username := getpass.getuser()) != "root"
+    assert (username := getpass.getuser()) != 'root'
     os.chdir(bmon_path := Path.home() / "bmon")
-
-    p(bmon_path / ".env").contents(prod_env(host, server_wg_ip)).chmod("600")
-    run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
@@ -368,7 +363,7 @@ def provision_monitored_bitcoind(
             print(f"Installed prepopulated pruned dir at {btc_data}")
 
     p(services_path / "bmon" / "credentials" / "chaincode-gcp.json").contents(
-        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)
+        json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)  # type: ignore
     ).chmod("600")
 
     if (
@@ -386,7 +381,10 @@ def provision_monitored_bitcoind(
         run("systemctl --user daemon-reload")
 
     # Update the docker image.
-    run(f"{docker_compose} pull bitcoind-watcher")
+    run(f"{docker_compose} pull bitcoind-watcher bitcoind")
+
+    env = config.get_env_object()
+    p(env.BITCOIND_VERSION_PATH).contents(get_bitcoind_version(docker_compose))
 
     systemd.enable_service("bmon-bitcoind")
 
@@ -409,6 +407,21 @@ def provision_monitored_bitcoind(
             cycle(f"{alwaysrestart} {restart_spec}")
 
 
+def get_bitcoind_version(docker_compose_path: str | Path = 'docker-compose') -> str:
+    [ver_line] = [
+        i
+        for i in (
+            run(f"{docker_compose_path} run --rm bitcoind bitcoind -version")
+            .assert_ok()
+            .stdout.strip()
+            .splitlines()
+        )
+        if i.startswith("Bitcoin") and " version " in i
+    ]
+    bitcoind_version = ver_line.split(' version ')[-1].strip()
+    return bitcoind_version.lstrip('v')
+
+
 @cli.cmd
 def deploy(
     rebuild_docker: bool = False,
@@ -429,7 +442,7 @@ def deploy(
     includes_server = any("server" in h.tags for h in hosts)
     server_wg_ip = get_server_wireguard_ip()
 
-    ssh_pubkey = ''
+    ssh_pubkey = ""
     if BMON_SSHPUBKEY.exists():
         ssh_pubkey = BMON_SSHPUBKEY.read_text()
 
@@ -492,11 +505,11 @@ def runall(cmd: str, sudo: bool = False):
 @cli.cmd
 def rpc(cmd: str):
     """Run a bitcoind RPC command across all bitcoind hosts."""
-    _, hostmap = get_hosts_for_cli(need_secrets=False, hostname_filter='bmon')
+    _, hostmap = get_hosts_for_cli(need_secrets=False, hostname_filter="bmon")
     [server] = list(hostmap.values())
 
     with executor(server) as exec:
-        exec.run(_run_cmd, f'docker-compose run --rm shell bmon-util rpc {cmd}')
+        exec.run(_run_cmd, f"docker-compose run --rm shell bmon-util rpc {cmd}")
 
 
 def _run_cmd(cmd: str, sudo: bool = False):

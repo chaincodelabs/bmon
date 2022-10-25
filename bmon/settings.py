@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import sentry_sdk
@@ -35,6 +36,24 @@ BITCOIN_RPC_HOST = os.environ.get('BITCOIN_RPC_HOST')
 BITCOIN_RPC_USER = os.environ.get('BITCOIN_RPC_USER')
 BITCOIN_RPC_PASSWORD = os.environ.get('BITCOIN_RPC_PASSWORD')
 BITCOIN_RPC_PORT = os.environ.get('BITCOIN_RPC_PORT')
+
+
+@lru_cache
+def bitcoind_version(ver: None | str = None) -> tuple[tuple[int, int, int], str]:
+    """Returns the version tuple and the git sha, if any."""
+    ver = ver or Path(os.environ['BITCOIND_VERSION_PATH']).read_text().strip()
+    gitsha = None
+
+    if '-' in ver:
+        ver, gitsha = ver.split('-', 1)
+
+    vertuple = (int(i) for i in ver.split('.'))
+    if len(vertuple) == 2:
+        vertuple = vertuple + (0,)
+    assert len(vertuple) == 3
+
+    return vertuple, gitsha
+
 
 # GCP credentials for uploading mempool activity.
 CHAINCODE_GCP_CRED_PATH = os.environ.get('CHAINCODE_GCP_CRED_PATH')

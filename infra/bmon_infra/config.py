@@ -12,7 +12,6 @@ See also: ./infra.py, for how this is used to populate configuration on each hos
 
 import socket
 import getpass
-import typing as t
 from string import Template
 from pathlib import Path
 from types import SimpleNamespace
@@ -65,6 +64,10 @@ BITCOIN_PRUNE=${bitcoin_prune}
 BITCOIN_DBCACHE=${bitcoin_dbcache}
 BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
 
+# Version information, as actually written out by `bitcoind -version` after the
+# container is built.
+BITCOIND_VERSION_PATH=${bitcoind_version_path}
+
 PUSHOVER_USER=${pushover_user}
 PUSHOVER_TOKEN=${pushover_token}
 
@@ -107,6 +110,7 @@ dev_settings = dict(
     pushover_token="",
     debug=1,
     sentry_dsn="",
+    bitcoind_version_path="./services/dev/bmon/bitcoind_version",
 )
 
 
@@ -157,6 +161,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             alertman_address="alertman:9093",
             pushover_user=host.secrets.pushover.user,
             pushover_token=host.secrets.pushover.token,
+            bitcoind_version_path="",
         )
     else:
         # a bitcoind instance
@@ -169,6 +174,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             web_api_url=f"http://{server_wireguard_ip}:8080",
             loki_host=server_wireguard_ip,
             alertman_address=f"{server_wireguard_ip}:9093",
+            bitcoind_version_path="./services/prod/bmon/bitcoind_version",
         )
 
     return settings
@@ -305,25 +311,25 @@ def make_services_data(envtype: str, hostname: str | None = None):
 def make_env(
     envfile: str = ".env",
     envtype: str = "dev",
-    envdict: t.Optional[dict] = None,
     hostname: str = '',
 ):
+    # Don't autopopulate .env on prod; this happens in infra:deploy.
     if envtype == "dev":
         p(envfile).contents(dev_env())
-    else:
-        # Don't autopopulate .env on prod.
-        pass
-
-    if not envdict:
-        # Read from the envfile
-        envdict = dict(
-            i.split("=", 1)
-            for i in filter(None, Path(envfile).read_text().splitlines())
-        )
 
     global ENV
-    ENV = SimpleNamespace(**envdict)
+    ENV = get_env_object(envfile)
     make_services_data(envtype, hostname)
+
+
+def get_env_object(envfile: str | Path = '.env') -> SimpleNamespace:
+    """Return the contents of the .env file in a namespace."""
+    envdict = dict(
+        i.split("=", 1)
+        for i in filter(None, Path(envfile).read_text().splitlines())
+    )
+
+    return SimpleNamespace(**envdict)
 
 
 def main():

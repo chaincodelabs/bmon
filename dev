@@ -6,6 +6,8 @@ import subprocess
 
 import clii
 
+from bmon_infra import infra
+
 cli = clii.App()
 
 
@@ -63,6 +65,9 @@ def reup(
 
     if data:
         cleardata()
+
+    env = config.get_env_object()
+    p(env.BITCOIND_VERSION_PATH).contents(infra.get_bitcoind_version())
 
     sh("docker-compose up -d db")
     managepy('migrate')
