@@ -26,6 +26,7 @@ cli.add_argument("-f", "--hostname-filter")
 
 REPO_URL = "https://github.com/chaincodelabs/bmon.git"
 VENV_PATH = Path.home() / ".venv"
+BMON_PATH = Path.home() / "bmon"
 
 fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
 
@@ -180,19 +181,19 @@ def main_remote(
 
     lineinfile(f"/home/{user}/.bashrc", "alias dc=docker-compose", regex="alias dc=")
 
-    if not (bmon_path := Path.home() / "bmon").exists():
-        run(f"git clone {REPO_URL} {bmon_path}").assert_ok()
+    if not BMON_PATH.exists():
+        run(f"git clone {REPO_URL} {BMON_PATH}").assert_ok()
 
     if ".venv/bin/" not in os.environ["PATH"]:
         os.environ["PATH"] = f"{VENV_PATH / 'bin'}:{os.environ['PATH']}"
 
     if not run("which bmon-config", quiet=True).ok:
-        run(f"cd {bmon_path} && pip install -e ./infra").assert_ok()
+        run(f"cd {BMON_PATH} && pip install -e ./infra").assert_ok()
 
     if not run("which docker-compose", quiet=True).ok:
         run("pip install docker-compose").assert_ok()
 
-    run(f"cd {bmon_path} && git pull --ff-only origin master").assert_ok()
+    run(f"cd {BMON_PATH} && git pull --ff-only origin master").assert_ok()
 
     if (
         p("/etc/docker/daemon.json", sudo=True)
@@ -209,7 +210,8 @@ def main_remote(
     ):
         run("systemctl restart systemd-journald", sudo=True).assert_ok()
 
-    p(bmon_path / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
+    os.chdir(BMON_PATH)
+    p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
     run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
 
     if "server" in host.tags:
@@ -223,7 +225,6 @@ def provision_bmon_server(
     restart_spec: str,
 ):
     assert (username := getpass.getuser()) != 'root'
-    os.chdir(bmon_path := Path.home() / "bmon")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
@@ -235,7 +236,7 @@ def provision_bmon_server(
             parent.template(
                 "./etc/systemd-server-unit.service",
                 user=username,
-                bmon_dir=bmon_path,
+                bmon_dir=BMON_PATH,
                 docker_compose_path=docker_compose,
             )
         )
@@ -303,14 +304,13 @@ def provision_monitored_bitcoind(
     restart_spec: str,
 ):
     assert (username := getpass.getuser()) != 'root'
-    os.chdir(bmon_path := Path.home() / "bmon")
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
     p("/etc/logrotate.d/bmon-bitcoind.conf", sudo=True).contents(
         parent.template(
             "./etc/bitcoind-logrotate.conf",
-            BMON_DIR=str(bmon_path),
+            BMON_DIR=str(BMON_PATH),
             USER=username,
             HOME=Path.home(),
         )
@@ -339,7 +339,7 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl daemon-reload", sudo=True)
 
-    services_path = bmon_path / "services" / "prod"
+    services_path = BMON_PATH / "services" / "prod"
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 
@@ -372,7 +372,7 @@ def provision_monitored_bitcoind(
             parent.template(
                 "./etc/systemd-bitcoind-unit.service",
                 user=username,
-                bmon_dir=bmon_path,
+                bmon_dir=BMON_PATH,
                 docker_compose_path=docker_compose,
             )
         )
