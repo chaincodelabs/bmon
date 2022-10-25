@@ -125,13 +125,9 @@ def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
     new_ids = {}
     for peer in peerinfo:
         kwargs, defaults = models.Peer.peerinfo_data(peer)
-        obj, created = models.Peer.objects.get_or_create(
-            defaults=defaults, **kwargs
-        )
+        obj, created = models.Peer.objects.get_or_create(defaults=defaults, **kwargs)
         if created:
-            log.info(
-                "synced peer %d (num=%d) to database: %s", obj.id, obj.num, kwargs
-            )
+            log.info("synced peer %d (num=%d) to database: %s", obj.id, obj.num, kwargs)
             peer_id_map[obj.num] = obj.id
             new_ids[obj.num] = obj.id
 
@@ -236,7 +232,9 @@ def watch_bitcoind_logs():
         process_line(line)
 
 
-def process_line(line: str, listeners: None | ListenerList = None):
+def process_line(
+    line: str, listeners: None | ListenerList = None, modify_log_pos: bool = True
+):
     """
     Process a single bitcoind log line, prompting async tasks when necessary.
     """
@@ -275,7 +273,8 @@ def process_line(line: str, listeners: None | ListenerList = None):
 
                 if not peer_id:
                     log.error(
-                        "unable to find bmon Peer for bitcoind peer %d", got.peer_num)
+                        "unable to find bmon Peer for bitcoind peer %d", got.peer_num
+                    )
 
             if not peer_id:
                 # TODO handle this differently? It's conservative to not to allow
@@ -300,15 +299,16 @@ def process_line(line: str, listeners: None | ListenerList = None):
 
             send_event(d, linehash)
 
-            # This isn't totally correct because we don't know for a fact that
-            # the server actually persisted the event we sent it, but it's
-            # okay as a rough approximation.
-            #
-            # We can't have the server task
-            # do this because then we have to store logfile pos redis data
-            # in the central server, which would make actually maintaining
-            # that redis state slow for bitcoind servers on slow network links.
-            #
-            # TODO somehow make this truly synchronous with the server.
-            logfile_pos.mark(linehash)
-            write_logfile_pos()
+            if modify_log_pos:
+                # This isn't totally correct because we don't know for a fact that
+                # the server actually persisted the event we sent it, but it's
+                # okay as a rough approximation.
+                #
+                # We can't have the server task
+                # do this because then we have to store logfile pos redis data
+                # in the central server, which would make actually maintaining
+                # that redis state slow for bitcoind servers on slow network links.
+                #
+                # TODO somehow make this truly synchronous with the server.
+                logfile_pos.mark(linehash)
+                write_logfile_pos()

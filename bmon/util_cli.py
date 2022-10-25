@@ -41,7 +41,7 @@ def run_listener(listener_name: str) -> None:
     assert settings.BITCOIND_LOG_PATH
     with open(settings.BITCOIND_LOG_PATH, 'r', errors='ignore') as f:
         for line in f:
-            bitcoind_tasks.process_line(line, listeners=listeners)
+            bitcoind_tasks.process_line(line, listeners=listeners, modify_log_pos=False)
 
 
 @cli.cmd
