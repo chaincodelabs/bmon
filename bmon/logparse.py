@@ -220,7 +220,7 @@ class Listener(t.Protocol):
         pass
 
 
-class MempoolListener:
+class MempoolAcceptListener:
 
     _accept_sub_patts = {
         _PEER_PATT,
@@ -245,6 +245,56 @@ class MempoolListener:
                 pool_size_txns=int(matches["pool_size_txns"]),
             )
         return None
+
+
+class MempoolRejectListener:
+    """
+    [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict
+    [msghand] 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af from peer=3 was not accepted: insufficient fee, rejecting replacement 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af; new feerate 0.00005965 BTC/kvB <= old feerate 0.00008334 BTC/kvB
+
+    5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711 from peer=12 was not accepted: insufficient fee, rejecting replacement 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711, not enough additional fees to relay; 0.00 < 0.00009128
+    """
+
+    _accept_sub_patts = {
+        _PEER_PATT,
+        re.compile(rf"\s+(?P<txhash>{_HASH})\s+from peer"),
+        re.compile(rf"new feerate\s+(?P<insufficient_feerate>{_FLOAT})\s+BTC/kvB"),
+        re.compile(rf"old feerate\s+(?P<old_feerate>{_FLOAT})\s+BTC/kvB"),
+        re.compile(rf"not enough additional fees\D+(?P<insufficient_fee>{_FLOAT})\D+(?P<old_fee>{_FLOAT})"),
+    }
+
+    def process_line(self, line: str) -> None | models.MempoolReject:
+        if not (" was not accepted:" in line and " from peer=" in line):
+            return None
+
+        matches = {}
+        timestamp = get_time(line)
+        for patt in self._accept_sub_patts:
+            if match := patt.search(line):
+                matches.update(match.groupdict())
+
+        reason = line.split('was not accepted:')[-1].strip()
+        assert reason
+
+        reason_data = {}
+        if 'insufficient_feerate' in matches:
+            reason_data['insufficient_feerate_btc_kvB'] = matches['insufficient_feerate']
+            reason_data['old_feerate_btc_kvB'] = matches['old_feerate']
+
+        if 'insufficient_fee' in matches:
+            reason_data['insufficient_fee_btc'] = matches['insufficient_fee']
+            reason_data['old_fee_btc'] = matches['old_fee']
+
+        return models.MempoolReject(
+            host=settings.HOSTNAME,
+            timestamp=timestamp,
+            peer_num=int(matches["peer_num"]),
+            # `peer` FK will be filled out in `bitcoind_tasks`, where the redis cache
+            # lives.
+            txhash=matches["txhash"],
+            reason=reason,
+            reason_data=reason_data,
+        )
 
 
 class PongListener:

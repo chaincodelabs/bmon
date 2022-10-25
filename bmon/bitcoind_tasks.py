@@ -198,7 +198,7 @@ def ship_mempool_activity():
 ListenerList = t.Sequence[logparse.Listener]
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
-    logparse.MempoolListener(),
+    logparse.MempoolAcceptListener(),
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),
