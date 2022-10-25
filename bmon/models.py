@@ -273,6 +273,19 @@ mempool_activity_avro_schema = fastavro.parse_schema({
 })
 
 
+class MempoolReject(BaseModel):
+    """
+    [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict
+    """
+    host = models.CharField(max_length=200)
+    timestamp = models.DateTimeField()
+    txhash = models.CharField(max_length=80)
+    peer_num = models.IntegerField()
+    peer = models.ForeignKey(Peer, null=True, on_delete=models.SET_NULL)
+    reason = models.CharField(max_length=1024)
+    reason_data = models.JSONField(default=dict, blank=True)
+
+
 class MempoolAccept(models.Model):
     """
     TODO: This isn't actually persisted to the database, so we should probably

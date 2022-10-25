@@ -83,6 +83,10 @@ def get_bmon_peer_id(bitcoind_peer_id: int) -> int:
 
 @events_q.periodic_task(crontab(minute="*"))
 def sync_peer_data(peer_id: None | int = None):
+    sync_peer_data_blocking(peer_id)
+
+
+def sync_peer_data_blocking(peer_id: None | int = None) -> dict[int, int]:
     """
     Periodically cache our getpeerinfo in redis.
 
@@ -90,13 +94,16 @@ def sync_peer_data(peer_id: None | int = None):
 
     Kwargs:
         peer_id: if given, only process this peer ID
+
+    Returns:
+        A map of newly cached bitcoind peer ids to bmon Peer ids.
     """
     log.info("syncing peer data (peer_id=%s)", peer_id)
     try:
         peerinfo = get_rpc().getpeerinfo()
     except Exception:
         log.exception("failed to get peerinfo")
-        return
+        return {}
 
     for peer in peerinfo:
         if "addr" not in peer or "id" not in peer:
@@ -108,13 +115,14 @@ def sync_peer_data(peer_id: None | int = None):
     if peer_id is not None:
         peerinfo = [p for p in peerinfo if p["id"] == peer_id]
 
-    commit_peers_db(peerinfo)
+    return commit_peers_db(peerinfo)
 
 
-def commit_peers_db(peerinfo: list[dict]):
+def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
     """
     Sync getpeerinfo output with the database.
     """
+    new_ids = {}
     for peer in peerinfo:
         kwargs, defaults = models.Peer.peerinfo_data(peer)
         obj, created = models.Peer.objects.get_or_create(
@@ -125,6 +133,9 @@ def commit_peers_db(peerinfo: list[dict]):
                 "synced peer %d (num=%d) to database: %s", obj.id, obj.num, kwargs
             )
             peer_id_map[obj.num] = obj.id
+            new_ids[obj.num] = obj.id
+
+    return new_ids
 
 
 # Coordinate mempool activity with a lock since we're writing out to a single file.
@@ -198,7 +209,7 @@ def ship_mempool_activity():
 ListenerList = t.Sequence[logparse.Listener]
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
-    logparse.MempoolListener(),
+    logparse.MempoolAcceptListener(),
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),
@@ -254,6 +265,19 @@ def process_line(line: str, listeners: None | ListenerList = None):
             assert isinstance(got, int)
             sync_peer_data(got)
             continue
+
+        if isinstance(got, models.MempoolReject):
+            # Need to fill out the `peeer` foreign key
+            peer_id = peer_id_map.get(got.peer_num)
+            if not peer_id:
+                log.error("peer cache miss: %s", got.peer_num)
+                peer_id = sync_peer_data_blocking(got.peer_num).get(got.peer_num)
+
+                if not peer_id:
+                    log.error(
+                        "unable to find bmon Peer for bitcoind peer %d", got.peer_num)
+
+            got.peer_id = int(peer_id)  # type: ignore
 
         try:
             got.full_clean()

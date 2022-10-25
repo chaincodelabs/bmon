@@ -15,8 +15,49 @@ def test_ponglistener():
     assert got == 3
 
 
-def test_mempoollistener():
-    listener = logparse.MempoolListener()
+def test_mempool_reject():
+    listener = logparse.MempoolRejectListener()
+    thetime = logparse.get_time("2022-10-17T17:57:43.861480Z")
+
+    got = listener.process_line(
+        "2022-10-17T17:57:43.861480Z [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict")
+
+    assert got
+    assert got.peer_num == 6
+    assert got.txhash == "4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3"
+    assert got.timestamp == thetime
+    assert got.reason == 'txn-mempool-conflict'
+    assert got.reason_data == {}
+
+    got = listener.process_line(
+        "2022-10-17T17:57:43.861480Z [msghand] 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af from peer=3 was not accepted: insufficient fee, rejecting replacement 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af; new feerate 0.00005965 BTC/kvB <= old feerate 0.00008334 BTC/kvB")
+
+    assert got
+    assert got.peer_num == 3
+    assert got.txhash == "91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af"
+    assert got.timestamp == thetime
+    assert got.reason == 'insufficient fee, rejecting replacement 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af; new feerate 0.00005965 BTC/kvB <= old feerate 0.00008334 BTC/kvB'
+    assert got.reason_data == {
+        'insufficient_feerate_btc_kvB': '0.00005965',
+        'old_feerate_btc_kvB': '0.00008334',
+    }
+
+    got = listener.process_line(
+        "2022-10-17T17:57:43.861480Z 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711 from peer=12 was not accepted: insufficient fee, rejecting replacement 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711, not enough additional fees to relay; 0.00 < 0.00009128")
+
+    assert got
+    assert got.peer_num == 12
+    assert got.txhash == "5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711"
+    assert got.timestamp == thetime
+    assert got.reason == 'insufficient fee, rejecting replacement 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711, not enough additional fees to relay; 0.00 < 0.00009128'
+    assert got.reason_data == {
+        'insufficient_fee_btc': '0.00',
+        'old_fee_btc': '0.00009128',
+    }
+
+
+def test_mempool_accept():
+    listener = logparse.MempoolAcceptListener()
 
     got = listener.process_line(
         "2022-10-17T17:57:43.861480Z AcceptToMemoryPool: peer=11: accepted fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b (poolsz 11848 txn, 25560 kB)")  # noqa

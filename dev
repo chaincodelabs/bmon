@@ -103,7 +103,7 @@ def test(mypy: bool = False):
            "'mypy bmon/ && mypy infra/'"
         ).returncode == 0
 
-    test_ok = sh("docker-compose run --rm test pytest bmon").returncode == 0
+    test_ok = sh("docker-compose run --rm test pytest -vv bmon").returncode == 0
 
     if not lint_ok:
         sys.exit(1)

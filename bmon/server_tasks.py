@@ -53,9 +53,14 @@ def check_for_overlapping_peers():
 
 
 @server_q.task()
-def persist_bitcoind_event(event: dict, linehash: str):
+def persist_bitcoind_event(event: dict, _: str):
     modelname = event.pop("_model")
     Model = getattr(models, modelname)
+
+    if Model == models.MempoolReject:
+        # XXX this is an ugly hack: Django doesn't suffix with "_id" in `model_to_dict`;
+        # come up with a better way of dealing with this.
+        event['peer_id'] = event.pop('peer')
 
     instance = Model.objects.create(**event)
     print(f"Saved {instance}")
