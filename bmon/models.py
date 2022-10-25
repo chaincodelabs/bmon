@@ -293,6 +293,11 @@ class MempoolReject(BaseModel):
             ),
         ]
 
+    def __repr__(self):
+        return _repr(self, ['host', 'timestamp', 'txhash', 'reason_code', 'peer_num'])
+
+    __str__ = __repr__
+
 
 class MempoolAccept(models.Model):
     """

@@ -276,6 +276,12 @@ class MempoolRejectListener:
         reason = line.split('was not accepted:')[-1].strip()
         assert reason
 
+        # TODO remove this temporary hack for pre-taproot nodes spamming this data
+        if settings.HOSTNAME in ('b-03.slug', 'b-02.slug') and (
+                reason.startswith('scriptpubkey') or
+                reason.startswith('non-mandatory-script-verify-flag')):
+            return None
+
         reason_data = {}
         if 'insufficient_feerate' in matches:
             reason_data['insufficient_feerate_btc_kvB'] = matches['insufficient_feerate']
