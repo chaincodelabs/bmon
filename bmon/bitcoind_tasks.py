@@ -262,7 +262,7 @@ def process_line(line: str, listeners: None | ListenerList = None):
             # TODO: stash the bad model somewhere for later processing.
             continue
 
-        if got.event_type == "mempool":
+        if got.is_high_volume:
             mempool_activity(got.avro_record(), linehash)
         else:
             d = model_to_dict(got)

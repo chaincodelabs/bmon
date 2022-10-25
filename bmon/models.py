@@ -17,8 +17,10 @@ class BaseModel(models.Model):
         abstract = True
 
     @property
-    def event_type(self) -> str:
-        return ''
+    def is_high_volume(self):
+        """Override this for models that can't be persisted normally in postgres, and
+        have to be handled specially."""
+        return False
 
 
 class LogProgress(models.Model):
@@ -134,10 +136,6 @@ ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b4
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
-    @property
-    def event_type(self) -> str:
-        return 'block'
-
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
 
@@ -152,10 +150,6 @@ class BlockConnectedEvent(BaseModel):
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
-
-    @property
-    def event_type(self) -> str:
-        return 'block'
 
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
@@ -173,10 +167,6 @@ class ReorgEvent(BaseModel):
     max_height = models.IntegerField()
     old_blockhashes = models.JSONField()
     new_blockhashes = models.JSONField()
-
-    @property
-    def event_type(self) -> str:
-        return 'block'
 
     def __repr__(self):
         return _repr(
@@ -208,10 +198,6 @@ class ConnectBlockEvent(BaseModel):
     cachesize_mib = models.FloatField(null=True)
     cachesize_txo = models.IntegerField()
     warning = models.CharField(null=True, blank=True, max_length=1024)
-
-    @property
-    def event_type(self) -> str:
-        return 'block'
 
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
@@ -257,10 +243,6 @@ class ConnectBlockDetails(BaseModel):
     flush_chainstate_time_ms = models.FloatField()
     connect_postprocess_time_ms = models.FloatField()
     connectblock_total_time_ms = models.FloatField()
-
-    @property
-    def event_type(self) -> str:
-        return 'block'
 
     def __repr__(self):
         return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
@@ -319,8 +301,8 @@ class MempoolAccept(models.Model):
         }
 
     @property
-    def event_type(self) -> str:
-        return 'mempool'
+    def is_high_volume(self):
+        return True
 
 
 class ProcessLineError(models.Model):
