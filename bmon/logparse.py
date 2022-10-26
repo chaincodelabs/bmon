@@ -260,7 +260,9 @@ class MempoolRejectListener:
         re.compile(rf"\s+(?P<txhash>{_HASH})\s+from peer"),
         re.compile(rf"new feerate\s+(?P<insufficient_feerate>{_FLOAT})\s+BTC/kvB"),
         re.compile(rf"old feerate\s+(?P<old_feerate>{_FLOAT})\s+BTC/kvB"),
-        re.compile(rf"not enough additional fees\D+(?P<insufficient_fee>{_FLOAT})\D+(?P<old_fee>{_FLOAT})"),
+        re.compile(
+            rf"not enough additional fees\D+(?P<insufficient_fee>{_FLOAT})\D+(?P<old_fee>{_FLOAT})"
+        ),
     }
 
     def process_line(self, line: str) -> None | models.MempoolReject:
@@ -273,7 +275,7 @@ class MempoolRejectListener:
             if match := patt.search(line):
                 matches.update(match.groupdict())
 
-        reason = line.split('was not accepted:')[-1].strip()
+        reason = line.split("was not accepted:")[-1].strip()
         assert reason
 
         # TODO remove this temporary hack for pre-taproot nodes spamming this data
@@ -283,13 +285,15 @@ class MempoolRejectListener:
             return None
 
         reason_data = {}
-        if 'insufficient_feerate' in matches:
-            reason_data['insufficient_feerate_btc_kvB'] = matches['insufficient_feerate']
-            reason_data['old_feerate_btc_kvB'] = matches['old_feerate']
+        if "insufficient_feerate" in matches:
+            reason_data["insufficient_feerate_btc_kvB"] = matches[
+                "insufficient_feerate"
+            ]
+            reason_data["old_feerate_btc_kvB"] = matches["old_feerate"]
 
-        if 'insufficient_fee' in matches:
-            reason_data['insufficient_fee_btc'] = matches['insufficient_fee']
-            reason_data['old_fee_btc'] = matches['old_fee']
+        if "insufficient_fee" in matches:
+            reason_data["insufficient_fee_btc"] = matches["insufficient_fee"]
+            reason_data["old_fee_btc"] = matches["old_fee"]
 
         return models.MempoolReject(
             host=settings.HOSTNAME,
@@ -310,20 +314,18 @@ class PongListener:
 
     2022-10-23T13:21:28.681866Z received: pong (8 bytes) peer=3
     """
+
     def process_line(self, line):
-        if ' received: pong ' not in line:
+        if " received: pong " not in line:
             return
 
-        if (match := _PEER_PATT.search(line)):
+        if match := _PEER_PATT.search(line):
             return int(match.groups()[0])
         else:
             log.warning("malformed pong message: %s", line)
 
 
-BlockEvent = (
-    models.BlockDisconnectedEvent
-    | models.BlockConnectedEvent
-)
+BlockEvent = models.BlockDisconnectedEvent | models.BlockConnectedEvent
 
 
 class _BlockEventListener(t.Protocol):

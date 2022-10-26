@@ -35,24 +35,24 @@ class LogProgress(models.Model):
     loghash = models.CharField(max_length=200)
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'loghash'])
+        return _repr(self, ["host", "timestamp", "loghash"])
 
     __str__ = __repr__
 
 
 PEER_UNIQUE_TOGETHER_FIELDS = (
-    'host',
-    'num',
-    'addr',
-    'connection_type',
-    'inbound',
-    'network',
-    'services',
-    'subver',
-    'version',
-    'relaytxes',
-    'bip152_hb_from',
-    'bip152_hb_to',
+    "host",
+    "num",
+    "addr",
+    "connection_type",
+    "inbound",
+    "network",
+    "services",
+    "subver",
+    "version",
+    "relaytxes",
+    "bip152_hb_from",
+    "bip152_hb_to",
 )
 
 
@@ -78,7 +78,7 @@ class Peer(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=PEER_UNIQUE_TOGETHER_FIELDS,
-                name='unique_peer',
+                name="unique_peer",
             ),
         ]
 
@@ -86,18 +86,18 @@ class Peer(BaseModel):
     def peerinfo_data(cls, p: dict) -> tuple[dict, dict]:
         """Return the subset of getpeerinfo data that is relevant to this model."""
         out = {k: p.get(k) for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
-        out['num'] = p['id']
-        out['host'] = settings.HOSTNAME
+        out["num"] = p["id"]
+        out["host"] = settings.HOSTNAME
 
         defaults = {}
         # Versions pre 0.19 don't have servicesnames.
-        if 'servicesnames' in p:
-            defaults['servicesnames'] = p['servicesnames']
+        if "servicesnames" in p:
+            defaults["servicesnames"] = p["servicesnames"]
 
         return out, defaults
 
     def __repr__(self):
-        return _repr(self, ['host', 'addr', 'num', 'subver'])
+        return _repr(self, ["host", "addr", "num", "subver"])
 
     __str__ = __repr__
 
@@ -106,6 +106,7 @@ class RequestBlockEvent(BaseModel):
     """
     node0 2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
@@ -120,16 +121,17 @@ class RequestBlockEvent(BaseModel):
     method = models.CharField(max_length=256)
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'blockhash'])
+        return _repr(self, ["host", "timestamp", "blockhash"])
 
     __str__ = __repr__
 
 
 class BlockDisconnectedEvent(BaseModel):
     """
-    2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui
-ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
+        2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui
+    ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
     """
+
     created_at = models.DateTimeField(auto_now_add=True, blank=True)
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
@@ -137,7 +139,7 @@ ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b4
     height = models.IntegerField()
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
+        return _repr(self, ["host", "timestamp", "blockhash", "height"])
 
     __str__ = __repr__
 
@@ -146,13 +148,14 @@ class BlockConnectedEvent(BaseModel):
     """
     [operator()] [validation] BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'blockhash', 'height'])
+        return _repr(self, ["host", "timestamp", "blockhash", "height"])
 
     __str__ = __repr__
 
@@ -161,6 +164,7 @@ class ReorgEvent(BaseModel):
     """
     A series of BlockDisconnected events capped off by a ConnectBlockEvent.
     """
+
     finished_timestamp = models.DateTimeField()
     host = models.CharField(max_length=200)
     min_height = models.IntegerField()
@@ -170,7 +174,8 @@ class ReorgEvent(BaseModel):
 
     def __repr__(self):
         return _repr(
-            self, ['min_height', 'max_height', 'old_blockhashes', 'new_blockhashes'])
+            self, ["min_height", "max_height", "old_blockhashes", "new_blockhashes"]
+        )
 
     __str__ = __repr__
 
@@ -183,6 +188,7 @@ class ConnectBlockEvent(BaseModel):
 
     2019-08-09T16:28:42Z UpdateTip: new best=00000000000000000001d80d14ee4400b6d9c851debe27e6777f3876edd4ad1e height=589349 version=0x20800000 log2_work=90.944215 tx=443429260 date='2019-08-09T16:27:43Z' progress=1.000000 cache=8.7MiB(64093txo) warning='44 of last 100 blocks have unexpected version'
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
 
@@ -200,7 +206,7 @@ class ConnectBlockEvent(BaseModel):
     warning = models.CharField(null=True, blank=True, max_length=1024)
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
+        return _repr(self, ["host", "timestamp", "height", "blockhash"])
 
     __str__ = __repr__
 
@@ -223,6 +229,7 @@ class ConnectBlockDetails(BaseModel):
     2019-07-29T18:34:17Z   - Connect postprocess: 70.64ms [8.14s (8.53ms/blk)]
     2019-07-29T18:34:17Z - Connect block: 136.63ms [344.92s (361.55ms/blk)]
     """
+
     host = models.CharField(max_length=200)
     # The latest logline in the connectblock measurements.
     timestamp = models.DateTimeField()
@@ -245,32 +252,36 @@ class ConnectBlockDetails(BaseModel):
     connectblock_total_time_ms = models.FloatField()
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'height', 'blockhash'])
+        return _repr(self, ["host", "timestamp", "height", "blockhash"])
 
     __str__ = __repr__
 
 
 mempool_event_type_enum = {
-    'type': 'enum', 'name': 'event_type', 'symbols': [
-        'mempool_accept',
+    "type": "enum",
+    "name": "event_type",
+    "symbols": [
+        "mempool_accept",
     ],
 }
 
 # Arvo schema for mempool activity
-mempool_activity_avro_schema = fastavro.parse_schema({
-    'doc': 'Bitcoind mempool activity',
-    'name': 'Mempool',
-    'type': 'record',
-    'fields': [
-        {'name': 'event_type', 'type': mempool_event_type_enum},
-        {'name': 'host', 'type': 'string'},
-        {'name': 'timestamp', 'type': 'string'},
-        {'name': 'txhash', 'type': 'string'},
-        {'name': 'peer_num', 'type': ['null', 'int']},
-        {'name': 'pool_size_txns', 'type': ['null', 'int']},
-        {'name': 'pool_size_kb', 'type': ['null', 'int']},
-    ],
-})
+mempool_activity_avro_schema = fastavro.parse_schema(
+    {
+        "doc": "Bitcoind mempool activity",
+        "name": "Mempool",
+        "type": "record",
+        "fields": [
+            {"name": "event_type", "type": mempool_event_type_enum},
+            {"name": "host", "type": "string"},
+            {"name": "timestamp", "type": "string"},
+            {"name": "txhash", "type": "string"},
+            {"name": "peer_num", "type": ["null", "int"]},
+            {"name": "pool_size_txns", "type": ["null", "int"]},
+            {"name": "pool_size_kb", "type": ["null", "int"]},
+        ],
+    }
+)
 
 
 class MempoolReject(BaseModel):
@@ -288,13 +299,13 @@ class MempoolReject(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['host', 'timestamp', 'txhash', 'peer_num'],
-                name='unique_reject',
+                fields=["host", "timestamp", "txhash", "peer_num"],
+                name="unique_reject",
             ),
         ]
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'txhash', 'reason_code', 'peer_num'])
+        return _repr(self, ["host", "timestamp", "txhash", "reason_code", "peer_num"])
 
     __str__ = __repr__
 
@@ -308,6 +319,7 @@ class MempoolAccept(models.Model):
 
     2022-10-17T17:57:43.861480Z AcceptToMemoryPool: peer=11: accepted fa4f08dfe610593b505ca5cd8b2ba061ea15a4c480a63dd75b00e2eaddf9b42b (poolsz 11848 txn, 25560 kB)
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     txhash = models.CharField(max_length=80)
@@ -317,13 +329,13 @@ class MempoolAccept(models.Model):
 
     def avro_record(self):
         return {
-            'event_type': 'mempool_accept',
-            'host': self.host,
-            'timestamp': self.timestamp.isoformat(),
-            'txhash': self.txhash,
-            'pool_size_txns': self.pool_size_txns,
-            'pool_size_kb': self.pool_size_kb,
-            'peer_num': self.peer_num,
+            "event_type": "mempool_accept",
+            "host": self.host,
+            "timestamp": self.timestamp.isoformat(),
+            "txhash": self.txhash,
+            "pool_size_txns": self.pool_size_txns,
+            "pool_size_kb": self.pool_size_kb,
+            "peer_num": self.peer_num,
         }
 
     @property
@@ -335,12 +347,13 @@ class ProcessLineError(models.Model):
     """
     Created when a listener fails to process a line.
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField(auto_now_add=True, blank=True)
     listener = models.CharField(max_length=240)
     line = models.CharField(max_length=2048)
 
     def __repr__(self):
-        return _repr(self, ['host', 'timestamp', 'line', 'listener'])
+        return _repr(self, ["host", "timestamp", "line", "listener"])
 
     __str__ = __repr__
