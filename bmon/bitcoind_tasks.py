@@ -206,6 +206,7 @@ ListenerList = t.Sequence[logparse.Listener]
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
     logparse.MempoolAcceptListener(),
+    logparse.MempoolRejectListener(),
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),

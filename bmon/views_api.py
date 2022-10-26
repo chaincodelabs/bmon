@@ -137,3 +137,9 @@ def mempool(_):
 def process_errors(_):
     objs = models.ProcessLineError.objects.order_by('-id')[:400]
     return [model_to_dict(m) for m in objs]
+
+
+@api.get('/crash')
+def crash(_):
+    """for testing sentry"""
+    return 1 / 0

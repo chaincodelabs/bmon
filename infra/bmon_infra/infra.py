@@ -22,6 +22,7 @@ from . import config
 
 cli = App()
 cli.add_argument("-t", "--tag-filter")
+cli.add_argument("-r", "--role-filter")
 cli.add_argument("-f", "--hostname-filter")
 
 REPO_URL = "https://github.com/chaincodelabs/bmon.git"
@@ -140,7 +141,7 @@ def main_remote(
     assert (user := getpass.getuser()) != 'root'
 
     fscm.s.pkgs_install(
-        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp"
+        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp ripgrep"
     )
     fscm.s.group_member(user, "docker")
     p(docker := Path.home() / ".docker").mkdir()
@@ -500,6 +501,12 @@ def runall(cmd: str, sudo: bool = False):
         if not (res := exec.run(_run_cmd, cmd, sudo)).ok:
             print(f"Command failed on hosts: {res.failed}")
             sys.exit(1)
+
+
+@cli.cmd
+def rg_bitcoind(search: str):
+    cli.args.hostname_filter = '(bitcoin|b-)'
+    runall(f"rg \"{search}\" services/prod/bitcoin/data/debug.log")
 
 
 @cli.cmd
