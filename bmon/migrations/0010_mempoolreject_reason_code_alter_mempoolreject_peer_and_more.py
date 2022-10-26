@@ -58,9 +58,5 @@ class Migration(migrations.Migration):
             name='reason_data',
             field=models.JSONField(blank=True, default=dict, help_text='Extra data associated with the reason'),
         ),
-        migrations.AddConstraint(
-            model_name='mempoolreject',
-            constraint=models.UniqueConstraint(fields=('host', 'timestamp', 'txhash', 'peer_num'), name='unique_reject'),
-        ),
         migrations.RunPython(add_reasoncode),
     ]
