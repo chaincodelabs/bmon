@@ -288,13 +288,19 @@ class MempoolReject(BaseModel):
     """
     [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict
     """
+
     host = models.CharField(max_length=200)
     timestamp = models.DateTimeField()
     txhash = models.CharField(max_length=80)
     peer_num = models.IntegerField()
     peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
-    reason = models.CharField(max_length=1024)
-    reason_data = models.JSONField(default=dict, blank=True)
+    reason_code = models.CharField(
+        max_length=256, help_text="A code indicating the rejection reason", default="",
+    )
+    reason = models.CharField(max_length=1024, help_text="The full reason string")
+    reason_data = models.JSONField(
+        default=dict, blank=True, help_text="Extra data associated with the reason"
+    )
 
     class Meta:
         constraints = [
@@ -308,6 +314,18 @@ class MempoolReject(BaseModel):
         return _repr(self, ["host", "timestamp", "txhash", "reason_code", "peer_num"])
 
     __str__ = __repr__
+
+    @classmethod
+    def get_reason_reject_code(cls, reason: str) -> str:
+        reason_code = reason.split()[0].strip(",")
+
+        if reason.startswith("insufficient fee"):
+            if " new feerate " in reason:
+                reason_code = "insufficient-feerate"
+            elif "not enough additional fees" in reason:
+                reason_code = "insufficient-fee"
+
+        return reason_code
 
 
 class MempoolAccept(models.Model):

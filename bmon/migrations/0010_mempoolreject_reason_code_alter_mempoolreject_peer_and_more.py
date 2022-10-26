@@ -22,7 +22,7 @@ def add_reasoncode(apps, schema_editor):
 
     objs = 0
 
-    for rej in MempoolReject.using(db_alias).objects.all():
+    for rej in MempoolReject.objects.using(db_alias).all():
         rej.reason_code = MempoolReject.get_reason_reject_code(rej.reason)
         rej.save()
         objs += 1

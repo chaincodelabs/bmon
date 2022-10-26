@@ -28,6 +28,7 @@ def test_mempool_reject():
     assert got.timestamp == thetime
     assert got.reason == 'txn-mempool-conflict'
     assert got.reason_data == {}
+    assert got.reason_code == 'txn-mempool-conflict'
 
     got = listener.process_line(
         "2022-10-17T17:57:43.861480Z [msghand] 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af from peer=3 was not accepted: insufficient fee, rejecting replacement 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af; new feerate 0.00005965 BTC/kvB <= old feerate 0.00008334 BTC/kvB")
@@ -41,6 +42,7 @@ def test_mempool_reject():
         'insufficient_feerate_btc_kvB': '0.00005965',
         'old_feerate_btc_kvB': '0.00008334',
     }
+    assert got.reason_code == 'insufficient-feerate'
 
     got = listener.process_line(
         "2022-10-17T17:57:43.861480Z 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711 from peer=12 was not accepted: insufficient fee, rejecting replacement 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711, not enough additional fees to relay; 0.00 < 0.00009128")
@@ -54,6 +56,17 @@ def test_mempool_reject():
         'insufficient_fee_btc': '0.00',
         'old_fee_btc': '0.00009128',
     }
+    assert got.reason_code == 'insufficient-fee'
+
+    got = listener.process_line(
+        "2022-10-17T17:57:43.861480Z 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711 from peer=12 was not accepted: too-long-mempool-chain, too many descendants for tx fa193a47a062f5e56d33e88b2bed52170e38e9fab2dc2d20b9e617a09e795705 [limit: 25] (code 64)")
+    assert got
+    assert got.peer_num == 12
+    assert got.txhash == "5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711"
+    assert got.timestamp == thetime
+    assert got.reason == "too-long-mempool-chain, too many descendants for tx fa193a47a062f5e56d33e88b2bed52170e38e9fab2dc2d20b9e617a09e795705 [limit: 25] (code 64)"
+    assert got.reason_data == {}
+    assert got.reason_code == 'too-long-mempool-chain'
 
 
 def test_mempool_accept():

@@ -3,6 +3,7 @@ import typing as t
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
+from pathlib import Path
 
 from .rpc import BitcoinRpc
 from bmon_infra.infra import Host, get_bitcoind_hosts  # type: ignore
@@ -11,6 +12,37 @@ from django.conf import settings
 
 
 log = logging.getLogger(__name__)
+
+
+@lru_cache
+def read_raw_bitcoind_version() -> str:
+    assert settings.BITCOIND_VERSION_PATH
+    return Path(settings.BITCOIND_VERSION_PATH).read_text().strip()
+
+
+@lru_cache
+def bitcoind_version(ver: None | str = None) -> tuple[tuple[int, ...], None | str]:
+    """Returns the version tuple and the git sha, if any."""
+    ver = ver or read_raw_bitcoind_version()
+    ver = ver.strip('v')
+    gitsha = None
+
+    if '-' in ver:
+        ver, gitsha = ver.split('-', 1)
+
+    vertuple = tuple(int(i) for i in ver.split('.'))
+    if len(vertuple) == 2:
+        vertuple += (0,)
+    assert len(vertuple) == 3
+    assert isinstance(vertuple, tuple)
+
+    return vertuple, gitsha
+
+
+def is_pre_taproot() -> bool:
+    """This this bitcoind node pre-taproot?"""
+    ver_tuple, _ = bitcoind_version()
+    return ver_tuple < (0, 21, 1)
 
 
 @lru_cache

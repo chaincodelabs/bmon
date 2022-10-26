@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from bmon.models import ConnectBlockDetails, ConnectBlockEvent
+from bmon.bitcoin.api import is_pre_taproot
 from bmon import models
 
 
@@ -277,11 +278,15 @@ class MempoolRejectListener:
 
         reason = line.split("was not accepted:")[-1].strip()
         assert reason
+        reason_code = models.MempoolReject.get_reason_reject_code(reason)
+        assert reason_code
 
-        # TODO remove this temporary hack for pre-taproot nodes spamming this data
-        if settings.HOSTNAME in ('b-03.slug', 'b-02.slug') and (
-                reason.startswith('scriptpubkey') or
-                reason.startswith('non-mandatory-script-verify-flag')):
+        # Pre-taproot nodes get too many standardness mismatches to store (on the order
+        # of 30,000 per day).
+        if is_pre_taproot() and reason_code in [
+            "scriptpubkey",
+            "non-mandatory-script-verify-flag",
+        ]:
             return None
 
         reason_data = {}
@@ -304,6 +309,7 @@ class MempoolRejectListener:
             txhash=matches["txhash"],
             reason=reason,
             reason_data=reason_data,
+            reason_code=reason_code,
         )
 
 
