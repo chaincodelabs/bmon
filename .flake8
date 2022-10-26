@@ -5,4 +5,5 @@ extend-ignore =
   # line length
   E501,
   # linebreak operator
-  W503
+  W503,
+  W504
