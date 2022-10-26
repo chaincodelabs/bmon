@@ -60,7 +60,7 @@ bitcoind_log = Path(settings.BITCOIND_LOG_PATH)
 
 def refresh_metrics():
     log_dt = (
-        models.LogProgress.objects.filter(host=settings.HOSTNAME)
+        models.LogProgress.objects.filter(hostname=settings.HOSTNAME)
         .order_by("-id")
         .values_list("timestamp", flat=True)
         .first()

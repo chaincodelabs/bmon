@@ -31,7 +31,7 @@ class LogProgress(models.Model):
     This is used to skip past already-processed log entries on startup.
     """
 
-    host = models.CharField(max_length=200, unique=True)
+    hostname = models.CharField(max_length=200, unique=True)
     timestamp = models.DateTimeField()
     loghash = models.CharField(max_length=200)
 

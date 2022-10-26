@@ -171,7 +171,7 @@ class LogfilePosManager:
 
         log.info("flushing logfile pos for %s (%s @ %s)", self.host, linehash, dt)
         models.LogProgress.objects.update_or_create(
-            host=self.host,
+            hostname=self.host,
             defaults={"loghash": linehash, "timestamp": dt},
         )
 

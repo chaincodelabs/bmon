@@ -232,7 +232,7 @@ def watch_bitcoind_logs():
     sync_peer_data()
     host = create_host_record()
 
-    log_progress = models.LogProgress.objects.filter(host=host.name).first()
+    log_progress = models.LogProgress.objects.filter(hostname=host.name).first()
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in logparse.read_logfile_forever(filename, start_log_cursor):

@@ -56,6 +56,8 @@ class Host(wireguard.Host):
         self.bitcoin_version = bitcoin_version
         self.bitcoin_prune = bitcoin_prune
         self.bitcoin_dbcache = bitcoin_dbcache
+        self.bitcoin_gitref = bitcoin_gitref or ''
+        self.bitcoin_gitsha = bitcoin_gitsha or ''
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         self.outbound_wireguard = outbound_wireguard
