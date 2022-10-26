@@ -17,7 +17,9 @@ scrape_configs:
       job: bitcoin
       host: "${HOSTNAME}"
       version: "${BITCOIN_VERSION}"
-      gitsha: "${BITCOIN_GIT_SHA}"
+      gitsha: "${BITCOIN_GITSHA}"
+      gitref: "${BITCOIN_GITREF}"
       bitcoin_dbcache: "${BITCOIN_DBCACHE}"
       bitcoin_prune: "${BITCOIN_PRUNE}"
+      bitcoin_flags: "${BITCOIN_FLAGS}"
       __path__: /bitcoin/data/debug.log

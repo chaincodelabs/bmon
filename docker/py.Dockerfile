@@ -1,7 +1,7 @@
 FROM docker.io/library/python:3.11.0rc2-bullseye
 
 WORKDIR /src
-RUN apt-get -qq update && apt-get install -qq -y libpq-dev netcat iproute2
+RUN apt-get -qq update && apt-get install -qq -y libpq-dev netcat iproute2 lshw
 
 # Can pass PYTHON_PKG=.[tests] for test dependencies.
 ARG PYTHON_PKG=.

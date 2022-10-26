@@ -44,6 +44,8 @@ class Host(wireguard.Host):
         self,
         *args,
         bitcoin_version: str | None = None,
+        bitcoin_gitref: str | None = None,
+        bitcoin_gitsha: str | None = None,
         bitcoin_prune: int = 0,
         bitcoin_dbcache: int = 450,
         prom_exporter_port: int | None = 9100,

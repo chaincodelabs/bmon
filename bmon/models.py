@@ -30,6 +30,7 @@ class LogProgress(models.Model):
 
     This is used to skip past already-processed log entries on startup.
     """
+
     host = models.CharField(max_length=200, unique=True)
     timestamp = models.DateTimeField()
     loghash = models.CharField(max_length=200)
@@ -54,6 +55,46 @@ PEER_UNIQUE_TOGETHER_FIELDS = (
     "bip152_hb_from",
     "bip152_hb_to",
 )
+
+
+class Host(BaseModel):
+    name = models.CharField(max_length=256, unique=True)
+    cpu_info = models.CharField(max_length=1024)
+    memory_bytes = models.FloatField()
+    nproc = models.IntegerField(help_text='The number of processors')
+    region = models.CharField(max_length=256, blank=True, null=True)
+
+    bitcoin_version = models.CharField(
+        max_length=256, help_text="As reported by bitcoind -version"
+    )
+    bitcoin_gitref = models.CharField(max_length=256, null=True, blank=True)
+    bitcoin_gitsha = models.CharField(max_length=256, null=True, blank=True)
+    bitcoin_dbcache = models.IntegerField()
+    bitcoin_prune = models.IntegerField()
+    bitcoin_extra = models.JSONField(
+        help_text="Extra data about this bitcoind instance")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'name',
+                    'cpu_info',
+                    'memory_bytes',
+                    'nproc',
+                    'bitcoin_version',
+                    'bitcoin_gitref',
+                    'bitcoin_gitsha',
+                    'bitcoin_dbcache',
+                    'bitcoin_prune',
+                    'bitcoin_extra',
+                ],
+                name="unique_host",
+            ),
+        ]
+
+    def __repr__(self):
+        return _repr(self, ['name', 'bitcoin_version', 'bitcoin_gitref'])
 
 
 class Peer(BaseModel):
@@ -295,7 +336,9 @@ class MempoolReject(BaseModel):
     peer_num = models.IntegerField()
     peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
     reason_code = models.CharField(
-        max_length=256, help_text="A code indicating the rejection reason", default="",
+        max_length=256,
+        help_text="A code indicating the rejection reason",
+        default="",
     )
     reason = models.CharField(max_length=1024, help_text="The full reason string")
     reason_data = models.JSONField(

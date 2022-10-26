@@ -7,6 +7,8 @@ import datetime
 import subprocess
 import time
 import logging
+import json
+import multiprocessing
 import typing as t
 
 import fastavro
@@ -20,7 +22,7 @@ from huey import RedisHuey, crontab
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
 
-from bmon import server_tasks, logparse, models, util
+from bmon import server_tasks, logparse, models, util, bitcoin
 from bmon.bitcoin.api import get_rpc
 
 
@@ -219,22 +221,62 @@ def watch_bitcoind_logs():
     Continuously watch a bitcoind debug.log and route events to async handlers.
 
     Used as an entrypoint; see `pyproject.toml`.
+
+    Also runs more general boot-up tasks for the bitcoind host as a whole (e.g.
+    logging host details).
     """
     filename = settings.BITCOIND_LOG_PATH
     assert filename
     log.info(f"listening to logs at {filename}")
 
     sync_peer_data()
+    host = create_host_record()
 
-    log_progress = models.LogProgress.objects.filter(host=settings.HOSTNAME).first()
+    log_progress = models.LogProgress.objects.filter(host=host.name).first()
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in logparse.read_logfile_forever(filename, start_log_cursor):
         process_line(line)
 
 
+def create_host_record():
+    def get_lshw(classn: str) -> dict:
+        return json.loads(
+            subprocess.check_output(f"lshw -json -class {classn}", shell=True)
+        )[0]
+
+    bitcoin_version = bitcoin.api.read_raw_bitcoind_version()
+
+    host, created = models.Host.objects.get_or_create(
+        name=settings.HOSTNAME,
+        cpu_info=get_lshw("processor")["product"],
+        memory_bytes=get_lshw("memory")["size"],
+        nproc=multiprocessing.cpu_count(),
+        bitcoin_version=bitcoin_version,
+        bitcoin_gitref=settings.BITCOIN_GITREF,
+        bitcoin_gitsha=settings.BITCOIN_GITSHA,
+        bitcoin_dbcache=int(settings.BITCOIN_DBCACHE),
+        bitcoin_prune=int(settings.BITCOIN_PRUNE),
+        bitcoin_extra={
+            "flags": settings.BITCOIN_FLAGS,
+        },
+        defaults={
+            "region": "",
+        },
+    )
+
+    if created:
+        log.info("Created new host record: {host}")
+    else:
+        log.info("Booting with existing host record: {host}")
+
+    return host
+
+
 def process_line(
-    line: str, listeners: None | ListenerList = None, modify_log_pos: bool = True
+    line: str,
+    listeners: None | ListenerList = None,
+    modify_log_pos: bool = True,
 ):
     """
     Process a single bitcoind log line, prompting async tasks when necessary.
@@ -293,7 +335,7 @@ def process_line(
             continue
 
         if got.is_high_volume:
-            mempool_activity(got.avro_record(), linehash)
+            mempool_activity(got.avro_record(), linehash)  # type: ignore
         else:
             d = model_to_dict(got)
             d["_model"] = got.__class__.__name__

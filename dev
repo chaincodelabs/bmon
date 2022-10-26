@@ -6,7 +6,8 @@ import subprocess
 
 import clii
 
-from bmon_infra import infra
+from bmon_infra import infra, config
+from fscm import p
 
 cli = clii.App()
 
@@ -66,6 +67,7 @@ def reup(
     if data:
         cleardata()
 
+    sh("bmon-config")
     env = config.get_env_object()
     p(env.BITCOIND_VERSION_PATH).contents(infra.get_bitcoind_version())
 

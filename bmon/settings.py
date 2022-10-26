@@ -36,7 +36,15 @@ BITCOIN_RPC_USER = os.environ.get('BITCOIN_RPC_USER')
 BITCOIN_RPC_PASSWORD = os.environ.get('BITCOIN_RPC_PASSWORD')
 BITCOIN_RPC_PORT = os.environ.get('BITCOIN_RPC_PORT')
 
+BITCOIN_GITREF = os.environ.get('BITCOIN_GITREF')
+BITCOIN_GITSHA = os.environ.get('BITCOIN_GITREF')
+BITCOIN_DBCACHE = os.environ.get('BITCOIN_DBCACHE')
+BITCOIN_PRUNE = os.environ.get('BITCOIN_PRUNE')
+BITCOIN_FLAGS = os.environ.get('BITCOIN_FLAGS')
+
 BITCOIND_VERSION_PATH = os.environ.get('BITCOIND_VERSION_PATH')
+
+BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
 
 # GCP credentials for uploading mempool activity.
 CHAINCODE_GCP_CRED_PATH = os.environ.get('CHAINCODE_GCP_CRED_PATH')
@@ -48,8 +56,6 @@ LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'
 # The location we write
 MEMPOOL_ACTIVITY_CACHE_PATH = Path(os.environ.get(
     'MEMPOOL_ACTIVITY_CACHE_PATH', '/mempool-activity-cache'))
-
-BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
