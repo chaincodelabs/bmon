@@ -236,7 +236,7 @@ def watch_bitcoind_logs():
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in logparse.read_logfile_forever(filename, start_log_cursor):
-        process_line(line)
+        process_line(line, host)
 
 
 def create_host_record():
@@ -275,6 +275,7 @@ def create_host_record():
 
 def process_line(
     line: str,
+    host: models.Host,
     listeners: None | ListenerList = None,
     modify_log_pos: bool = True,
 ):
@@ -290,7 +291,7 @@ def process_line(
         except Exception:
             log.exception("Listener %s failed to process line %r", listener, line)
             models.ProcessLineError.objects.create(
-                host=settings.HOSTNAME,
+                hostname=settings.HOSTNAME,
                 listener=listener.__class__.__name__,
                 line=line,
             )
@@ -326,6 +327,9 @@ def process_line(
                 return None
 
             got.peer_id = int(peer_id)  # type: ignore
+
+        if hasattr(got, 'hostobj'):
+            got.hostobj = host
 
         try:
             got.full_clean()

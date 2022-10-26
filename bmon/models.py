@@ -41,8 +41,50 @@ class LogProgress(models.Model):
     __str__ = __repr__
 
 
+class Host(BaseModel):
+    name = models.CharField(max_length=256, unique=True)
+    cpu_info = models.CharField(max_length=1024)
+    memory_bytes = models.FloatField()
+    nproc = models.IntegerField(help_text="The number of processors")
+    region = models.CharField(max_length=256, blank=True, null=True)
+
+    bitcoin_version = models.CharField(
+        max_length=256, help_text="As reported by bitcoind -version"
+    )
+    bitcoin_gitref = models.CharField(max_length=256, null=True, blank=True)
+    bitcoin_gitsha = models.CharField(max_length=256, null=True, blank=True)
+    bitcoin_dbcache = models.IntegerField()
+    bitcoin_prune = models.IntegerField()
+    bitcoin_extra = models.JSONField(
+        help_text="Extra data about this bitcoind instance"
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "name",
+                    "cpu_info",
+                    "memory_bytes",
+                    "nproc",
+                    "bitcoin_version",
+                    "bitcoin_gitref",
+                    "bitcoin_gitsha",
+                    "bitcoin_dbcache",
+                    "bitcoin_prune",
+                    "bitcoin_extra",
+                ],
+                name="unique_host",
+            ),
+        ]
+
+    def __repr__(self):
+        return _repr(self, ["name", "bitcoin_version", "bitcoin_gitref"])
+
+
 PEER_UNIQUE_TOGETHER_FIELDS = (
     "host",
+    "hostobj",
     "num",
     "addr",
     "connection_type",
@@ -57,48 +99,9 @@ PEER_UNIQUE_TOGETHER_FIELDS = (
 )
 
 
-class Host(BaseModel):
-    name = models.CharField(max_length=256, unique=True)
-    cpu_info = models.CharField(max_length=1024)
-    memory_bytes = models.FloatField()
-    nproc = models.IntegerField(help_text='The number of processors')
-    region = models.CharField(max_length=256, blank=True, null=True)
-
-    bitcoin_version = models.CharField(
-        max_length=256, help_text="As reported by bitcoind -version"
-    )
-    bitcoin_gitref = models.CharField(max_length=256, null=True, blank=True)
-    bitcoin_gitsha = models.CharField(max_length=256, null=True, blank=True)
-    bitcoin_dbcache = models.IntegerField()
-    bitcoin_prune = models.IntegerField()
-    bitcoin_extra = models.JSONField(
-        help_text="Extra data about this bitcoind instance")
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=[
-                    'name',
-                    'cpu_info',
-                    'memory_bytes',
-                    'nproc',
-                    'bitcoin_version',
-                    'bitcoin_gitref',
-                    'bitcoin_gitsha',
-                    'bitcoin_dbcache',
-                    'bitcoin_prune',
-                    'bitcoin_extra',
-                ],
-                name="unique_host",
-            ),
-        ]
-
-    def __repr__(self):
-        return _repr(self, ['name', 'bitcoin_version', 'bitcoin_gitref'])
-
-
 class Peer(BaseModel):
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     addr = models.CharField(max_length=256)
     connection_type = models.CharField(max_length=256)
     # Called "id" in getpeerinfo()
@@ -129,6 +132,9 @@ class Peer(BaseModel):
         out = {k: p.get(k) for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
         out["num"] = p["id"]
         out["host"] = settings.HOSTNAME
+        out["hostobj"] = (
+            Host.objects.filter(name=settings.HOSTNAME).order_by("-id").first()
+        )
 
         defaults = {}
         # Versions pre 0.19 don't have servicesnames.
@@ -149,6 +155,7 @@ class RequestBlockEvent(BaseModel):
     """
 
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
 
@@ -175,6 +182,7 @@ class BlockDisconnectedEvent(BaseModel):
 
     created_at = models.DateTimeField(auto_now_add=True, blank=True)
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
@@ -191,6 +199,7 @@ class BlockConnectedEvent(BaseModel):
     """
 
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
@@ -208,6 +217,7 @@ class ReorgEvent(BaseModel):
 
     finished_timestamp = models.DateTimeField()
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     min_height = models.IntegerField()
     max_height = models.IntegerField()
     old_blockhashes = models.JSONField()
@@ -231,6 +241,7 @@ class ConnectBlockEvent(BaseModel):
     """
 
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
 
     blockhash = models.CharField(max_length=80)
@@ -272,6 +283,7 @@ class ConnectBlockDetails(BaseModel):
     """
 
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     # The latest logline in the connectblock measurements.
     timestamp = models.DateTimeField()
 
@@ -331,6 +343,7 @@ class MempoolReject(BaseModel):
     """
 
     host = models.CharField(max_length=200)
+    hostobj = models.ForeignKey(Host, null=True, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     txhash = models.CharField(max_length=80)
     peer_num = models.IntegerField()
@@ -348,7 +361,7 @@ class MempoolReject(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["host", "timestamp", "txhash", "peer_num"],
+                fields=["host", "hostobj", "timestamp", "txhash", "peer_num"],
                 name="unique_reject",
             ),
         ]
@@ -409,7 +422,7 @@ class ProcessLineError(models.Model):
     Created when a listener fails to process a line.
     """
 
-    host = models.CharField(max_length=200)
+    hostname = models.CharField(max_length=200)
     timestamp = models.DateTimeField(auto_now_add=True, blank=True)
     listener = models.CharField(max_length=240)
     line = models.CharField(max_length=2048)
