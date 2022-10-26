@@ -328,8 +328,12 @@ def process_line(
 
             got.peer_id = int(peer_id)  # type: ignore
 
-        if hasattr(got, 'hostobj'):
-            got.hostobj = host
+        # TODO make this less special casey
+        if isinstance(got, models.MempoolAccept):
+            mempool_activity(got.avro_record(), linehash)  # type: ignore
+            continue
+
+        got.hostobj = host
 
         try:
             got.full_clean()
@@ -338,24 +342,21 @@ def process_line(
             # TODO: stash the bad model somewhere for later processing.
             continue
 
-        if got.is_high_volume:
-            mempool_activity(got.avro_record(), linehash)  # type: ignore
-        else:
-            d = model_to_dict(got)
-            d["_model"] = got.__class__.__name__
+        d = model_to_dict(got)
+        d["_model"] = got.__class__.__name__
 
-            send_event(d, linehash)
+        send_event(d, linehash)
 
-            if modify_log_pos:
-                # This isn't totally correct because we don't know for a fact that
-                # the server actually persisted the event we sent it, but it's
-                # okay as a rough approximation.
-                #
-                # We can't have the server task
-                # do this because then we have to store logfile pos redis data
-                # in the central server, which would make actually maintaining
-                # that redis state slow for bitcoind servers on slow network links.
-                #
-                # TODO somehow make this truly synchronous with the server.
-                logfile_pos.mark(linehash)
-                write_logfile_pos()
+        if modify_log_pos:
+            # This isn't totally correct because we don't know for a fact that
+            # the server actually persisted the event we sent it, but it's
+            # okay as a rough approximation.
+            #
+            # We can't have the server task
+            # do this because then we have to store logfile pos redis data
+            # in the central server, which would make actually maintaining
+            # that redis state slow for bitcoind servers on slow network links.
+            #
+            # TODO somehow make this truly synchronous with the server.
+            logfile_pos.mark(linehash)
+            write_logfile_pos()

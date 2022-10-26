@@ -301,7 +301,6 @@ class MempoolRejectListener:
             reason_data["old_fee_btc"] = matches["old_fee"]
 
         return models.MempoolReject(
-            host=settings.HOSTNAME,
             timestamp=timestamp,
             peer_num=int(matches["peer_num"]),
             # `peer` FK will be filled out in `bitcoind_tasks`, where the redis cache
@@ -357,7 +356,6 @@ class _BlockEventListener(t.Protocol):
 
             assert self.event_class
             return self.event_class(  # typing: ignore
-                host=settings.HOSTNAME,
                 timestamp=timestamp,
                 height=int(matches["height"]),
                 blockhash=matches["blockhash"],
@@ -437,7 +435,6 @@ class ReorgListener:
                 )
 
             reorg = models.ReorgEvent(
-                host=settings.HOSTNAME,
                 finished_timestamp=self.replacements[-1].timestamp,
                 min_height=self.disconnects[0].height,
                 max_height=max_height,
@@ -559,7 +556,6 @@ class ConnectBlockListener:
             )
 
             return ConnectBlockEvent(
-                host=settings.HOSTNAME,
                 timestamp=timestamp,
                 blockhash=self.current_blockhash,
                 height=self.current_height,

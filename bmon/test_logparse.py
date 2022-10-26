@@ -4,7 +4,7 @@ import io
 import fastavro
 import pytest
 
-from . import logparse, conftest, models
+from . import logparse, conftest, models, bitcoind_tasks
 
 
 def test_ponglistener():
@@ -169,6 +169,8 @@ def test_reorg():
     # for model in got:
     #     model.full_clean()
 
+    host = bitcoind_tasks.create_host_record()
+    reorg.hostobj = host
     reorg.save()
 
 
