@@ -15,7 +15,7 @@ scrape_configs:
       - localhost
     labels:
       job: bitcoin
-      host: "${HOSTNAME}"
+      host: "${BMON_HOSTNAME}"
       version: "${BITCOIN_VERSION}"
       gitsha: "${BITCOIN_GITSHA}"
       gitref: "${BITCOIN_GITREF}"

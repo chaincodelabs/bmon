@@ -22,6 +22,7 @@ from clii import App
 
 cli = App()
 ENV = SimpleNamespace()
+ENVD = {}
 
 env_template = """
 COMPOSE_PROFILES=${compose_profiles}
@@ -43,6 +44,9 @@ PROM_ADDRESS=${prom_address}
 PROM_EXPORTER_PORT=${prom_exporter_port}
 BITCOIND_EXPORTER_PORT=${bitcoind_exporter_port}
 WEB_API_URL=${web_api_url}
+SMTP_PASSWORD=${smtp_password}
+SMTP_HOST=${smtp_host}
+SMTP_USERNAME=${smtp_username}
 
 BITCOIN_RPC_HOST=${bitcoin_rpc_host}
 BITCOIN_RPC_PORT=${bitcoin_rpc_port}
@@ -79,7 +83,7 @@ SENTRY_DSN=${sentry_dsn}
 
 
 dev_settings = dict(
-    compose_profiles='bitcoind,server',
+    compose_profiles="bitcoind,server",
     hosts_file="./infra/hosts_dev.yml",
     root="./services/dev",
     uid=1000,
@@ -106,13 +110,16 @@ dev_settings = dict(
     bitcoin_flags="-regtest",
     bitcoin_prune=0,
     bitcoin_dbcache=450,
-    bitcoin_docker_tag='latest',
+    bitcoin_docker_tag="latest",
     hostname=socket.gethostname(),
     pushover_user="",
     pushover_token="",
     debug=1,
     sentry_dsn="",
     bitcoind_version_path="./services/dev/bmon/bitcoind_version",
+    smtp_password="",
+    smtp_host="",
+    smtp_username="",
 )
 
 
@@ -145,7 +152,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_prune=host.bitcoin_prune,
         bitcoin_dbcache=host.bitcoin_dbcache,
         bitcoin_version=host.bitcoin_version,
-        bitcoin_docker_tag=(host.bitcoin_version or '?').lstrip('v'),
+        bitcoin_docker_tag=(host.bitcoin_version or "?").lstrip("v"),
         bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
         bmon_hostnmae=host.name,
         bitcoin_rpc_port=8332,
@@ -153,10 +160,10 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         sentry_dsn=host.secrets.sentry_dsn,
     )
 
-    if 'server' in host.tags:
+    if "server" in host.tags:
         # Many of these services are running in compose.
         settings.update(
-            compose_profiles='server,prod',
+            compose_profiles="server,prod",
             db_host="db",
             redis_server_host="redis",
             prom_address="prom:9090",
@@ -166,11 +173,14 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             pushover_user=host.secrets.pushover.user,
             pushover_token=host.secrets.pushover.token,
             bitcoind_version_path="",
+            smtp_password=host.secrets.smtp_password,
+            smtp_host=host.secrets.smtp_host,
+            smtp_username=host.secrets.smtp_username,
         )
     else:
         # a bitcoind instance
         settings.update(
-            compose_profiles='bitcoind,prod,prod-bitcoind',
+            compose_profiles="bitcoind,prod,prod-bitcoind",
             db_host=server_wireguard_ip,
             redis_server_host=server_wireguard_ip,
             redis_local_host="redis-bitcoind",
@@ -189,62 +199,8 @@ def prod_env(host, server_wireguard_ip: str) -> str:
     return Template(env_template).substitute(**settings)
 
 
-def grafana():
-    return Path("./etc/grafana-template.ini").read_text()
-
-
-def grafana_datasources():
-    return Template(
-        Path("./etc/grafana-datasources-template.yml").read_text()
-    ).substitute(
-        PROM_ADDRESS=ENV.PROM_ADDRESS,
-        LOKI_ADDRESS=ENV.LOKI_ADDRESS,
-        ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
-    )
-
-
-def prom():
-    return Template(Path("./etc/prom-template.yml").read_text()).substitute(
-        ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
-        WEB_API_URL=ENV.WEB_API_URL,
-    )
-
-
-def loki():
-    return Template(Path("./etc/loki-template.yml").read_text()).substitute(
-        LOKI_PORT=ENV.LOKI_PORT,
-        ALERTMAN_ADDRESS=ENV.ALERTMAN_ADDRESS,
-    )
-
-
-def alertman():
-    return Template(Path("./etc/alertmanager-template.yml").read_text()).substitute(
-        PUSHOVER_TOKEN=ENV.PUSHOVER_TOKEN,
-        PUSHOVER_USER=ENV.PUSHOVER_USER,
-    )
-
-
-def promtail(hostname: str | None = None):
-    hostname = hostname or socket.gethostname()
-
-    return Template(Path("./etc/promtail-template.yml").read_text()).substitute(
-        PROMTAIL_PORT=ENV.PROMTAIL_PORT,
-        LOKI_ADDRESS=ENV.LOKI_ADDRESS,
-        HOSTNAME=hostname,
-        BITCOIN_GITSHA=ENV.BITCOIN_GITSHA,
-        BITCOIN_GITREF=ENV.BITCOIN_GITREF,
-        BITCOIN_FLAGS=ENV.BITCOIN_FLAGS,
-        BITCOIN_VERSION=ENV.BITCOIN_VERSION,
-        BITCOIN_PRUNE=ENV.BITCOIN_PRUNE,
-        BITCOIN_DBCACHE=ENV.BITCOIN_DBCACHE,
-    )
-
-
-def bitcoind():
-    auth_line = get_bitcoind_auth_line(ENV.BITCOIN_RPC_USER, ENV.BITCOIN_RPC_PASSWORD)
-    return Template(Path("./etc/bitcoin/bitcoin-template.conf").read_text()).substitute(
-        RPC_AUTH_LINE=auth_line,
-    )
+def template_with_env(file_path: str) -> str:
+    return Template(Path(file_path).read_text()).substitute(**ENVD)
 
 
 def get_bitcoind_auth_line(username: str, password: str):
@@ -259,14 +215,14 @@ def get_bitcoind_auth_line(username: str, password: str):
     return f"rpcauth={username}:{salt}${password_hmac}"
 
 
-def make_services_data(envtype: str, hostname: str | None = None):
+def make_services_data(envtype: str):
     user = getpass.getuser()
     p(root := Path(ENV.ENV_ROOT)).mkdir()
 
-    p(root / 'postgres' / 'data').mkdir()
+    p(root / "postgres" / "data").mkdir()
 
     p(grafetc := root / "grafana" / "etc").mkdir()
-    p(grafetc / "grafana.ini").contents(grafana())
+    p(grafetc / "grafana.ini").contents(template_with_env("./etc/grafana-template.ini"))
     p(var := root / "grafana" / "var").mkdir()
     p(dashboards := var / "dashboards").mkdir()
     p(dashboards / "bitcoind.json").contents(
@@ -278,37 +234,50 @@ def make_services_data(envtype: str, hostname: str | None = None):
     p(dashprov / "default.yml").contents(
         Path("./etc/grafana-dashboards-template.yml").read_text()
     )
-    p(datasources / "datasource.yml").contents(grafana_datasources())
+    p(datasources / "datasource.yml").contents(
+        template_with_env("./etc/grafana-datasources-template.yml")
+    )
 
     p(lokipath := root / "loki").mkdir()
     p(lokietc := lokipath / "etc").mkdir()
-    p(lokietc / "local-config.yaml").contents(loki())
+    p(lokietc / "local-config.yaml").contents(
+        template_with_env("./etc/loki-template.yml")
+    )
 
     p(prometc := root / "prom" / "etc").mkdir()
     p(root / "prom" / "data").mkdir()
-    p(prometc / "prometheus.yml").contents(prom())
+    p(prometc / "prometheus.yml").contents(template_with_env("./etc/prom-template.yml"))
     p(prometc / "alerts.yml").contents(Path("./etc/prom-alerts.yml").read_text())
 
     p(am := root / "alertman").mkdir()
-    p(am / 'data').mkdir().chown(f'{user}:{user}')
-    p(am / "config.yml").contents(alertman())
+    p(am / "data").mkdir().chown(f"{user}:{user}")
+    p(am / "config.yml").contents(template_with_env("./etc/alertmanager-template.yml"))
+
+    auth_line = get_bitcoind_auth_line(ENV.BITCOIN_RPC_USER, ENV.BITCOIN_RPC_PASSWORD)
+    bitcoin_conf = Template(
+        Path("./etc/bitcoin/bitcoin-template.conf").read_text()
+    ).substitute(
+        RPC_AUTH_LINE=auth_line,
+    )
 
     p(btcdata := root / "bitcoin" / "data").mkdir()
     p(btcdata / "regtest").mkdir()
-    p(btcdata / "bitcoin.conf").contents(bitcoind())
+    p(btcdata / "bitcoin.conf").contents(bitcoin_conf)
 
-    if envtype == 'dev':
+    if envtype == "dev":
         p(btcdata2 := root / "bitcoin-02" / "data").mkdir()
         p(btcdata2 / "regtest").mkdir()
-        p(btcdata2 / "bitcoin.conf").contents(bitcoind())
+        p(btcdata2 / "bitcoin.conf").contents(bitcoin_conf)
 
     p(promtailp := root / "promtail").mkdir()
-    p(promtailp / "config.yml").contents(promtail(hostname))
+    p(promtailp / "config.yml").contents(
+        template_with_env("./etc/promtail-template.yml")
+    )
 
-    p(root / 'redis' / 'data').mkdir()
+    p(root / "redis" / "data").mkdir()
 
-    p(root / 'bmon' / 'mempool-activity-cache').mkdir()
-    p(root / 'bmon' / 'credentials').mkdir()
+    p(root / "bmon" / "mempool-activity-cache").mkdir()
+    p(root / "bmon" / "credentials").mkdir()
 
 
 @cli.main
@@ -317,21 +286,22 @@ def make_services_data(envtype: str, hostname: str | None = None):
 def make_env(
     envfile: str = ".env",
     envtype: str = "dev",
-    hostname: str = '',
 ):
     # Don't autopopulate .env on prod; this happens in infra:deploy.
     if envtype == "dev":
         p(envfile).contents(dev_env())
 
     global ENV
+    global ENVD
     ENV = get_env_object(envfile)
-    make_services_data(envtype, hostname)
+    ENVD = ENV.__dict__
+    make_services_data(envtype)
 
 
-def get_env_object(envfile: str | Path = '.env') -> SimpleNamespace:
+def get_env_object(envfile: str | Path = ".env") -> SimpleNamespace:
     """Return the contents of the .env file in a namespace."""
     lines = filter(None, Path(envfile).read_text().splitlines())
-    lines = [line for line in lines if not line.startswith('#')]
+    lines = [line for line in lines if not line.startswith("#")]
     envdict = dict(i.split("=", 1) for i in lines)
 
     return SimpleNamespace(**envdict)

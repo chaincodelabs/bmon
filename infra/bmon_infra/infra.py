@@ -218,7 +218,7 @@ def main_remote(
 
     os.chdir(BMON_PATH)
     p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
-    run(f"bmon-config -t prod --hostname {host.name}").assert_ok()
+    run("bmon-config -t prod").assert_ok()
 
     if "server" in host.tags:
         provision_bmon_server(parent, restart_spec)
