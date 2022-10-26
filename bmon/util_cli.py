@@ -3,6 +3,7 @@ import pprint
 
 import fastavro
 from django.conf import settings
+from django import db
 
 # If we're not on a bitcoind host, this import will fail - that's okay.
 try:
@@ -27,7 +28,7 @@ def feedline(line: str) -> None:
 def showmempool() -> None:
     """Show the current mempool avro data."""
     assert bitcoind_tasks
-    with open(settings.MEMPOOL_ACTIVITY_CACHE_PATH / 'current', 'rb') as f:
+    with open(settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current", "rb") as f:
         for record in fastavro.reader(f):
             print(record)
 
@@ -39,9 +40,14 @@ def run_listener(listener_name: str) -> None:
     listeners = [getattr(logparse, listener_name)()]
 
     assert settings.BITCOIND_LOG_PATH
-    with open(settings.BITCOIND_LOG_PATH, 'r', errors='ignore') as f:
+    with open(settings.BITCOIND_LOG_PATH, "r", errors="ignore") as f:
         for line in f:
-            bitcoind_tasks.process_line(line, listeners=listeners, modify_log_pos=False)
+            try:
+                bitcoind_tasks.process_line(
+                    line, listeners=listeners, modify_log_pos=False
+                )
+            except db.IntegrityError:
+                pass
 
 
 @cli.cmd
@@ -54,7 +60,7 @@ def shipmempool() -> None:
 @cli.cmd
 def rpc(*cmd) -> None:
     """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
-    pprint.pprint(gather_rpc(' '.join(cmd)))
+    pprint.pprint(gather_rpc(" ".join(cmd)))
 
 
 def main() -> None:
