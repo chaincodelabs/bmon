@@ -1,2 +1,9 @@
 #!/usr/bin/env zsh
+set -e
+
+if ( git ls-files . --exclude-standard --others | grep bmon/migrations ) ; then
+    echo "You forgot to commit migrations!"
+    exit 1
+fi 
+
 ./dev test

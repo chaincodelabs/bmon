@@ -62,8 +62,8 @@ def persist_bitcoind_event(event: dict, _: str):
         # come up with a better way of dealing with this.
         event['peer_id'] = event.pop('peer')
 
-    if 'hostobj' in event:
-        event['hostobj_id'] = event.pop('hostobj')
+    if 'host' in event:
+        event['host_id'] = event.pop('host')
 
     instance = Model.objects.create(**event)
     print(f"Saved {instance}")

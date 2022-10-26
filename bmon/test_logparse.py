@@ -170,7 +170,7 @@ def test_reorg():
     #     model.full_clean()
 
     host = bitcoind_tasks.create_host_record()
-    reorg.hostobj = host
+    reorg.host = host
     reorg.save()
 
 

@@ -585,7 +585,6 @@ class ConnectBlockListener:
             assert self.current_blockhash
             assert isinstance(self.current_height, int)
 
-            self.next_details.host = settings.HOSTNAME
             self.next_details.blockhash = self.current_blockhash
             self.next_details.height = self.current_height
             self.next_details.timestamp = get_time(line)

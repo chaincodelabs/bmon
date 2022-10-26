@@ -333,7 +333,7 @@ def process_line(
             mempool_activity(got.avro_record(), linehash)  # type: ignore
             continue
 
-        got.hostobj = host
+        got.host = host
 
         try:
             got.full_clean()

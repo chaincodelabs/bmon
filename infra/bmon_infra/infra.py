@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # vim: set sw=4 tabstop=4
 import os
+import time
 import sys
 import json
 import getpass
@@ -283,7 +284,8 @@ def provision_bmon_server(
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
     # Update the docker image.
-    run(f"{docker_compose} pull web")
+    run(f"{docker_compose} pull web").assert_ok()
+    run(f"{docker_compose} run --rm web ./manage.py migrate").assert_ok()
 
     def cycle(services):
         run(f"{docker_compose} stop {services}").assert_ok()
@@ -416,7 +418,7 @@ def get_bitcoind_version(docker_compose_path: str | Path = 'docker-compose') -> 
     [ver_line] = [
         i
         for i in (
-            run(f"{docker_compose_path} run --rm bitcoind bitcoind -version")
+            run(f"{docker_compose_path} run --rm bitcoind bitcoind -version", q=True)
             .assert_ok()
             .stdout.strip()
             .splitlines()
@@ -481,6 +483,9 @@ def deploy(
             restart,
             ssh_pubkey=ssh_pubkey,
         )
+
+        time.sleep(2)
+        exec.run(_run_cmd, 'docker-compose ps')
 
 
 @cli.cmd

@@ -83,7 +83,7 @@ class Host(BaseModel):
 
 
 PEER_UNIQUE_TOGETHER_FIELDS = (
-    "hostobj",
+    "host",
     "num",
     "addr",
     "connection_type",
@@ -99,7 +99,7 @@ PEER_UNIQUE_TOGETHER_FIELDS = (
 
 
 class Peer(BaseModel):
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     addr = models.CharField(max_length=256)
     connection_type = models.CharField(max_length=256)
     # Called "id" in getpeerinfo()
@@ -129,7 +129,7 @@ class Peer(BaseModel):
         """Return the subset of getpeerinfo data that is relevant to this model."""
         out = {k: p.get(k) for k in PEER_UNIQUE_TOGETHER_FIELDS if k in p}
         out["num"] = p["id"]
-        out["hostobj"] = (
+        out["host"] = (
             Host.objects.filter(name=settings.HOSTNAME).order_by("-id").first()
         )
 
@@ -141,7 +141,7 @@ class Peer(BaseModel):
         return out, defaults
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "addr", "num", "subver"])
+        return _repr(self, ["host", "addr", "num", "subver"])
 
     __str__ = __repr__
 
@@ -151,7 +151,7 @@ class RequestBlockEvent(BaseModel):
     node0 2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0
     """
 
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
 
@@ -165,7 +165,7 @@ class RequestBlockEvent(BaseModel):
     method = models.CharField(max_length=256)
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "timestamp", "blockhash"])
+        return _repr(self, ["host", "timestamp", "blockhash"])
 
     __str__ = __repr__
 
@@ -177,13 +177,13 @@ class BlockDisconnectedEvent(BaseModel):
     """
 
     created_at = models.DateTimeField(auto_now_add=True, blank=True)
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "timestamp", "blockhash", "height"])
+        return _repr(self, ["host", "timestamp", "blockhash", "height"])
 
     __str__ = __repr__
 
@@ -193,13 +193,13 @@ class BlockConnectedEvent(BaseModel):
     [operator()] [validation] BlockConnected: block hash=1397a170ca910a5689af809abf4cb25070c36e7bc023e2a23064652543b7f5eb block height=1
     """
 
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     blockhash = models.CharField(max_length=80)
     height = models.IntegerField()
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "timestamp", "blockhash", "height"])
+        return _repr(self, ["host", "timestamp", "blockhash", "height"])
 
     __str__ = __repr__
 
@@ -210,7 +210,7 @@ class ReorgEvent(BaseModel):
     """
 
     finished_timestamp = models.DateTimeField()
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     min_height = models.IntegerField()
     max_height = models.IntegerField()
     old_blockhashes = models.JSONField()
@@ -233,7 +233,7 @@ class ConnectBlockEvent(BaseModel):
     2019-08-09T16:28:42Z UpdateTip: new best=00000000000000000001d80d14ee4400b6d9c851debe27e6777f3876edd4ad1e height=589349 version=0x20800000 log2_work=90.944215 tx=443429260 date='2019-08-09T16:27:43Z' progress=1.000000 cache=8.7MiB(64093txo) warning='44 of last 100 blocks have unexpected version'
     """
 
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
 
     blockhash = models.CharField(max_length=80)
@@ -274,7 +274,7 @@ class ConnectBlockDetails(BaseModel):
     2019-07-29T18:34:17Z - Connect block: 136.63ms [344.92s (361.55ms/blk)]
     """
 
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     # The latest logline in the connectblock measurements.
     timestamp = models.DateTimeField()
 
@@ -296,7 +296,7 @@ class ConnectBlockDetails(BaseModel):
     connectblock_total_time_ms = models.FloatField()
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "timestamp", "height", "blockhash"])
+        return _repr(self, ["host", "timestamp", "height", "blockhash"])
 
     __str__ = __repr__
 
@@ -333,7 +333,7 @@ class MempoolReject(BaseModel):
     [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict
     """
 
-    hostobj = models.ForeignKey(Host, on_delete=models.CASCADE)
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     txhash = models.CharField(max_length=80)
     peer_num = models.IntegerField()
@@ -351,13 +351,13 @@ class MempoolReject(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["hostobj", "timestamp", "txhash", "peer_num"],
+                fields=["host", "timestamp", "txhash", "peer_num"],
                 name="unique_reject",
             ),
         ]
 
     def __repr__(self):
-        return _repr(self, ["hostobj", "timestamp", "txhash", "reason_code", "peer_num"])
+        return _repr(self, ["host", "timestamp", "txhash", "reason_code", "peer_num"])
 
     __str__ = __repr__
 
