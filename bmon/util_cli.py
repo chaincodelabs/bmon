@@ -4,6 +4,7 @@ import pprint
 import fastavro
 from django.conf import settings
 from django import db
+from django.core.exceptions import ValidationError
 
 # If we're not on a bitcoind host, this import will fail - that's okay.
 try:
@@ -48,6 +49,9 @@ def run_listener(listener_name: str) -> None:
                 )
             except db.IntegrityError:
                 pass
+            except ValidationError as e:
+                if 'already exists' not in str(e):
+                    raise
 
 
 @cli.cmd
