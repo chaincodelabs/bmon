@@ -3,6 +3,8 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
+from bmon.models import MempoolReject as CurrMempoolReject
+
 
 def cleanup_rejects(apps, schema_editor):
     MempoolReject = apps.get_model("bmon", "MempoolReject")
@@ -23,7 +25,7 @@ def add_reasoncode(apps, schema_editor):
     objs = 0
 
     for rej in MempoolReject.objects.using(db_alias).all():
-        rej.reason_code = MempoolReject.get_reason_reject_code(rej.reason)
+        rej.reason_code = CurrMempoolReject.get_reason_reject_code(rej.reason)
         rej.save()
         objs += 1
 
