@@ -73,7 +73,7 @@ def refresh_metrics():
     BITCOIND_MEMPOOL_TASKS_QUEUE_DEPTH.set(len(bitcoind_tasks.mempool_q))
 
     cb = (
-        models.ConnectBlockEvent.objects.filter(host=settings.HOSTNAME)
+        models.ConnectBlockEvent.objects.filter(host__name=settings.HOSTNAME)
         .order_by("-id")
         .first()
     )
