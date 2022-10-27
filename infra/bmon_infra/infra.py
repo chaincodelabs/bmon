@@ -57,8 +57,8 @@ class Host(wireguard.Host):
         self.bitcoin_version = bitcoin_version
         self.bitcoin_prune = bitcoin_prune
         self.bitcoin_dbcache = bitcoin_dbcache
-        self.bitcoin_gitref = bitcoin_gitref or ''
-        self.bitcoin_gitsha = bitcoin_gitsha or ''
+        self.bitcoin_gitref = bitcoin_gitref or ""
+        self.bitcoin_gitsha = bitcoin_gitsha or ""
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         self.outbound_wireguard = outbound_wireguard
@@ -143,7 +143,7 @@ def main_remote(
     restart_spec: str = "",
     ssh_pubkey: str = "",
 ):
-    assert (user := getpass.getuser()) != 'root'
+    assert (user := getpass.getuser()) != "root"
 
     fscm.s.pkgs_install(
         "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp "
@@ -231,7 +231,7 @@ def provision_bmon_server(
     parent: fscm.remote.Parent,
     restart_spec: str,
 ):
-    assert (username := getpass.getuser()) != 'root'
+    assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
     pip = VENV_PATH / "bin" / "pip"
@@ -316,7 +316,7 @@ def provision_monitored_bitcoind(
     server_wg_ip: str,
     restart_spec: str,
 ):
-    assert (username := getpass.getuser()) != 'root'
+    assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
 
@@ -420,7 +420,7 @@ def provision_monitored_bitcoind(
             cycle(f"{alwaysrestart} {restart_spec}")
 
 
-def get_bitcoind_version(docker_compose_path: str | Path = 'docker-compose') -> str:
+def get_bitcoind_version(docker_compose_path: str | Path = "docker-compose") -> str:
     [ver_line] = [
         i
         for i in (
@@ -431,8 +431,8 @@ def get_bitcoind_version(docker_compose_path: str | Path = 'docker-compose') -> 
         )
         if i.startswith("Bitcoin") and " version " in i
     ]
-    bitcoind_version = ver_line.split(' version ')[-1].strip()
-    return bitcoind_version.lstrip('v')
+    bitcoind_version = ver_line.split(" version ")[-1].strip()
+    return bitcoind_version.lstrip("v")
 
 
 @cli.cmd
@@ -449,6 +449,15 @@ def deploy(
     """
     if rebuild_docker:
         run("docker-compose build && docker-compose push")
+
+    if restart == "all" and (
+        cli.args.tag_filter == "server" or cli.args.hostname_filter == "bmon"
+    ):
+        print(
+            "If you're restarting all processes, you have to deploy to the whole "
+            "architecture - otherwise database connections will be stale."
+        )
+        sys.exit(1)
 
     wgsmap, hostmap = get_hosts_for_cli()
     hosts = list(hostmap.values())
@@ -491,7 +500,7 @@ def deploy(
         )
 
         time.sleep(2)
-        exec.run(_run_cmd, 'docker-compose ps')
+        exec.run(_run_cmd, "docker-compose ps")
 
 
 @cli.cmd
@@ -520,8 +529,8 @@ def runall(cmd: str, sudo: bool = False):
 
 @cli.cmd
 def rg_bitcoind(search: str):
-    cli.args.hostname_filter = '(bitcoin|b-)'
-    runall(f"rg \"{search}\" services/prod/bitcoin/data/debug.log")
+    cli.args.hostname_filter = "(bitcoin|b-)"
+    runall(f'rg "{search}" services/prod/bitcoin/data/debug.log')
 
 
 @cli.cmd

@@ -4,6 +4,9 @@ Various tools for interacting with a bmon deployment; works both locally and
 in production.
 
 Should run `bmon-config` before using this tool.
+
+The difference between `bmon-util` and this file is that the former is meant to be
+run from within a docker container, whereas this is run on the host.
 """
 
 import json
