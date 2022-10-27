@@ -146,7 +146,8 @@ def main_remote(
     assert (user := getpass.getuser()) != 'root'
 
     fscm.s.pkgs_install(
-        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp ripgrep"
+        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp "
+        "ripgrep libpq5"
     )
     fscm.s.group_member(user, "docker")
     p(docker := Path.home() / ".docker").mkdir()
@@ -233,6 +234,11 @@ def provision_bmon_server(
     assert (username := getpass.getuser()) != 'root'
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
+    pip = VENV_PATH / "bin" / "pip"
+    assert pip.exists()
+
+    if not (VENV_PATH / "bin" / "pgcli").exists():
+        run(f"{pip} install pgcli")
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
 

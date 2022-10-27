@@ -25,6 +25,7 @@ ENV = SimpleNamespace()
 ENVD = {}
 
 env_template = """
+BMON_ENV=${bmon_env}
 COMPOSE_PROFILES=${compose_profiles}
 BMON_HOSTS_FILE=${hosts_file}
 ENV_ROOT=${root}
@@ -83,6 +84,7 @@ SENTRY_DSN=${sentry_dsn}
 
 
 dev_settings = dict(
+    bmon_env="dev",
     compose_profiles="bitcoind,server",
     hosts_file="./infra/hosts_dev.yml",
     root="./services/dev",
@@ -139,6 +141,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
 
     settings = dict(dev_settings)
     settings.update(
+        bmon_env="prod",
         debug=0,
         root="./services/prod",
         hosts_file="./infra/hosts_prod.yml",
@@ -280,6 +283,15 @@ def make_services_data(envtype: str):
     p(root / "bmon" / "credentials").mkdir()
 
 
+def get_env_object(envfile: str | Path = ".env") -> SimpleNamespace:
+    """Return the contents of the .env file in a namespace."""
+    lines = Path(envfile).read_text().splitlines()
+    lines = [line for line in lines if line and not line.startswith("#")]
+    envdict = dict(i.split("=", 1) for i in lines)
+
+    return SimpleNamespace(**envdict)
+
+
 @cli.main
 @cli.arg("envfile", "-e")
 @cli.arg("envtype", "-t", help="The type of environment. Choices: dev, prod")
@@ -296,15 +308,6 @@ def make_env(
     ENV = get_env_object(envfile)
     ENVD = ENV.__dict__
     make_services_data(envtype)
-
-
-def get_env_object(envfile: str | Path = ".env") -> SimpleNamespace:
-    """Return the contents of the .env file in a namespace."""
-    lines = filter(None, Path(envfile).read_text().splitlines())
-    lines = [line for line in lines if not line.startswith("#")]
-    envdict = dict(i.split("=", 1) for i in lines)
-
-    return SimpleNamespace(**envdict)
 
 
 def main():

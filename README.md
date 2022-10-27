@@ -17,7 +17,7 @@ doing realtime analysis (via logs and RPC) on a collection of bitcoind nodes.
 
 ### Easy way
 
-1. Bring everything up with `./dev reup`
+1. Bring everything up with `bmon-config && ./dev reup`
 
 ### Manual way
 

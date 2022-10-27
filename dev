@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
+"""
+Various tools for interacting with a bmon deployment; works both locally and
+in production.
+
+Should run `bmon-config` before using this tool.
+"""
 
 import json
 import sys
 import subprocess
+import functools
 
 import clii
 
@@ -16,12 +23,42 @@ def sh(cmd, **kwargs):
     return subprocess.run(cmd, shell=True, **kwargs)
 
 
+@functools.lru_cache
+def getenv():
+    return config.get_env_object()
+
+
+def is_dev() -> bool:
+    """True if we're in the dev environment."""
+    return getenv().BMON_ENV == 'dev'
+
+
+def is_regtest() -> bool:
+    """True if we're running on regtest."""
+    return (rpcport := getenv().BITCOIN_RPC_PORT) and int(rpcport) == '18443'
+
+
 def brpc(cmd, **kwargs):
+    """Run a bitcoin RPC command."""
+    flags = '-regtest' if is_regtest() else ''
+
     return sh(
         "docker-compose exec bitcoind "
-        f"bitcoin-cli -regtest -datadir=/bitcoin/data {cmd}",
+        f"bitcoin-cli {flags} -datadir=/bitcoin/data {cmd}",
         **kwargs,
     )
+
+
+def dev_only(func):
+    """Decorator that enforces a command is run only in the dev environment."""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if not is_dev():
+            print("Shouldn't be running {func} outside of a dev environment")
+            sys.exit(1)
+        else:
+            return func(*args, **kwargs)
+    return wrapper
 
 
 @cli.cmd
@@ -30,6 +67,7 @@ def bitcoinrpc(*cmd):
 
 
 @cli.cmd
+@dev_only
 def generateblock():
     wallets = json.loads(brpc("listwallets", capture_output=True).stdout)
     if "test" not in wallets:
@@ -54,6 +92,7 @@ def shell():
 
 
 @cli.cmd
+@dev_only
 def reup(
     service: str = "",
     rebuild_docker: bool = False,
@@ -89,12 +128,14 @@ def watchlogs(others: str = ""):
 
 
 @cli.cmd
+@dev_only
 def cleardata():
     sh("sudo rm -fr services/dev/*")
     sh("bmon-config")
 
 
 @cli.cmd
+@dev_only
 def test(mypy: bool = False):
     """Run automated tests."""
     mypy_ok = True
@@ -121,9 +162,23 @@ def test(mypy: bool = False):
 
 
 @cli.cmd
+@dev_only
 def watchjs():
     """Watch the frontend javascript and rebuild as necessary."""
     sh("docker-compose run --rm js yarn run start")
+
+
+@cli.cmd
+def sql_shell(db_host: str = 'localhost'):
+    e = getenv()
+    db = f"postgres://bmon:{e.DB_PASSWORD}@{db_host}:5432/bmon"
+    print(f"Connecting to {db}")
+    sh(f"pgcli {db}")
+
+
+@cli.cmd
+def pgcli():
+    sql_shell()
 
 
 if __name__ == "__main__":
