@@ -18,18 +18,21 @@ def _get_wireguard_ip(host):
     return bmon_wg.ip
 
 
-@api.get("/prom-config-bitcoind")
-def prom_config_bitcoind(_):
-    """Dynamic configuration for bitcoind prometheus monitoring endpoints."""
-    bitcoind_hosts = [h for h in config.get_hosts()[1].values() if "bitcoind" in h.tags]
-    out = []
-
+def _get_db_hosts() -> dict[str, models.Host]:
     latest_ids = (
         models.Host.objects.values("name")
         .annotate(max_id=Max("id"))
         .values_list("max_id", flat=True)
     )
-    db_hosts = {h.name: h for h in models.Host.objects.filter(id__in=latest_ids)}
+    return {h.name: h for h in models.Host.objects.filter(id__in=latest_ids)}
+
+
+@api.get("/prom-config-bitcoind")
+def prom_config_bitcoind(_):
+    """Dynamic configuration for bitcoind prometheus monitoring endpoints."""
+    bitcoind_hosts = [h for h in config.get_hosts()[1].values() if "bitcoind" in h.tags]
+    db_hosts = _get_db_hosts()
+    out = []
 
     for host in bitcoind_hosts:
         wgip = _get_wireguard_ip(host)
@@ -80,6 +83,7 @@ def prom_config_server(_):
 def hosts(_):
     out = []
     hosts = config.get_bitcoind_hosts()
+    db_hosts = _get_db_hosts()
     peer_info = gather_rpc(lambda r: r.getpeerinfo())
     chain_info = gather_rpc(lambda r: r.getblockchaininfo())
 
@@ -97,7 +101,7 @@ def hosts(_):
                 "name": host.name,
                 "peers": {p["addr"]: p["subver"] for p in peers},
                 "chaininfo": chain,
-                "bitcoin_version": host.bitcoin_version,
+                "bitcoin_version": db_hosts[host.name].bitcoin_version,
             }
         )
 
