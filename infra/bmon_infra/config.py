@@ -70,6 +70,8 @@ BITCOIN_DATA_PATH=${bitcoin_data_path}
 BITCOIN_FLAGS=${bitcoin_flags}
 BITCOIN_PRUNE=${bitcoin_prune}
 BITCOIN_DBCACHE=${bitcoin_dbcache}
+
+# Used to control which bitcoind container is pulled in docker-compose.yml.
 BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
 
 BITCOIN_GITSHA=${bitcoin_gitsha}
@@ -240,7 +242,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_flags=bitcoin_flags,
         bitcoin_prune=host.bitcoin_prune,
         bitcoin_dbcache=host.bitcoin_dbcache,
-        bitcoin_docker_tag=(host.bitcoin_docker_image or "?").lstrip("v"),
+        bitcoin_docker_tag=(host.bitcoin_docker_tag or ""),
         bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
         bmon_hostnmae=host.name,
         bitcoin_rpc_port=8332,
@@ -264,6 +266,12 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             smtp_password=host.secrets.smtp_password,
             smtp_host=host.secrets.smtp_host,
             smtp_username=host.secrets.smtp_username,
+
+            # On bitcoind hosts, these are filled in from container labels. Because
+            # *some* value is required for `Template.substitute`, put some dummies here.
+            bitcoin_gitsha="",
+            bitcoin_gitref="",
+            bitcoin_version="",
         )
     else:
         # a bitcoind instance
