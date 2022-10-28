@@ -97,7 +97,7 @@ const HostCard = (props) => {
   const items = {
     "version": <>{props.bitcoin_version}</>,
     "height": <>{props.chaininfo.blocks}</>,
-    "pruned?": <>{props.chaininfo.pruned}</>,
+    "pruned?": <>{props.chaininfo.pruned ? 'yes' : 'no'}</>,
     "peers": <>
         <table>
         {map(props.peers, (addr, subver) => 
