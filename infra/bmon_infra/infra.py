@@ -500,6 +500,15 @@ def rpc(cmd: str):
         exec.run(_run_cmd, f"docker-compose run --rm shell bmon-util rpc {cmd}")
 
 
+@cli.cmd
+def wireguard_peer_template(hostname: str):
+    wg_servers, hosts = get_hosts()
+    wgs = wg_servers['wg-bmon']
+    [host] = [h for h in hosts.values() if h.name == hostname]
+    wg = host.wireguards['wg-bmon']
+    print(wireguard.peer_config(wgs, wg))
+
+
 def _run_cmd(cmd: str, sudo: bool = False):
     os.chdir(Path.home() / "bmon")
     path = os.environ["PATH"]
