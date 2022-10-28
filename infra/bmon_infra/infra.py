@@ -38,6 +38,8 @@ SERVER_EXPORTER_PORT = 9334
 
 BMON_SSHPUBKEY = Path.home() / ".ssh" / "bmon-ed25519.pub"
 
+fscm.settings.run_safe = True
+
 
 def get_server_wireguard_ip() -> str:
     [server_host] = [h for h in get_hosts()[1].values() if "server" in h.tags]
@@ -121,11 +123,11 @@ def main_remote(
             Path.home() / ".ssh" / "authorized_keys", ssh_pubkey, regex=ssh_pubkey[:40]
         )
 
-    if run(f"loginctl show-user {user} | grep 'Linger=no'", quiet=True).ok:
+    if run(f"loginctl show-user {user} | grep 'Linger=no'", check=False, quiet=True).ok:
         run(f"loginctl enable-linger {user}", sudo=True)
 
     if not VENV_PATH.exists():
-        run(f"python3 -m venv {VENV_PATH}").assert_ok()
+        run(f"python3 -m venv {VENV_PATH}")
 
     lineinfile(
         f"/home/{user}/.bashrc",
@@ -136,25 +138,25 @@ def main_remote(
     lineinfile(f"/home/{user}/.bashrc", "alias dc=docker-compose", regex="alias dc=")
 
     if not BMON_PATH.exists():
-        run(f"git clone {REPO_URL} {BMON_PATH}").assert_ok()
+        run(f"git clone {REPO_URL} {BMON_PATH}")
 
     if ".venv/bin/" not in os.environ["PATH"]:
         os.environ["PATH"] = f"{VENV_PATH / 'bin'}:{os.environ['PATH']}"
 
-    if not run("which bmon-config", quiet=True).ok:
-        run(f"cd {BMON_PATH} && pip install -e ./infra").assert_ok()
+    if not run("which bmon-config", check=False, quiet=True).ok:
+        run(f"cd {BMON_PATH} && pip install -e ./infra")
 
-    if not run("which docker-compose", quiet=True).ok:
-        run("pip install docker-compose").assert_ok()
+    if not run("which docker-compose", check=False, quiet=True).ok:
+        run("pip install docker-compose")
 
-    run(f"cd {BMON_PATH} && git pull --ff-only origin master").assert_ok()
+    run(f"cd {BMON_PATH} && git pull --ff-only origin master")
 
     if (
         p("/etc/docker/daemon.json", sudo=True)
         .contents('{ "log-driver": "journald" }')
         .changes
     ):
-        run("systemctl restart docker", sudo=True).assert_ok()
+        run("systemctl restart docker", sudo=True)
 
     if lineinfile(
         "/etc/systemd/journald.conf",
@@ -162,7 +164,7 @@ def main_remote(
         "SystemMaxUse=",
         sudo=True,
     ):
-        run("systemctl restart systemd-journald", sudo=True).assert_ok()
+        run("systemctl restart systemd-journald", sudo=True)
 
     if "server" in host.tags:
         provision_bmon_server(host, parent, server_wg_ip, restart_spec)
@@ -184,7 +186,7 @@ def provision_bmon_server(
 
     os.chdir(BMON_PATH)
     p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
-    run("bmon-config -t prod").assert_ok()
+    run("bmon-config -t prod")
 
     if not (VENV_PATH / "bin" / "pgcli").exists():
         run(f"{pip} install pgcli")
@@ -239,13 +241,13 @@ def provision_bmon_server(
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
     # Update the docker image.
-    run(f"{docker_compose} pull web").assert_ok()
-    run(f"{docker_compose} run --rm web ./manage.py migrate").assert_ok()
+    run(f"{docker_compose} pull web")
+    run(f"{docker_compose} run --rm web ./manage.py migrate")
 
     def cycle(services):
-        run(f"{docker_compose} stop {services}").assert_ok()
-        run(f"{docker_compose} rm -f {services}").assert_ok()
-        run(f"{docker_compose} up -d {services}").assert_ok()
+        run(f"{docker_compose} stop {services}")
+        run(f"{docker_compose} rm -f {services}")
+        run(f"{docker_compose} up -d {services}")
 
     match restart_spec:
         case "":
@@ -275,7 +277,7 @@ def provision_monitored_bitcoind(
 
     os.chdir(BMON_PATH)
     p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
-    run("bmon-config -t prod").assert_ok()
+    run("bmon-config -t prod")
 
     p("/etc/logrotate.d/bmon-bitcoind.conf", sudo=True).contents(
         parent.template(
@@ -324,9 +326,9 @@ def provision_monitored_bitcoind(
         if btc_size_kb < gb_in_kb:
             btc_data = services_path / "bitcoin/data"
             print(f"Fetching prepopulated (pruned) datadir from {DATADIR_URL}")
-            run(f"curl -s {DATADIR_URL} | tar xz -C /tmp").assert_ok()
-            run(f"rm -rf {btc_data}").assert_ok()
-            run(f"mv /tmp/bitcoin-pruned-550 {btc_data}").assert_ok()
+            run(f"curl -s {DATADIR_URL} | tar xz -C /tmp")
+            run(f"rm -rf {btc_data}")
+            run(f"mv /tmp/bitcoin-pruned-550 {btc_data}")
             # If we don't have a debug.log file, docker will make a directory out
             # of it during the mount process of bitcoind-watcher.
             run(f"touch {btc_data}/debug.log")
@@ -359,9 +361,9 @@ def provision_monitored_bitcoind(
     systemd.enable_service("bmon-bitcoind")
 
     def cycle(services):
-        run(f"{docker_compose} stop {services}").assert_ok()
-        run(f"{docker_compose} rm -f {services}").assert_ok()
-        run(f"{docker_compose} up -d {services}").assert_ok()
+        run(f"{docker_compose} stop {services}")
+        run(f"{docker_compose} rm -f {services}")
+        run(f"{docker_compose} up -d {services}")
 
     alwaysrestart = "bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher"
 
@@ -382,7 +384,6 @@ def get_bitcoind_version(docker_compose_path: str | Path = "docker-compose") -> 
         i
         for i in (
             run(f"{docker_compose_path} run --rm bitcoind bitcoind -version", q=True)
-            .assert_ok()
             .stdout.strip()
             .splitlines()
         )
@@ -447,7 +448,7 @@ def deploy(
             print(server_result.succeeded)
             sys.exit(1)
 
-        exec.run_on_hosts(
+        bitcoind_deploy = exec.run_on_hosts(
             lambda h: "server" not in h.tags,
             main_remote,
             wgsmap,
@@ -458,6 +459,10 @@ def deploy(
 
         time.sleep(2)
         exec.run(_run_cmd, "docker-compose ps")
+
+        if not bitcoind_deploy.ok:
+            print(f"bitcoind deploys failed: {bitcoind_deploy.failed}")
+            sys.exit(2)
 
 
 @cli.cmd
@@ -503,9 +508,9 @@ def rpc(cmd: str):
 @cli.cmd
 def wireguard_peer_template(hostname: str):
     wg_servers, hosts = get_hosts()
-    wgs = wg_servers['wg-bmon']
+    wgs = wg_servers["wg-bmon"]
     [host] = [h for h in hosts.values() if h.name == hostname]
-    wg = host.wireguards['wg-bmon']
+    wg = host.wireguards["wg-bmon"]
     print(wireguard.peer_config(wgs, wg))
 
 
