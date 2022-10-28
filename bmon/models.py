@@ -42,7 +42,7 @@ class LogProgress(models.Model):
 
 
 class Host(BaseModel):
-    name = models.CharField(max_length=256, unique=True)
+    name = models.CharField(max_length=256)
     cpu_info = models.CharField(max_length=1024)
     memory_bytes = models.FloatField()
     nproc = models.IntegerField(help_text="The number of processors")
