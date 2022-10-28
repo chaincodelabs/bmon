@@ -32,7 +32,7 @@ hosts:
         a: bitcoin-0.james.bmon.info
         endpoint: 10.8.1.1
         pubkey: /Qzuh/N11tPhzjCmq9+H+OzbeHnDLvniCPgxc+5R8l8=
-    bitcoin_version: v23.0
+    bitcoin_docker_tag: jamesob/bitcoind:23.0
 
   b-01.slug:
     tags: [bitcoind, vagrant]
@@ -47,7 +47,7 @@ hosts:
         pubkey: VzvkMZx+ZpzCmZvgFECohT1pa2QyC40qp7dHFaEzGn8=
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
-    bitcoin_version: v22.0
+    bitcoin_docker_tag: jamesob/bitcoind:22.0
 
   b-02.slug:
     tags: [bitcoind, vagrant]
@@ -62,7 +62,7 @@ hosts:
         pubkey: t/jLtFWsGaEy/RGp5ehcY7cVIdsKW8d1iJzTTUBmIxU=
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
-    bitcoin_version: v0.18.1
+    bitcoin_docker_tag: jamesob/bitcoind:0.18.1
         
   b-03.slug:
     tags: [bitcoind, vagrant]
@@ -78,7 +78,7 @@ hosts:
         pubkey: FCuA6MLGa5PuNX95ZKfjo9WodcI2r3u2792wy6gjxSw=
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
-    bitcoin_version: v0.19.1
+    bitcoin_docker_tag: jamesob/bitcoind:0.19.1
 
   b-04.slug:
     tags: [bitcoind, vagrant]
@@ -94,4 +94,4 @@ hosts:
         pubkey: L3DN/gKgDT9gF2qrvcybjV09MC9G4zT7u1Lsa34dTR4=
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
-    bitcoin_version: v22.0
+    bitcoin_docker_tag: jamesob/bitcoind:22.0

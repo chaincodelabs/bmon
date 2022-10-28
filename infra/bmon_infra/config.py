@@ -12,12 +12,17 @@ See also: ./infra.py, for how this is used to populate configuration on each hos
 
 import socket
 import getpass
+import json
+import os
+import typing as t
 from string import Template
 from pathlib import Path
 from types import SimpleNamespace
 
-from fscm import p
+import yaml
 from clii import App
+from fscm.contrib import wireguard
+from fscm import run, p
 
 
 cli = App()
@@ -61,14 +66,15 @@ LOKI_ADDRESS=${loki_host}:${loki_port}
 ALERTMAN_ADDRESS=${alertman_address}
 
 PROMTAIL_PORT=${promtail_port}
-BITCOIN_GITSHA=${bitcoin_gitsha}
-BITCOIN_GITREF=${bitcoin_gitref}
-BITCOIN_VERSION=${bitcoin_version}
 BITCOIN_DATA_PATH=${bitcoin_data_path}
 BITCOIN_FLAGS=${bitcoin_flags}
 BITCOIN_PRUNE=${bitcoin_prune}
 BITCOIN_DBCACHE=${bitcoin_dbcache}
 BITCOIN_DOCKER_TAG=${bitcoin_docker_tag}
+
+BITCOIN_GITSHA=${bitcoin_gitsha}
+BITCOIN_GITREF=${bitcoin_gitref}
+BITCOIN_VERSION=${bitcoin_version}
 
 # Version information, as actually written out by `bitcoind -version` after the
 # container is built.
@@ -83,10 +89,12 @@ SENTRY_DSN=${sentry_dsn}
 """
 
 
+DEV_HOSTS_FILE = "./infra/hosts_dev.yml"
+
 dev_settings = dict(
     bmon_env="dev",
     compose_profiles="bitcoind,server",
-    hosts_file="./infra/hosts_dev.yml",
+    hosts_file=DEV_HOSTS_FILE,
     root="./services/dev",
     uid=1000,
     db_host="db",
@@ -105,14 +113,10 @@ dev_settings = dict(
     loki_host="loki",
     alertman_address="alertman:9093",
     promtail_port=9080,
-    bitcoin_gitsha="",
-    bitcoin_gitref="",
-    bitcoin_version="",
     bitcoin_data_path="./services/dev/bitcoin/data/regtest",
     bitcoin_flags="-regtest",
     bitcoin_prune=0,
     bitcoin_dbcache=450,
-    bitcoin_docker_tag="latest",
     hostname=socket.gethostname(),
     pushover_user="",
     pushover_token="",
@@ -125,8 +129,92 @@ dev_settings = dict(
 )
 
 
-def dev_env() -> str:
+BMON_SSHKEY = Path.home() / ".ssh" / "bmon-ed25519"
+
+
+class Host(wireguard.Host):
+    def __init__(
+        self,
+        *args,
+        bitcoin_docker_tag: str | None = None,
+        bitcoin_prune: int = 0,
+        bitcoin_dbcache: int = 450,
+        prom_exporter_port: int | None = 9100,
+        bitcoind_exporter_port: int | None = 9332,
+        outbound_wireguard: str | None = None,
+        **kwargs,
+    ):
+        self.bitcoin_docker_tag = bitcoin_docker_tag
+        self.bitcoin_prune = bitcoin_prune
+        self.bitcoin_dbcache = bitcoin_dbcache
+        self.prom_exporter_port = prom_exporter_port
+        self.bitcoind_exporter_port = bitcoind_exporter_port
+        self.outbound_wireguard = outbound_wireguard
+
+        if BMON_SSHKEY.exists():
+            kwargs.setdefault("ssh_identity_file", BMON_SSHKEY)
+
+        super().__init__(*args, **kwargs)
+
+    @property
+    def bmon_ip(self):
+        """An IP that makes the host routable to any other bmon host."""
+        return self.wireguards["wg-bmon"].ip
+
+
+def get_hosts(
+    hosts_file_path: str | None = None,
+) -> tuple[dict[str, wireguard.Server], dict[str, Host]]:
+    """Return Host objects."""
+    hostsfile = Path(hosts_file_path or os.environ["BMON_HOSTS_FILE"])
+    data = yaml.safe_load(hostsfile.read_text())
+    hosts = {str(name): Host.from_dict(name, d) for name, d in data["hosts"].items()}
+
+    wg_servers: t.Dict[str, wireguard.Server] = {
+        name: wireguard.Server.from_dict(name, d)
+        for name, d in (data.get("wireguard") or {}).items()
+    }
+
+    return wg_servers, hosts  # type: ignore
+
+
+def get_dev_host() -> Host:
+    return [
+        i for i in list(get_hosts(DEV_HOSTS_FILE)[1].values()) if i.name == "bitcoind"
+    ][0]
+
+
+def get_bitcoind_hosts() -> t.Tuple[Host, ...]:
+    hosts = get_hosts()[1].values()
+    return tuple(h for h in hosts if "bitcoind" in h.tags)
+
+
+def dev_env(host) -> str:
+    dev_settings.update(get_bitcoin_image_labels(host))
+    dev_settings.update(
+        bitcoin_docker_tag=host.bitcoin_docker_tag)
     return Template(env_template).substitute(**dev_settings)
+
+
+def get_bitcoin_image_labels(host) -> dict:
+    """
+    TODO users of bmon shouldn't be required to make use of my docker image; figure
+        out a way to optionally fall back to more primitive means of getting bitcoind
+        params.
+    """
+    run(f"docker pull {host.bitcoin_docker_tag}")
+    labels = json.loads(
+        run(f"docker image inspect {host.bitcoin_docker_tag}", q=True)
+        .assert_ok()
+        .stdout
+    )[0]["Config"]["Labels"]
+    assert "bitcoin-version" in labels
+
+    return dict(
+        bitcoin_gitsha=labels["git-sha"],
+        bitcoin_gitref=labels["git-ref"],
+        bitcoin_version=labels["bitcoin-version"],
+    )
 
 
 def prod_settings(host, server_wireguard_ip: str) -> dict:
@@ -150,12 +238,9 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_network="",
         bitcoin_data_path="./services/prod/bitcoin/data",
         bitcoin_flags=bitcoin_flags,
-        bitcoin_gitsha=host.bitcoin_gitsha,
-        bitcoin_gitref=host.bitcoin_gitref,
         bitcoin_prune=host.bitcoin_prune,
         bitcoin_dbcache=host.bitcoin_dbcache,
-        bitcoin_version=host.bitcoin_version,
-        bitcoin_docker_tag=(host.bitcoin_version or "?").lstrip("v"),
+        bitcoin_docker_tag=(host.bitcoin_docker_image or "?").lstrip("v"),
         bitcoin_rpc_password=host.secrets.bitcoin_rpc_password,
         bmon_hostnmae=host.name,
         bitcoin_rpc_port=8332,
@@ -193,6 +278,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             alertman_address=f"{server_wireguard_ip}:9093",
             bitcoind_version_path="./services/prod/bmon/bitcoind_version",
         )
+        settings.update(get_bitcoin_image_labels(host))
 
     return settings
 
@@ -301,7 +387,8 @@ def make_env(
 ):
     # Don't autopopulate .env on prod; this happens in infra:deploy.
     if envtype == "dev":
-        p(envfile).contents(dev_env())
+        host = get_dev_host()
+        p(envfile).contents(dev_env(host))
 
     global ENV
     global ENVD

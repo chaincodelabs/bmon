@@ -18,4 +18,4 @@ hosts:
         ip: bitcoind
         endpoint: 10.8.1.1
         pubkey: /Qzuh/N11tPhzjCmq9+H+OzbeHnDLvniCPgxc+5R8l8=
-    bitcoin_version: v23.0
+    bitcoin_docker_tag: jamesob/bitcoind:v24.0rc2

@@ -7,7 +7,7 @@ from django.forms.models import model_to_dict
 
 from bmon import models
 from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
-from bmon_infra import infra
+from bmon_infra import infra, config
 
 api = NinjaAPI()
 
@@ -20,7 +20,7 @@ def _get_wireguard_ip(host):
 @api.get('/prom-config-bitcoind')
 def prom_config_bitcoind(_):
     """Dynamic configuration for bitcoind prometheus monitoring endpoints."""
-    bitcoind_hosts = [h for h in infra.get_hosts()[1].values() if 'bitcoind' in h.tags]
+    bitcoind_hosts = [h for h in config.get_hosts()[1].values() if 'bitcoind' in h.tags]
     out = []
 
     for host in bitcoind_hosts:
@@ -49,7 +49,7 @@ def prom_config_bitcoind(_):
 @api.get('/prom-config-server')
 def prom_config_server(_):
     """Dynamic configuration for bmon server prometheus monitoring endpoints."""
-    hosts = infra.get_hosts()[1].values()
+    hosts = config.get_hosts()[1].values()
     [server] = [h for h in hosts if 'server' in h.tags]
     wgip = _get_wireguard_ip(server)
 
@@ -65,7 +65,7 @@ def prom_config_server(_):
 @api.get('/hosts')
 def hosts(_):
     out = []
-    hosts = infra.get_bitcoind_hosts()
+    hosts = config.get_bitcoind_hosts()
     peer_info = gather_rpc(lambda r: r.getpeerinfo())
     chain_info = gather_rpc(lambda r: r.getblockchaininfo())
 

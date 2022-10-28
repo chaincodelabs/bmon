@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .rpc import BitcoinRpc
-from bmon_infra.infra import Host, get_bitcoind_hosts  # type: ignore
+import bmon_infra as infra
 
 from django.conf import settings
 
@@ -79,7 +79,7 @@ def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int =
 
 
 @lru_cache
-def get_rpc_for_hosts(hosts: t.Tuple[Host]) -> t.Dict[str, BitcoinRpc]:
+def get_rpc_for_hosts(hosts: t.Tuple[infra.Host]) -> t.Dict[str, BitcoinRpc]:
     # TODO: assumes that all hosts use same ports, credentials
     return {host.name: get_rpc(host.bmon_ip) for host in hosts}
 
@@ -95,7 +95,7 @@ def gather_rpc(rpc_call_arg: str | t.Callable[[BitcoinRpc], t.Any]) -> t.Dict[st
         rpc_call_arg: either a string that represents the RPC call or a
             function that takes the RPC object as its only argument.
     """
-    rpcmap = get_rpc_for_hosts(get_bitcoind_hosts())
+    rpcmap = get_rpc_for_hosts(infra.get_bitcoind_hosts())
     promises = {}
     results: dict[str, t.Any] = {}
 

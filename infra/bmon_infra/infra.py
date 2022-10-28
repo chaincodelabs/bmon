@@ -10,7 +10,6 @@ import typing as t
 from pathlib import Path
 from textwrap import dedent
 
-import yaml
 import fscm
 import fscm.remote
 from clii import App
@@ -19,6 +18,7 @@ from fscm.contrib import wireguard
 from fscm import run, p, lineinfile, systemd
 
 from . import config
+from .config import Host, get_hosts
 
 
 cli = App()
@@ -36,60 +36,7 @@ fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
 BMON_BITCOIND_EXPORTER_PORT = 9333
 SERVER_EXPORTER_PORT = 9334
 
-BMON_SSHKEY = Path.home() / ".ssh" / "bmon-ed25519"
 BMON_SSHPUBKEY = Path.home() / ".ssh" / "bmon-ed25519.pub"
-
-
-class Host(wireguard.Host):
-    def __init__(
-        self,
-        *args,
-        bitcoin_version: str | None = None,
-        bitcoin_gitref: str | None = None,
-        bitcoin_gitsha: str | None = None,
-        bitcoin_prune: int = 0,
-        bitcoin_dbcache: int = 450,
-        prom_exporter_port: int | None = 9100,
-        bitcoind_exporter_port: int | None = 9332,
-        outbound_wireguard: str | None = None,
-        **kwargs,
-    ):
-        self.bitcoin_version = bitcoin_version
-        self.bitcoin_prune = bitcoin_prune
-        self.bitcoin_dbcache = bitcoin_dbcache
-        self.bitcoin_gitref = bitcoin_gitref or ""
-        self.bitcoin_gitsha = bitcoin_gitsha or ""
-        self.prom_exporter_port = prom_exporter_port
-        self.bitcoind_exporter_port = bitcoind_exporter_port
-        self.outbound_wireguard = outbound_wireguard
-
-        if BMON_SSHKEY.exists():
-            kwargs.setdefault("ssh_identity_file", BMON_SSHKEY)
-
-        super().__init__(*args, **kwargs)
-
-    @property
-    def bmon_ip(self):
-        """An IP that makes the host routable to any other bmon host."""
-        return self.wireguards["wg-bmon"].ip
-
-
-def get_hosts() -> tuple[dict[str, wireguard.Server], dict[str, Host]]:
-    hostsfile = Path(os.environ["BMON_HOSTS_FILE"])
-    data = yaml.safe_load(hostsfile.read_text())
-    hosts = {str(name): Host.from_dict(name, d) for name, d in data["hosts"].items()}
-
-    wg_servers: t.Dict[str, wireguard.Server] = {
-        name: wireguard.Server.from_dict(name, d)
-        for name, d in (data.get("wireguard") or {}).items()
-    }
-
-    return wg_servers, hosts  # type: ignore
-
-
-def get_bitcoind_hosts() -> t.Tuple[Host, ...]:
-    hosts = get_hosts()[1].values()
-    return tuple(h for h in hosts if "bitcoind" in h.tags)
 
 
 def get_server_wireguard_ip() -> str:
@@ -217,18 +164,16 @@ def main_remote(
     ):
         run("systemctl restart systemd-journald", sudo=True).assert_ok()
 
-    os.chdir(BMON_PATH)
-    p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
-    run("bmon-config -t prod").assert_ok()
-
     if "server" in host.tags:
-        provision_bmon_server(parent, restart_spec)
+        provision_bmon_server(host, parent, server_wg_ip, restart_spec)
     elif "bitcoind" in host.tags:
         provision_monitored_bitcoind(host, parent, server_wg_ip, restart_spec)
 
 
 def provision_bmon_server(
+    host: Host,
     parent: fscm.remote.Parent,
+    server_wg_ip: str,
     restart_spec: str,
 ):
     assert (username := getpass.getuser()) != "root"
@@ -236,6 +181,10 @@ def provision_bmon_server(
     assert docker_compose.exists()
     pip = VENV_PATH / "bin" / "pip"
     assert pip.exists()
+
+    os.chdir(BMON_PATH)
+    p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
+    run("bmon-config -t prod").assert_ok()
 
     if not (VENV_PATH / "bin" / "pgcli").exists():
         run(f"{pip} install pgcli")
@@ -319,6 +268,14 @@ def provision_monitored_bitcoind(
     assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
     assert docker_compose.exists()
+
+    # We can't use docker-compose yet because the .env file may not necessarily exist
+    # yet, or it may be out of date in terms of the desired bitcoind version.
+    run(f"docker pull {host.bitcoin_docker_tag}")
+
+    os.chdir(BMON_PATH)
+    p(BMON_PATH / ".env").contents(config.prod_env(host, server_wg_ip)).chmod("600")
+    run("bmon-config -t prod").assert_ok()
 
     p("/etc/logrotate.d/bmon-bitcoind.conf", sudo=True).contents(
         parent.template(

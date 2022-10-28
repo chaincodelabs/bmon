@@ -187,7 +187,7 @@ services:
 
   bitcoind:
     profiles: ["bitcoind"]
-    image: jamesob/bitcoind:${BITCOIN_DOCKER_TAG}
+    image: ${BITCOIN_DOCKER_TAG}
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
@@ -348,7 +348,7 @@ services:
 
   bitcoind-02:
     profiles: ["dev"]
-    image: jamesob/bitcoind:${BITCOIN_DOCKER_TAG}
+    image: ${BITCOIN_DOCKER_TAG}
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/bitcoin-02/data:/bitcoin/data
