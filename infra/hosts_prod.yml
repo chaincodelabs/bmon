@@ -95,3 +95,17 @@ hosts:
     bitcoin_prune: 550 
     bitcoin_dbcache: 1200
     bitcoin_docker_tag: jamesob/bitcoind:22.0
+
+  ssd-1.ccl:
+    tags: [bitcoind]
+    ssh_hostname: ssd-1.ccl.bmon.j.co
+    check_host_keys: accept
+    username: ccl
+    wireguard:
+      wg-bmon:
+        ip: 10.33.0.50
+        endpoint: au92.org
+        pubkey: 17Zj7t2SD9Yy9BON350GgohO+uJ+84fzO5AtARU+yQE=
+    bitcoin_prune: 5000
+    bitcoin_dbcache: 3000
+    bitcoin_docker_tag: jamesob/bitcoind:master
