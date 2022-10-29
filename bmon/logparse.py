@@ -625,7 +625,56 @@ def dict_onto_event(d: dict[str, str], event: t.Any, type_map: t.Any) -> None:
 """
 # TODO
 
-got inv: tx {txid}  new peer={peer_id}
+
+## searching for "invalid" logs
+
+LogPrint(BCLog::MEMPOOL, "   invalid orphan tx %s from peer=%d. %s\n",
+    orphanHash.ToString(),
+    from_peer,
+    state.ToString());
+
+
+LogPrint(BCLog::NET, "peer %d requested invalid block hash: %s\n",
+         node.GetId(), stop_hash.ToString());
+node.fDisconnect = true;
+
+LogPrint(BCLog::NET, "peer %d sent invalid getcfilters/getcfheaders with " /* Continued */
+         "start height %d and stop height %d\n",
+         node.GetId(), start_height, stop_height);
+node.fDisconnect = true;
+
+
+LogPrint(BCLog::NET, "peer %d requested too many cfilters/cfheaders: %d / %d\n",
+         node.GetId(), stop_height - start_height + 1, max_height_diff);
+node.fDisconnect = true;
+
+
+LogPrintf("%s: Warning: Found invalid chain at least ~6 blocks longer than our best chain.\nChain state d       atabase corruption likely.\n", __func__);
+
+
+LogPrintf("%s: invalid block=%s  height=%d  log2_work=%f  date=%s\n", __func__,
+  pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
+  log(pindexNew->nChainWork.getdouble())/log(2.0), FormatISO8601DateTime(pindexNew->GetBlockTime()));
+
+LogPrint(BCLog::VALIDATION, "%s: %s prev block not found\n", __func__, hash.ToString());
+return state.Invalid(BlockValidationResult::BLOCK_MISSING_PREV, "prev-blk-not-found");
+
+
+LogPrint(BCLog::VALIDATION, "%s: %s prev block invalid\n", __func__, hash.ToString());
+
+LogPrint(BCLog::VALIDATION, "%s: not adding new block header %s, missing anti-dos proof-of-work validation", __func__, hash.ToString());
+
+
+
+## TODO searching for "warning" logs
+
+### Operational error?
+
+LogPrintf("Warning: Could not open blocks file %s\n", fs::PathToString(path));
+
+
+
+---
 
 Expired {count} transactions from the memory pool
 
