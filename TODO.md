@@ -1,3 +1,6 @@
+- [ ] "catch all" sentry logging for lines that look interesting: "warning", "invalid",
+  etc.
+
 For BG:
 
 - [ ] save parsed coinbase on block reception

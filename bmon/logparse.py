@@ -341,6 +341,7 @@ class _BlockEventListener(t.Protocol):
     """
     2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
     """
+
     event_type: str
     event_class: t.Type[BlockEvent]
 
@@ -600,6 +601,14 @@ class ConnectBlockListener:
             return completed
 
         return None
+
+
+# class MempoolExpiryListener:
+#     _patt = re.compile(
+#         r"Expired (?P<expired_num>\d+) transactions from the memory pool"
+#     )
+#     def process_line(self, line: str):
+#         pass
 
 
 def dict_onto_event(d: dict[str, str], event: t.Any, type_map: t.Any) -> None:

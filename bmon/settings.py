@@ -21,7 +21,7 @@ from sentry_sdk.integrations.django import DjangoIntegration
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 HOSTNAME = os.environ.get('BMON_HOSTNAME', 'FIXME')
-TESTING = bool(os.environ.get('BMON_TESTING', False))
+TESTING = False
 
 # Only bitcoind-monitoring nodes have a local Redis cache.
 REDIS_LOCAL_URL = os.environ.get('BMON_REDIS_LOCAL_URL')

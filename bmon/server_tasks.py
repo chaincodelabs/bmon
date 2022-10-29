@@ -22,7 +22,9 @@ from bmon.bitcoin.api import gather_rpc, RPC_ERROR_RESULT
 
 log = logging.getLogger(__name__)
 
-server_q = RedisHuey("bmon-server", url=settings.REDIS_SERVER_URL)
+server_q = RedisHuey(
+    "bmon-server", url=settings.REDIS_SERVER_URL, immediate=settings.TESTING
+)
 
 
 @server_q.periodic_task(crontab(minute="*/10"))
@@ -60,10 +62,10 @@ def persist_bitcoind_event(event: dict, _: str):
     if Model == models.MempoolReject:
         # XXX this is an ugly hack: Django doesn't suffix with "_id" in `model_to_dict`;
         # come up with a better way of dealing with this.
-        event['peer_id'] = event.pop('peer')
+        event["peer_id"] = event.pop("peer")
 
-    if 'host' in event:
-        event['host_id'] = event.pop('host')
+    if "host" in event:
+        event["host_id"] = event.pop("host")
 
     instance = Model.objects.create(**event)
     print(f"Saved {instance}")

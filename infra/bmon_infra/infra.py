@@ -91,12 +91,13 @@ def main_remote(
     server_wg_ip: str,
     restart_spec: str = "",
     ssh_pubkey: str = "",
+    sync_to_tip: bool = False,
 ):
     assert (user := getpass.getuser()) != "root"
 
     fscm.s.pkgs_install(
-        "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp "
-        "ripgrep libpq5 netcat jq"
+        "git docker.io curl python3-venv python3-pip tcpdump nmap ntp "
+        "ripgrep libpq5 netcat-traditional jq"
     )
     fscm.s.group_member(user, "docker")
     p(docker := Path.home() / ".docker").mkdir()
@@ -169,7 +170,9 @@ def main_remote(
     if "server" in host.tags:
         provision_bmon_server(host, parent, server_wg_ip, restart_spec)
     elif "bitcoind" in host.tags:
-        provision_monitored_bitcoind(host, parent, server_wg_ip, restart_spec)
+        provision_monitored_bitcoind(
+            host, parent, server_wg_ip, restart_spec, sync_to_tip
+        )
 
 
 def provision_bmon_server(
@@ -266,10 +269,11 @@ def provision_monitored_bitcoind(
     parent: fscm.remote.Parent,
     server_wg_ip: str,
     restart_spec: str,
+    sync_to_tip: bool = False,
 ):
     assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
-    python = VENV_PATH / 'bin' / 'python'
+    python = VENV_PATH / "bin" / "python"
     assert docker_compose.exists()
 
     # We can't use docker-compose yet because the .env file may not necessarily exist
@@ -334,15 +338,17 @@ def provision_monitored_bitcoind(
             # of it during the mount process of bitcoind-watcher.
             run(f"touch {btc_data}/debug.log")
             print(f"Installed prepopulated pruned dir at {btc_data}")
+            sync_to_tip = True
 
-            # Sync to tip so that we don't generate a bunch of spurious events
-            run(f"{docker_compose} pull bitcoind")
-            run(f"{docker_compose} up -d bitcoind")
-            got = run(f"{python} dev bitcoind-wait-for-synced").stdout
-            assert 'Synced to height' in got
-            run(f"{docker_compose} stop bitcoind")
-            run(f"rm {btc_data}/debug.log")
-            run(f"touch {btc_data}/debug.log")
+    if sync_to_tip:
+        # Sync to tip so that we don't generate a bunch of spurious events
+        run(f"{docker_compose} pull bitcoind")
+        run(f"{docker_compose} up -d bitcoind")
+        got = run(f"{python} dev bitcoind-wait-for-synced").stdout
+        assert "Synced to height" in got
+        run(f"{docker_compose} stop bitcoind")
+        run(f"rm {btc_data}/debug.log")
+        run(f"touch {btc_data}/debug.log")
 
     p(services_path / "bmon" / "credentials" / "chaincode-gcp.json").contents(
         json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)  # type: ignore
@@ -375,7 +381,10 @@ def provision_monitored_bitcoind(
         run(f"{docker_compose} rm -f {services}")
         run(f"{docker_compose} up -d {services}")
 
-    alwaysrestart = "bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher"
+    alwaysrestart = (
+        "bitcoind-task-worker bitcoind-mempool-worker bitcoind-watcher "
+        "bitcoind-monitor"
+    )
 
     match restart_spec:
         case "":
@@ -407,6 +416,7 @@ def get_bitcoind_version(docker_compose_path: str | Path = "docker-compose") -> 
 def deploy(
     rebuild_docker: bool = False,
     restart: str = "",
+    sync_to_tip: bool = False,
 ):
     """
     Provision necessary dependencies and config files on hosts.
@@ -426,6 +436,12 @@ def deploy(
             "architecture - otherwise database connections will be stale."
         )
         sys.exit(1)
+
+    if sync_to_tip:
+        print("WARNING: sync_to_tip will potentially blow away debug.log data!")
+        print("WARNING: it should only be called on new nodes.")
+        if input("Are you sure you want to proceed? [y/N] ") != "y":
+            sys.exit(0)
 
     wgsmap, hostmap = get_hosts_for_cli()
     hosts = list(hostmap.values())
@@ -465,14 +481,15 @@ def deploy(
             server_wg_ip,
             restart,
             ssh_pubkey=ssh_pubkey,
+            sync_to_tip=sync_to_tip,
         )
-
-        time.sleep(2)
-        exec.run(_run_cmd, "docker-compose ps")
 
         if not bitcoind_deploy.ok:
             print(f"bitcoind deploys failed: {bitcoind_deploy.failed}")
             sys.exit(2)
+        else:
+            time.sleep(2)
+            exec.run(_run_cmd, "docker-compose ps")
 
 
 def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):
@@ -525,12 +542,6 @@ def bootstrap(host: str, sudo_pass: str, regular_user: str):
         got = s.call(bootstrap_bitcoind, regular_user, bmon_pubkey)
 
         print(f"Wireguard pubkey for {host}: {got}")
-
-
-@cli.cmd
-def status():
-    """Check status on hosts."""
-    runall("supervisorctl status")
 
 
 @cli.cmd

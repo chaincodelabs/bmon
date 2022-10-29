@@ -14,6 +14,7 @@ import time
 import sys
 import subprocess
 import functools
+import os
 
 import clii
 
@@ -21,6 +22,8 @@ from bmon_infra import infra, config
 from fscm import p
 
 cli = clii.App()
+
+os.environ['PYTHONUNBUFFERED'] = '1'
 
 
 def sh(cmd, **kwargs):
