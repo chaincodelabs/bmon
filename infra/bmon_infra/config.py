@@ -141,6 +141,7 @@ class Host(wireguard.Host):
         bitcoin_docker_tag: str | None = None,
         bitcoin_prune: int = 0,
         bitcoin_dbcache: int = 450,
+        bitcoin_extra_args: str | None = None,
         prom_exporter_port: int | None = 9100,
         bitcoind_exporter_port: int | None = 9332,
         outbound_wireguard: str | None = None,
@@ -149,6 +150,7 @@ class Host(wireguard.Host):
         self.bitcoin_docker_tag = bitcoin_docker_tag
         self.bitcoin_prune = bitcoin_prune
         self.bitcoin_dbcache = bitcoin_dbcache
+        self.bitcoin_extra_args = bitcoin_extra_args
         self.prom_exporter_port = prom_exporter_port
         self.bitcoind_exporter_port = bitcoind_exporter_port
         self.outbound_wireguard = outbound_wireguard
@@ -222,7 +224,7 @@ def get_bitcoin_image_labels(host) -> dict:
 def prod_settings(host, server_wireguard_ip: str) -> dict:
     # Don't print to console in prod; everything is done on the basis of the debug.log
     # anyway, so the stdout will just waste journald space.
-    bitcoin_flags = "-printtoconsole=0"
+    bitcoin_flags = f"-printtoconsole=0 {host.bitcoin_extra_args or ''}".strip()
 
     if host.bitcoin_prune is not None:
         bitcoin_flags += f" -prune={host.bitcoin_prune}"
