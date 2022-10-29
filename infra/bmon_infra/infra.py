@@ -12,6 +12,7 @@ from textwrap import dedent
 
 import fscm
 import fscm.remote
+import fscm.contrib.python
 from clii import App
 from fscm.remote import executor
 from fscm.contrib import wireguard
@@ -31,14 +32,13 @@ VENV_PATH = Path.home() / ".venv"
 BMON_PATH = Path.home() / "bmon"
 
 fscm.remote.OPTIONS.pickle_whitelist = [r"bmon_infra\..*"]
+fscm.settings.run_safe = True
 
 
 BMON_BITCOIND_EXPORTER_PORT = 9333
 SERVER_EXPORTER_PORT = 9334
 
 BMON_SSHPUBKEY = Path.home() / ".ssh" / "bmon-ed25519.pub"
-
-fscm.settings.run_safe = True
 
 
 def get_server_wireguard_ip() -> str:
@@ -96,7 +96,7 @@ def main_remote(
 
     fscm.s.pkgs_install(
         "git supervisor docker.io curl python3-venv python3-pip tcpdump nmap ntp "
-        "ripgrep libpq5"
+        "ripgrep libpq5 netcat jq"
     )
     fscm.s.group_member(user, "docker")
     p(docker := Path.home() / ".docker").mkdir()
@@ -269,6 +269,7 @@ def provision_monitored_bitcoind(
 ):
     assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
+    python = VENV_PATH / 'bin' / 'python'
     assert docker_compose.exists()
 
     # We can't use docker-compose yet because the .env file may not necessarily exist
@@ -333,6 +334,15 @@ def provision_monitored_bitcoind(
             # of it during the mount process of bitcoind-watcher.
             run(f"touch {btc_data}/debug.log")
             print(f"Installed prepopulated pruned dir at {btc_data}")
+
+            # Sync to tip so that we don't generate a bunch of spurious events
+            run(f"{docker_compose} pull bitcoind")
+            run(f"{docker_compose} up -d bitcoind")
+            got = run(f"{python} dev bitcoind-wait-for-synced").stdout
+            assert 'Synced to height' in got
+            run(f"{docker_compose} stop bitcoind")
+            run(f"rm {btc_data}/debug.log")
+            run(f"touch {btc_data}/debug.log")
 
     p(services_path / "bmon" / "credentials" / "chaincode-gcp.json").contents(
         json.dumps(host.secrets.chaincode_gcp_service_account.__dict__)  # type: ignore
@@ -465,6 +475,58 @@ def deploy(
             sys.exit(2)
 
 
+def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):
+    assert fscm.s.is_debian() or fscm.s.is_ubuntu()
+    home = Path(f"/home/{regular_user}")
+
+    fscm.contrib.python.install_python3()
+    fscm.s.pkgs_install(
+        "sudo vim git docker.io curl tcpdump nmap netcat ntp ripgrep libpq5 "
+        "wireguard-tools"
+    )
+    fscm.s.group_member(regular_user, "docker")
+    p(docker := home / ".docker").mkdir()
+    p(docker / "config.json").contents('{ "detachKeys": "ctrl-z,z" }')
+
+    if bmon_pubkey:
+        auth_keys = home / ".ssh/authorized_keys"
+        fscm.lineinfile(auth_keys, bmon_pubkey, bmon_pubkey[:30])
+        p(auth_keys).chown(f"{regular_user}:{regular_user}")
+
+    wgkey = Path("/etc/wireguard/wg-bmon-privkey")
+    pubkey = ""
+    if not wgkey.exists():
+        pubkey = run(f"wg genkey | tee {wgkey} | wg pubkey").stdout.strip()
+        run(f"cat {wgkey}")
+    else:
+        pubkey = run(f"cat {wgkey} | wg pubkey", q=True).stdout.strip()
+
+    fscm.s.group_member(regular_user, "sudo")
+
+    return pubkey
+
+
+@cli.cmd
+def bootstrap(host: str, sudo_pass: str, regular_user: str):
+    """Bootstrap a bitcoind node."""
+    host = host
+    username = getpass.getuser()
+    if "@" in host:
+        username, host = host.split("@")
+    bmon_pubkey = BMON_SSHPUBKEY.read_text() if BMON_SSHPUBKEY.exists() else ""
+
+    with fscm.remote.mitogen_context(
+        hostname=host, username=username, password=sudo_pass
+    ) as (
+        router,
+        context,
+    ):
+        s = router.su(via=context, password=sudo_pass)
+        got = s.call(bootstrap_bitcoind, regular_user, bmon_pubkey)
+
+        print(f"Wireguard pubkey for {host}: {got}")
+
+
 @cli.cmd
 def status():
     """Check status on hosts."""
@@ -505,13 +567,17 @@ def rpc(cmd: str):
         exec.run(_run_cmd, f"docker-compose run --rm shell bmon-util rpc {cmd}")
 
 
-@cli.cmd
-def wireguard_peer_template(hostname: str):
+def get_wireguard_peer_template(hostname: str):
     wg_servers, hosts = get_hosts()
     wgs = wg_servers["wg-bmon"]
     [host] = [h for h in hosts.values() if h.name == hostname]
     wg = host.wireguards["wg-bmon"]
-    print(wireguard.peer_config(wgs, wg))
+    return wireguard.peer_config(wgs, wg)
+
+
+@cli.cmd
+def wireguard_peer_template(hostname: str):
+    print(get_wireguard_peer_template(hostname))
 
 
 def _run_cmd(cmd: str, sudo: bool = False):
