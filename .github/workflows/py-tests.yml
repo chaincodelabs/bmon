@@ -32,6 +32,7 @@ jobs:
 
     - name: pytest
       run: |
+        bmon-config
         pytest -vv bmon/
 
     - name: mypy
