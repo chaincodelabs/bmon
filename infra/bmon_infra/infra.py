@@ -4,6 +4,7 @@ import os
 import time
 import sys
 import json
+import subprocess
 import getpass
 import re
 import typing as t
@@ -589,6 +590,34 @@ def get_wireguard_peer_template(hostname: str):
 @cli.cmd
 def wireguard_peer_template(hostname: str):
     print(get_wireguard_peer_template(hostname))
+
+
+def _run_rg(query: str, tail_limit: int, context: int):
+    os.chdir('./bmon/services/prod/bitcoin/data')
+    context = '' if context == -1 else f'-C {context}'
+    cmd = f"rg --color=always -z {context} '{query}' debug.log*"
+    if tail_limit != -1:
+        cmd += f"| tail -n {tail_limit}"
+
+    return subprocess.run(cmd, shell=True, capture_output=True).stdout
+
+
+@cli.cmd
+@cli.arg('tail_limit', '-n')
+@cli.arg('context', '-C')
+def rg(search_query: str, tail_limit: int = -1, context: int = -1):
+    """Ripgrep through the bitcoind logs."""
+    cli.args.tag_filter = 'bitcoind'
+
+    _, hostmap = get_hosts_for_cli(need_secrets=False)
+    hosts = list(hostmap.values())
+    with executor(*hosts) as exec:
+        got = exec.run(_run_rg, search_query, tail_limit, context)
+
+        for host, result in got.all_results.items():
+            for res in result.splitlines():
+                print(f"{host.name:<12} |  ", end="")
+                print(res.strip().decode())
 
 
 def _run_cmd(cmd: str, sudo: bool = False):
