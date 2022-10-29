@@ -84,6 +84,7 @@ def bitcoind_wait_for_synced():
     backoff_secs = 2
     is_synced = False
     got = {}
+    i = 0
 
     while tries and not is_synced:
         try:
@@ -97,6 +98,12 @@ def bitcoind_wait_for_synced():
             backoff_secs *= 2
         else:
             is_synced = float(got["verificationprogress"]) > 0.9999
+            time.sleep(1)
+
+            if i % 100 == 0:
+                print(f"At height {got['blocks']} ({got['verificationprogress']})")
+
+            i += 1
 
     if not is_synced:
         print("Failed to sync!")
