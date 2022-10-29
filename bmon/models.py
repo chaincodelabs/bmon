@@ -146,6 +146,24 @@ class Peer(BaseModel):
     __str__ = __repr__
 
 
+class PeerStats(BaseModel):
+    """
+    Interesting aggregates periodically pulled from each bitcoind host.
+    """
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
+    num_peers = models.IntegerField()
+
+    ping_mean = models.FloatField()
+    ping_min = models.FloatField()
+    ping_max = models.FloatField()
+
+    bytesrecv = models.FloatField()
+    bytessent = models.FloatField()
+
+    bytesrecv_per_msg = models.JSONField()
+    bytessent_per_msg = models.JSONField()
+
+
 class RequestBlockEvent(BaseModel):
     """
     node0 2022-10-22T14:22:49.356891Z [msghand] [net_processing.cpp:2653] [HeadersDirectFetchBlocks] [net] Requesting block 7c06da428d44f32c0a77f585a44181d3f71fcbc55b44133d60d6941fa9165b0d from  peer=0

@@ -92,6 +92,66 @@ def sync_peer_data(peer_id: None | int = None):
     sync_peer_data_blocking(peer_id)
 
 
+@events_q.periodic_task(crontab(minute="*"))
+def compute_peer_stats():
+    compute_peer_stats_blocking()
+
+
+def compute_peer_stats_blocking(peerinfo: list[dict] | None = None):
+    try:
+        peerinfo = peerinfo or get_rpc().getpeerinfo()
+    except Exception:
+        log.exception("failed to get peerinfo")
+        return
+
+    if not peerinfo:
+        log.warning("exiting early - no peerinfo")
+        return
+
+    minping = 1000000.
+    maxping = 0.
+    pingsum = 0.
+    bytesrecv = 0
+    bytessent = 0
+    recv_per_msg = {}
+    sent_per_msg = {}
+
+    for p in peerinfo:
+        pingtime = float(p['pingtime'])
+        if pingtime < minping:
+            minping = pingtime
+        if pingtime > maxping:
+            maxping = pingtime
+        pingsum += pingtime
+
+        bytesrecv += p['bytesrecv']
+        bytessent += p['bytessent']
+
+        for msg, val in p['bytesrecv_per_msg'].items():
+            if msg not in recv_per_msg:
+                recv_per_msg[msg] = 0
+            recv_per_msg[msg] += val
+
+        for msg, val in p['bytessent_per_msg'].items():
+            if msg not in sent_per_msg:
+                sent_per_msg[msg] = 0
+            sent_per_msg[msg] += val
+
+    meanping = pingsum / len(peerinfo)
+
+    return models.PeerStats.objects.create(
+        host=get_latest_host(),
+        num_peers=len(peerinfo),
+        ping_min=minping,
+        ping_max=maxping,
+        ping_mean=meanping,
+        bytesrecv=bytesrecv,
+        bytessent=bytessent,
+        bytesrecv_per_msg=recv_per_msg,
+        bytessent_per_msg=sent_per_msg,
+    )
+
+
 def sync_peer_data_blocking(peer_id: None | int = None) -> dict[int, int]:
     """
     Periodically cache our getpeerinfo in redis.
@@ -236,12 +296,19 @@ def watch_bitcoind_logs():
 
     sync_peer_data()
     host = create_host_record()
+    compute_peer_stats()
 
     log_progress = models.LogProgress.objects.filter(hostname=host.name).first()
     start_log_cursor = log_progress.loghash if log_progress else None
 
     for line in logparse.read_logfile_forever(filename, start_log_cursor):
         process_line(line, host)
+
+
+def get_latest_host() -> models.Host:
+    h = models.Host.objects.filter(name=settings.HOSTNAME).order_by('-id').first()
+    assert h
+    return h
 
 
 def create_host_record():
@@ -271,9 +338,9 @@ def create_host_record():
     )
 
     if created:
-        log.info("Created new host record: {host}")
+        log.info(f"Created new host record: {host}")
     else:
-        log.info("Booting with existing host record: {host}")
+        log.info(f"Booting with existing host record: {host}")
 
     return host
 
