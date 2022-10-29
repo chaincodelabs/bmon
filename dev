@@ -87,7 +87,7 @@ def bitcoind_wait_for_synced():
 
     while tries and not is_synced:
         try:
-            got = json.loads(bitcoinrpc("getblockchaininfo"))
+            got = json.loads(bitcoinrpc("getblockchaininfo").stdout)
         except Exception as e:
             print(f"exception getting verification progress: {e}")
             tries -= 1
