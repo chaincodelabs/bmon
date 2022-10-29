@@ -79,17 +79,21 @@ def read_logfile_forever(
 
     while True:
         while True:
+            # I'm doing this awkward "manual scan" for newlines because I found
+            # file.readline() to be flakey; there were occasional misreads that
+            # would smash lines together. This manual scan method seems to work
+            # and is performant enough for my needs.
             got: str = current.read(1024)
 
             if not got:
                 # Out of contents
                 break
             elif "\n" in got:
-                # The chunk we retrieved may have multiple lines, so yield multiple
-                # if need be.
                 lines = got.split("\n")
                 assert len(lines) >= 2
 
+                # The chunk we retrieved may have multiple lines, so yield multiple
+                # if need be.
                 [end_of_current, *middle_lines, next_curr_line] = lines
 
                 yield (sent_line := curr_line + end_of_current)
@@ -178,7 +182,7 @@ class LogfilePosManager:
 
 def linehash(w: str) -> str:
     """
-    A fast, non-cryptographic line hash.
+    A fastish, non-cryptographic line hash.
     """
     return hashlib.md5(w.encode()).hexdigest()
 
