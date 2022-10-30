@@ -64,7 +64,7 @@ services:
 
   grafana:
     profiles: ["server"]
-    image: docker.io/grafana/grafana-enterprise:8.3.4
+    image: docker.io/grafana/grafana-enterprise:9.2.2
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/grafana/etc:/etc/grafana
