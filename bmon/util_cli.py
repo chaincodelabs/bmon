@@ -1,6 +1,9 @@
-from clii import App
 import pprint
+import logging
+from functools import lru_cache
+from collections import defaultdict
 
+from clii import App
 import fastavro
 from django.conf import settings
 from django import db
@@ -12,9 +15,10 @@ try:
 except Exception:
     bitcoind_tasks = None  # type: ignore
 
-from .bitcoin.api import gather_rpc
+from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
 from . import logparse
 
+log = logging.getLogger(__name__)
 cli = App()
 
 
@@ -65,6 +69,52 @@ def shipmempool() -> None:
 def rpc(*cmd) -> None:
     """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
     pprint.pprint(gather_rpc(" ".join(cmd)))
+
+
+@cli.cmd
+def compare_mempools() -> None:
+    mempools = gather_rpc("getrawmempool")
+    host_to_set = {}
+
+    for host, res in mempools.items():
+        if res == RPC_ERROR_RESULT:
+            log.warning("unable to retrieve mempool for %s; skipping", host)
+            continue
+        host_to_set[host] = set(res)
+
+    all_hosts = set(host_to_set.keys())
+    num_hosts = len(host_to_set)
+    over_half = (num_hosts // 2) + 1
+
+    @lru_cache
+    def hosts_with_txid(txid: str) -> tuple[str, ...]:
+        return tuple(h for h, pool in host_to_set.items() if txid in pool)
+
+    all_tx = set()
+
+    for pool in host_to_set.values():
+        all_tx.update(pool)
+
+    results = defaultdict(lambda: defaultdict(list))
+
+    for tx in all_tx:
+        hosts = hosts_with_txid(tx)
+
+        if len(hosts) == 1:
+            results['unique'][hosts[0]].append(tx)
+        elif len(hosts) >= over_half:
+            for host in (all_hosts - set(hosts)):
+                results['missing'][host].append(tx)
+        elif len(hosts) < over_half:
+            for host in hosts:
+                results['have_uncommon'][host].append(tx)
+
+    def default_to_regular(d):
+        if isinstance(d, defaultdict):
+            d = {k: default_to_regular(v) for k, v in d.items()}
+        return d
+
+    pprint.pprint(default_to_regular(results))
 
 
 def main() -> None:
