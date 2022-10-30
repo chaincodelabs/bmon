@@ -1,3 +1,5 @@
+- [ ] alert on low peer count
+- [ ] alert on high mean ping time
 - [ ] "catch all" sentry logging for lines that look interesting: "warning", "invalid",
   etc.
 
