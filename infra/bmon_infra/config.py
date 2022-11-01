@@ -27,7 +27,7 @@ from fscm import run, p
 
 cli = App()
 ENV = SimpleNamespace()
-ENVD = {}
+ENVD: dict[str, str] = {}
 
 env_template = """
 BMON_ENV=${bmon_env}

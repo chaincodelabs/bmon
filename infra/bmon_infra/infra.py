@@ -594,8 +594,8 @@ def wireguard_peer_template(hostname: str):
 
 def _run_rg(query: str, tail_limit: int, context: int):
     os.chdir('./bmon/services/prod/bitcoin/data')
-    context = '' if context == -1 else f'-C {context}'
-    cmd = f"rg --color=always -z {context} '{query}' debug.log*"
+    context_str = '' if context == -1 else f'-C {context}'
+    cmd = f"rg --color=always -z {context_str} '{query}' debug.log*"
     if tail_limit != -1:
         cmd += f"| tail -n {tail_limit}"
 
