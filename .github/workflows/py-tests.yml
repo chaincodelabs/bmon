@@ -31,4 +31,5 @@ jobs:
 
     - name: mypy
       run: |
+        rm -rf infra/build
         docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c 'mypy bmon/ && mypy infra/'
