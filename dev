@@ -19,11 +19,11 @@ import os
 import clii
 
 from bmon_infra import infra, config
-from fscm import p
+from fscm import p, RunReturn
 
 cli = clii.App()
 
-os.environ['PYTHONUNBUFFERED'] = '1'
+os.environ["PYTHONUNBUFFERED"] = "1"
 
 
 def sh(cmd, **kwargs):
@@ -183,36 +183,40 @@ def cleardata():
     sh("bmon-config")
 
 
+def _testrun(cmd: str) -> bool:
+    return sh(
+        f"docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '{cmd}'"
+    ).returncode == 0
+
+
 @cli.cmd
 @dev_only
-def test(mypy: bool = False):
+def test(run_mypy: bool = False):
     """Run automated tests."""
-    mypy_ok = True
 
-    lint_ok = (
-        sh(
-            "docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c "
-            "'flake8 bmon/ && flake8 infra/'"
-        ).returncode
-        == 0
-    )
+    flake8_command = "flake8 %s --count --show-source --statistics"
 
-    if mypy:
-        mypy_ok = (
-            sh(
-                "docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c "
-                "'mypy bmon/ && mypy infra/'"
-            ).returncode
-            == 0
-        )
+    bmon_failed = not _testrun(flake8_command % 'bmon/')
+    infra_failed = not _testrun(flake8_command % 'infra/')
 
-    test_ok = sh("docker-compose run --rm test pytest -vv bmon").returncode == 0
+    if run_mypy:
+        mypy()
 
-    if not lint_ok:
+    test_failed = not _testrun("pytest -vv bmon")
+
+    if bmon_failed or infra_failed:
         sys.exit(1)
-    if not test_ok:
+    if test_failed:
         sys.exit(2)
-    if not mypy_ok:
+
+
+@cli.cmd
+@dev_only
+def mypy():
+    bmon_failed = not _testrun("mypy bmon/")
+    infra_failed = not _testrun("mypy --exclude infra/build infra/")
+
+    if bmon_failed or infra_failed:
         sys.exit(3)
 
 
