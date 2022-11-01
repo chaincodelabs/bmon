@@ -17,7 +17,7 @@ jobs:
 
     - name: create config
       run: |
-        pip install infra
+        pip install ./infra
         bmon-config
 
     - name: flake8
