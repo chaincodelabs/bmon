@@ -1,4 +1,5 @@
 from bmon.settings import *  # noqa
+from bmon import settings
 
 DEBUG = True
 TESTING = True
@@ -16,3 +17,6 @@ REDIS_HOST = "redis"
 REDIS_LOCAL_HOST = "redis"
 
 HOSTNAME = "test"
+
+BITCOIN_DBCACHE = settings.BITCOIN_DBCACHE or '1000'
+BITCOIN_PRUNE = settings.BITCOIN_PRUNE or '550'

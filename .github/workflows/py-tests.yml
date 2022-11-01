@@ -3,39 +3,30 @@ name: build
 on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11.0-rc.2"]
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.11'
 
-    - name: Install test dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install ./infra
-        pip install .[tests]
+    - name: Build containers
+      run: docker-compose build test
+
+    - name: create config
+      run: bmon-config
 
     - name: flake8
       run: |
-        flake8 bmon/ --count --show-source --statistics
-        flake8 infra/ --count --show-source --statistics
+        docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c 'flake8 bmon/ && flake8 infra/'
 
     - name: pytest
       run: |
         bmon-config
-        pytest -vv bmon/
+        docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c 'pytest -vv bmon'
 
     - name: mypy
       run: |
-        mypy bmon/
-        mypy infra/
+        docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c 'mypy bmon/ && mypy infra/'
