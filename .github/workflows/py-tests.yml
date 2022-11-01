@@ -16,7 +16,9 @@ jobs:
       run: docker-compose build test
 
     - name: create config
-      run: bmon-config
+      run: |
+        pip install infra
+        bmon-config
 
     - name: flake8
       run: |
