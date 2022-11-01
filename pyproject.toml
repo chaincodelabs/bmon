@@ -43,6 +43,7 @@ tests = [
     'django-stubs',
     'mypy',
     'flake8',
+    'types-redis',
 ]
 
 [tool.setuptools]

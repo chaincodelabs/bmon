@@ -16,7 +16,8 @@ except Exception:
     bitcoind_tasks = None  # type: ignore
 
 from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
-from . import logparse
+from . import logparse, models
+
 
 log = logging.getLogger(__name__)
 cli = App()
@@ -26,7 +27,9 @@ cli = App()
 def feedline(line: str) -> None:
     """Manually process a logline. Useful for testing in dev."""
     assert bitcoind_tasks
-    bitcoind_tasks.process_line(line)
+    host = models.Host.objects.filter(name=settings.HOSTNAME).order_by('-id').first()
+    assert host
+    bitcoind_tasks.process_line(line, host)
 
 
 @cli.cmd
@@ -43,13 +46,15 @@ def run_listener(listener_name: str) -> None:
     """Rerun a listener over all bitcoind log lines."""
     assert bitcoind_tasks
     listeners = [getattr(logparse, listener_name)()]
+    host = models.Host.objects.filter(name=settings.HOSTNAME).order_by('-id').first()
+    assert host
 
     assert settings.BITCOIND_LOG_PATH
     with open(settings.BITCOIND_LOG_PATH, "r", errors="ignore") as f:
         for line in f:
             try:
                 bitcoind_tasks.process_line(
-                    line, listeners=listeners, modify_log_pos=False
+                    line, host, listeners=listeners, modify_log_pos=False
                 )
             except db.IntegrityError:
                 pass
@@ -95,7 +100,7 @@ def compare_mempools() -> None:
     for pool in host_to_set.values():
         all_tx.update(pool)
 
-    results = defaultdict(lambda: defaultdict(list))
+    results: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
 
     for tx in all_tx:
         hosts = hosts_with_txid(tx)
