@@ -3,6 +3,7 @@ import json
 import cProfile
 import time
 import pstats
+import huey
 
 from django.db import models
 from django.db.models.sql.query import Query
@@ -57,3 +58,30 @@ def exec_tasks(n, huey_instance):
 
 def exec_mempool_tasks(n):
     return exec_tasks(n, server_tasks.mempool_q)
+
+
+def clean_queue(q: huey.RedisHuey):
+    num_exs = 0
+    re = 0
+    processed = 0
+
+    while True:
+        try:
+            t = q.dequeue()
+        except Exception:
+            num_exs += 1
+
+        if not t:
+            break
+
+        if 'process_' in str(t):
+            continue
+        else:
+            q.enqueue(t)
+            re += 1
+
+        if processed % 1000 == 0:
+            print(processed)
+
+    print(f"exceptions: {num_exs}")
+    print(f"requeued: {re}")
