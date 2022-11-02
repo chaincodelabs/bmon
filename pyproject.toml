@@ -16,7 +16,7 @@ dependencies = [
     'importlib-metadata; python_version<"3.10"',
     'psycopg2',  # for postgresql support
     'django',
-    'redis',
+    'redis[hiredis]',
     'huey',
     'walrus',
     'django-ninja',

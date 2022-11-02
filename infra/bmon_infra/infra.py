@@ -244,21 +244,21 @@ def provision_bmon_server(
     # Files, like pruned datadirs, will be served out of here.
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
-    # Update the docker image.
-    run(f"{docker_compose} pull web")
-    run(f"{docker_compose} run --rm web ./manage.py migrate")
-
-    def cycle(services):
-        run(f"{docker_compose} stop {services}")
-        run(f"{docker_compose} rm -f {services}")
-        run(f"{docker_compose} up -d {services}")
-
     always = " ".join([
         "web",
         "server-task-worker",
         "server-mempool-task-worker",
         "server-monitor",
     ])
+
+    # Update the docker image.
+    run(f"{docker_compose} pull {always}")
+    run(f"{docker_compose} run --rm web ./manage.py migrate")
+
+    def cycle(services):
+        run(f"{docker_compose} stop {services}")
+        run(f"{docker_compose} rm -f {services}")
+        run(f"{docker_compose} up -d {services}")
 
     match restart_spec:
         case "":
