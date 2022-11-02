@@ -169,7 +169,7 @@ services:
     links:
       - db
       - redis
-    command: huey_consumer.py bmon.server_tasks.mempool_q -w 8
+    command: huey_consumer.py bmon.server_tasks.mempool_q -w 8 -q
 
   server-monitor:
     profiles: ["server"]
