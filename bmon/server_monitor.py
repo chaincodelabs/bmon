@@ -76,6 +76,11 @@ MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR = Gauge(
     "particular transaction (in the last hour)",
 )
 
+REDIS_KEYS = Gauge(
+    "bmon_server_redis_key_count",
+    "The number of keys in the server redis instance",
+)
+
 
 def refresh_metrics(
     mempool_agg: MempoolAcceptAggregator | None = None,
@@ -138,6 +143,8 @@ def refresh_metrics(
 
     MEMPOOL_MAX_PROPAGATION_SPREAD_IN_HOUR.set(max_spread)
     MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR.set(min_spread)
+
+    REDIS_KEYS.set(server_tasks.redisdb.dbsize())
 
 
 def sigterm_handler(*_):
