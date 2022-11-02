@@ -62,14 +62,21 @@ def exec_mempool_tasks(n):
     return exec_tasks(n, server_tasks.mempool_q)
 
 
-def _count_tasks(q):
+def _count_tasks(q) -> Counter:
     p = re.compile(br'bmon\.[a-zA-Z_\.]+')
-    print(Counter(p.search(msg).group().decode() for msg in q.storage.enqueued_items()))
+    return Counter(p.search(msg).group().decode() for msg in q.storage.enqueued_items())
+
+
+def get_task_counts():
+    counts = {}
+    counts.update(dict(_count_tasks(server_tasks.mempool_q)))
+    counts.update(dict(_count_tasks(server_tasks.server_q)))
+    return counts
 
 
 def count_tasks():
-    _count_tasks(server_tasks.mempool_q)
-    _count_tasks(server_tasks.server_q)
+    print(_count_tasks(server_tasks.mempool_q))
+    print(_count_tasks(server_tasks.server_q))
 
 
 def clean_queue(q: huey.RedisHuey):

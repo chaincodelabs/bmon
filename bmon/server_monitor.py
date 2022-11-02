@@ -11,7 +11,7 @@ django.setup()
 from clii import App
 from prometheus_client import make_wsgi_app, Gauge
 
-from . import server_tasks, models
+from . import server_tasks, models, util
 from .mempool import PolicyCohort, MempoolAcceptAggregator
 from .hosts import get_bitcoind_hosts_to_policy_cohort
 from bmon_infra import infra
@@ -86,6 +86,12 @@ REDIS_KEYS = Gauge(
     "The number of keys in the server redis instance",
 )
 
+TASK_COUNT = Gauge(
+    "bmon_pending_task_count",
+    "The number of each kind of async task pending for execution",
+    ["name"],
+)
+
 
 def refresh_metrics(
     mempool_agg: MempoolAcceptAggregator | None = None,
@@ -152,6 +158,11 @@ def refresh_metrics(
 
     MEMPOOL_MAX_PROPAGATION_SPREAD_IN_HOUR.set(max_spread)
     MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR.set(min_spread)
+
+    counts = util.get_task_counts()
+
+    for name, count in counts.items():
+        TASK_COUNT.labels(name=name).set(count)
 
 
 def sigterm_handler(*_):
