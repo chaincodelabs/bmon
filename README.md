@@ -38,6 +38,28 @@ bitcoind logs etc.
     - In one terminal: `./dev watchlogs`
     - In another: `./dev generateblock`
 
+
+## Important tools for investigation
+
+### Full grep of all node logs
+
+```sh
+bmon-infra rg <query>
+```
+
+### Query redis contents
+
+```sh
+ssh some-bmon-host
+cd bmon/
+./dev shell
+```
+```python
+from bmon.server_tasks import redisdb
+from bmon.mempool import full_scan
+full_scan(redisdb, '*<some txid>*')
+```
+
 ## Adding alerts
 
 Modify `./etc/prom-alerts.yml` and redeploy to the server with 

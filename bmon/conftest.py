@@ -32,42 +32,28 @@ def clear_redis():
         redis.Redis.from_url(url).flushall()
 
 
+def make_host(name: str, bitcoin_version: str = "v23.0"):
+    return models.Host.objects.get_or_create(
+        name=name,
+        cpu_info="test",
+        memory_bytes=1024,
+        nproc=multiprocessing.cpu_count(),
+        bitcoin_version=bitcoin_version,
+        bitcoin_gitref="",
+        bitcoin_gitsha="",
+        bitcoin_dbcache=int(settings.BITCOIN_DBCACHE),
+        bitcoin_prune=int(settings.BITCOIN_PRUNE),
+        bitcoin_extra={
+            "flags": "-regtest",
+        },
+        defaults={
+            "region": "",
+        },
+    )[0]
+
+
 @pytest.fixture()
 def fake_hosts():
-    host1, _ = models.Host.objects.get_or_create(
-        name='bitcoind',
-        cpu_info='test',
-        memory_bytes=1024,
-        nproc=multiprocessing.cpu_count(),
-        bitcoin_version='v0.18.0',
-        bitcoin_gitref='',
-        bitcoin_gitsha='',
-        bitcoin_dbcache=int(settings.BITCOIN_DBCACHE),
-        bitcoin_prune=int(settings.BITCOIN_PRUNE),
-        bitcoin_extra={
-            "flags": '-regtest',
-        },
-        defaults={
-            "region": "",
-        },
-    )
-
-    host2, _ = models.Host.objects.get_or_create(
-        name='bitcoind-02',
-        cpu_info='test',
-        memory_bytes=1024,
-        nproc=multiprocessing.cpu_count(),
-        bitcoin_version='v23.0',
-        bitcoin_gitref='',
-        bitcoin_gitsha='',
-        bitcoin_dbcache=int(settings.BITCOIN_DBCACHE),
-        bitcoin_prune=int(settings.BITCOIN_PRUNE),
-        bitcoin_extra={
-            "flags": '-regtest',
-        },
-        defaults={
-            "region": "",
-        },
-    )
-
+    host1 = make_host('bitcoind', 'v0.18.0')
+    host2 = make_host('bitcoind-02')
     return host1, host2

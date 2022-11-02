@@ -3,9 +3,10 @@ from django.utils import timezone
 
 import pytest
 
-from bmon import mempool, server_tasks, server_monitor
+from bmon import mempool, server_tasks, server_monitor, conftest, models
 
 
+@pytest.mark.django_db
 def test_mempool_accept_processing():
     redis = server_tasks.redisdb
     hosts = {
@@ -15,6 +16,9 @@ def test_mempool_accept_processing():
         "d": mempool.PolicyCohort.taproot,
         "e": mempool.PolicyCohort.taproot,
     }
+
+    for host in hosts:
+        conftest.make_host(host)
 
     agg = mempool.MempoolAcceptAggregator(redis, hosts)
 
@@ -106,8 +110,7 @@ def test_mempool_accept_processing():
     assert all_processed == ["mpa:prop_event:txid1", "mpa:prop_event:txid2"]
 
     [prop1, prop2] = [
-        mempool.TxPropagation.from_redis(d)
-        for d in sorted(redis.mget(all_processed))
+        mempool.TxPropagation.from_redis(d) for d in sorted(redis.mget(all_processed))
     ]
 
     assert prop1 == txprop1
@@ -118,20 +121,34 @@ def test_mempool_accept_processing():
         assert int(redis.ttl(key)) <= 60 * 60
 
     assert set(redis.keys()) == {
-        'mpa:total_txids:a',
-        'mpa:total_txids:b',
-        'mpa:total_txids:c',
-        'mpa:total_txids:d',
-        'mpa:total_txids:e',
-        'mpa:total_txids',
-        'mpa:prop_event:txid2',
-        'mpa:prop_event:txid1',
+        "mpa:total_txids:a",
+        "mpa:total_txids:b",
+        "mpa:total_txids:c",
+        "mpa:total_txids:d",
+        "mpa:total_txids:e",
+        "mpa:total_txids",
+        "mpa:prop_event:txid2",
+        "mpa:prop_event:txid1",
+        "mpa:txid1:a",
+        "mpa:txid1:b",
+        "mpa:txid1:c",
+        "mpa:txid1:d",
+        "mpa:txid1:e",
+        "mpa:txid2:e",
     }
 
     print("Smoke-test metric generation")
-    server_monitor.refresh_metrics(agg)
+    server_monitor.refresh_metrics(
+        agg,
+        hosts_to_cohort={
+            models.Host.objects.filter(name=h).first(): cohort
+            for h, cohort in hosts.items()
+        },
+    )
 
 
 @pytest.mark.django_db
 def test_get_aggreator(fake_hosts):
-    assert server_tasks.get_mempool_aggregator() == server_tasks.get_mempool_aggregator()
+    assert (
+        server_tasks.get_mempool_aggregator() == server_tasks.get_mempool_aggregator()
+    )

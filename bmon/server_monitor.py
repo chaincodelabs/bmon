@@ -11,8 +11,9 @@ django.setup()
 from clii import App
 from prometheus_client import make_wsgi_app, Gauge
 
-from . import server_tasks
+from . import server_tasks, models
 from .mempool import PolicyCohort, MempoolAcceptAggregator
+from .hosts import get_bitcoind_hosts_to_policy_cohort
 from bmon_infra import infra
 
 
@@ -31,10 +32,12 @@ MEMPOOL_TOTAL_TXIDS_ACCEPTED = Gauge(
     "The number of unique transactions we've accepted to all mempools",
 )
 
+HOST_LABELS = ["host", "bitcoin_version", "region", "cohort"]
+
 MEMPOOL_TOTAL_TXIDS_ACCEPTED_PER_HOST = Gauge(
     "bmon_mempool_total_txids_accepted_per_host",
     "The number of unique transactions we've accepted to a host's mempool",
-    ["host"],
+    HOST_LABELS,
 )
 
 MEMPOOL_TOTAL_TXIDS_IN_HOUR = Gauge(
@@ -42,22 +45,23 @@ MEMPOOL_TOTAL_TXIDS_IN_HOUR = Gauge(
     "The number of unique transactions we've accepted to all mempools in the last hour",
 )
 
+
 MEMPOOL_TOTAL_TXIDS_IN_HOUR_PER_HOST = Gauge(
     "bmon_mempool_total_txids_accepted_last_hour_per_host",
     "The number of unique transactions we've accepted to all mempools in the last hour "
     " per host",
-    ["host"],
+    HOST_LABELS,
 )
 
 MEMPOOL_TOTAL_TXIDS_ACCEPTED_BY_ALL_IN_HOUR = Gauge(
     "bmon_mempool_total_txids_accepted_by_all_last_hour",
-    "The number of txids accepted by all hosts in the last hour"
+    "The number of txids accepted by all hosts in the last hour",
 )
 
 MEMPOOL_TOTAL_TXIDS_ACCEPTED_BY_COHORT_IN_HOUR = Gauge(
     "bmon_mempool_total_txids_accepted_by_cohort_last_hour",
     "The number of txids accepted by all hosts in a policy cohort in the last hour",
-    ["cohort"]
+    ["cohort"],
 )
 
 MEMPOOL_MAX_PROPAGATION_SPREAD_IN_HOUR = Gauge(
@@ -73,24 +77,35 @@ MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR = Gauge(
 )
 
 
-def refresh_metrics(mempool_agg: MempoolAcceptAggregator | None = None):
+def refresh_metrics(
+    mempool_agg: MempoolAcceptAggregator | None = None,
+    hosts_to_cohort: dict[models.Host, PolicyCohort] | None = None,
+):
     SERVER_EVENT_QUEUE_DEPTH.set(len(server_tasks.server_q))
+    host_to_cohort = hosts_to_cohort or get_bitcoind_hosts_to_policy_cohort()
+    labels_for_host: dict[str, dict[str, str]] = {
+        h.name: {
+            "host": h.name,
+            "bitcoin_version": h.bitcoin_version,
+            "region": h.region,
+            "cohort": cohort.name,
+        }
+        for h, cohort in host_to_cohort.items()
+    }
 
     mempool_agg = mempool_agg or server_tasks.get_mempool_aggregator()
     MEMPOOL_TOTAL_TXIDS_ACCEPTED.set(mempool_agg.get_total_txids_processed())
 
     for host, total in mempool_agg.get_total_txids_processed_per_host().items():
-        MEMPOOL_TOTAL_TXIDS_ACCEPTED_PER_HOST.labels(host=host).set(total)
+        MEMPOOL_TOTAL_TXIDS_ACCEPTED_PER_HOST.labels(**labels_for_host[host]).set(total)
 
     total_txids_in_hour = 0
-    total_txids_in_hour_per_host = {
-        h: 0 for h in mempool_agg.host_to_cohort.keys()
-    }
+    total_txids_in_hour_per_host = {h: 0 for h in mempool_agg.host_to_cohort.keys()}
     total_txids_in_hour_by_all = 0
     total_txids_in_hour_by_cohort: dict[PolicyCohort, int] = {
         cohort: 0 for cohort in PolicyCohort
     }
-    max_spread = 0.
+    max_spread = 0.0
     min_spread = 1e6
 
     for event in mempool_agg.get_propagation_events():
@@ -114,7 +129,7 @@ def refresh_metrics(mempool_agg: MempoolAcceptAggregator | None = None):
     MEMPOOL_TOTAL_TXIDS_IN_HOUR.set(total_txids_in_hour)
 
     for host, total in total_txids_in_hour_per_host.items():
-        MEMPOOL_TOTAL_TXIDS_IN_HOUR_PER_HOST.labels(host=host).set(total)
+        MEMPOOL_TOTAL_TXIDS_IN_HOUR_PER_HOST.labels(**labels_for_host[host]).set(total)
 
     MEMPOOL_TOTAL_TXIDS_ACCEPTED_BY_ALL_IN_HOUR.set(total_txids_in_hour_by_all)
 

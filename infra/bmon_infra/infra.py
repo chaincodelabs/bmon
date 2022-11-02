@@ -490,7 +490,12 @@ def deploy(
             sys.exit(2)
         else:
             time.sleep(2)
-            exec.run(_run_cmd, "docker-compose ps")
+            docker_status_cmd = (
+                'docker ps -a --filter "network=bmon_default" '
+                r'--format "{{.State}}\t\t{{.RunningFor}}\t\t{{.Names}}" | '
+                'sort | sed -e "s/bmon_//" | sed -Ee "s/_[0-9]+//"'
+            )
+            exec.run(_run_cmd, docker_status_cmd)
 
 
 def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):

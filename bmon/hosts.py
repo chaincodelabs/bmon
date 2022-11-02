@@ -1,3 +1,5 @@
+from django.conf import settings
+
 import bmon_infra as infra
 from . import models, mempool, bitcoin
 
@@ -14,7 +16,8 @@ def get_bitcoind_hosts_to_policy_cohort() -> dict[models.Host, mempool.PolicyCoh
             ],
         )
     )
-    assert len(host_objs) == len(hosts)
+    if not settings.TESTING:
+        assert len(host_objs) == len(hosts)
     return {
         h: mempool.PolicyCohort.segwit
         if bitcoin.is_pre_taproot(h.bitcoin_version)

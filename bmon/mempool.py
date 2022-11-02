@@ -261,7 +261,10 @@ class MempoolAcceptAggregator:
                 json.dumps(event.asdict()),
                 ex=self.RESULT_LIFETIME_SECS,
             )
-            self.redis.delete(*keys)
+            # TODO maybe delete these at some point, but in the meantime rely on the
+            # TTLs because we need to debug certain weird behavior.
+            #
+            # self.redis.delete(*keys)
             self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
 
         return processed_events
