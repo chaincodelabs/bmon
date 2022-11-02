@@ -111,6 +111,11 @@ def refresh_metrics(
     for host, total in mempool_agg.get_total_txids_processed_per_host().items():
         MEMPOOL_TOTAL_TXIDS_ACCEPTED_PER_HOST.labels(**labels_for_host[host]).set(total)
 
+    REDIS_KEYS.set(server_tasks.redisdb.dbsize())
+
+    # TODO
+    return
+
     total_txids_in_hour = 0
     total_txids_in_hour_per_host = {h: 0 for h in mempool_agg.host_to_cohort.keys()}
     total_txids_in_hour_by_all = 0
@@ -150,8 +155,6 @@ def refresh_metrics(
 
     MEMPOOL_MAX_PROPAGATION_SPREAD_IN_HOUR.set(max_spread)
     MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR.set(min_spread)
-
-    REDIS_KEYS.set(server_tasks.redisdb.dbsize())
 
 
 def sigterm_handler(*_):

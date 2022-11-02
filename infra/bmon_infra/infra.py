@@ -151,7 +151,7 @@ def main_remote(
     if not run("which docker-compose", check=False, quiet=True).ok:
         run("pip install docker-compose")
 
-    run(f"cd {BMON_PATH} && git pull --ff-only origin master")
+    run(f"cd {BMON_PATH} && git reset --hard HEAD && git pull --ff-only origin master")
 
     if (
         p("/etc/docker/daemon.json", sudo=True)

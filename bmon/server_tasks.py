@@ -114,7 +114,8 @@ def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
     agg = get_mempool_aggregator()
 
     if agg.mark_seen(host, txid, seen_at) == mempool.PropagationStatus.CompleteAll:
-        process_completed_propagations(txid)
+        pass
+        # process_completed_propagations(txid)
 
 
 @mempool_q.task()

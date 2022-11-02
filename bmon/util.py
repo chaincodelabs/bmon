@@ -43,7 +43,7 @@ def print_sql(q: models.QuerySet | Query):
 def profile(cmd):
     cProfile.run(cmd, 'stats')
     p = pstats.Stats('stats')
-    p.strip_dirs().sort_stats(pstats.SortKey.CUMULATIVE).print_stats(30)
+    p.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(30)
 
 
 def exec_tasks(n, huey_instance):
@@ -67,6 +67,10 @@ def clean_queue(q: huey.RedisHuey):
 
     while True:
         processed += 1
+
+        if processed % 1000 == 0:
+            print(processed)
+
         try:
             t = q.dequeue()
         except Exception:
@@ -81,9 +85,6 @@ def clean_queue(q: huey.RedisHuey):
         else:
             q.enqueue(t)
             re += 1
-
-        if processed % 1000 == 0:
-            print(processed)
 
     print(f"exceptions: {num_exs}")
     print(f"requeued: {re}")
