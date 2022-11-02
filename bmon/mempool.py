@@ -167,12 +167,16 @@ class MempoolAcceptAggregator:
             f"mpa:{txid}:{host}", seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
         )
 
-        scan_res = full_scan(self.redis, f"mpa:{txid}:*")
-        hosts_seen = {row.split(":")[-1] for row in scan_res}
-
         assert len(self.host_to_cohort) > 0
 
-        if len(scan_res) == len(self.host_to_cohort):
+        scan_for = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
+        hosts_seen = set()
+
+        for key, res in zip(scan_for, self.redis.mget(scan_for)):
+            if res is not None:
+                hosts_seen.add(key.split(':')[-1])
+
+        if hosts_seen == set(self.host_to_cohort.keys()):
             return PropagationStatus.CompleteAll
         elif (self.cohort(host) - hosts_seen) == set():
             return PropagationStatus.CompleteCohort

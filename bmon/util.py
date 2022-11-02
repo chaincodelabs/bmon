@@ -1,7 +1,13 @@
-from django.db import models
-from django.db.models.sql.query import Query
 import decimal
 import json
+import cProfile
+import time
+import pstats
+
+from django.db import models
+from django.db.models.sql.query import Query
+
+from . import server_tasks
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -31,3 +37,19 @@ def print_sql(q: models.QuerySet | Query):
         q = q.query  # type: ignore
     formatted = format(str(q), reindent=True)
     print(highlight(formatted, PostgresLexer(), TerminalFormatter()))
+
+
+def profile(cmd):
+    cProfile.run(cmd, 'stats')
+    p = pstats.Stats('stats')
+    p.strip_dirs().sort_stats(pstats.SortKey.CUMULATIVE).print_stats(30)
+
+
+def exec_server_tasks(n):
+    for _ in range(n):
+        t = time.time()
+        task = server_tasks.server_q.dequeue()
+        print("executing task %s" % task)
+        assert task
+        task.execute()
+        print("  took %s" % (time.time() - t))
