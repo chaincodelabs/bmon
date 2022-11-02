@@ -108,31 +108,31 @@ def compute_peer_stats_blocking(peerinfo: list[dict] | None = None):
         log.warning("exiting early - no peerinfo")
         return
 
-    minping = 1000000.
-    maxping = 0.
-    pingsum = 0.
+    minping = 1000000.0
+    maxping = 0.0
+    pingsum = 0.0
     bytesrecv = 0
     bytessent = 0
     recv_per_msg = {}
     sent_per_msg = {}
 
     for p in peerinfo:
-        pingtime = float(p['pingtime'])
+        pingtime = float(p["pingtime"])
         if pingtime < minping:
             minping = pingtime
         if pingtime > maxping:
             maxping = pingtime
         pingsum += pingtime
 
-        bytesrecv += p['bytesrecv']
-        bytessent += p['bytessent']
+        bytesrecv += p["bytesrecv"]
+        bytessent += p["bytessent"]
 
-        for msg, val in p['bytesrecv_per_msg'].items():
+        for msg, val in p["bytesrecv_per_msg"].items():
             if msg not in recv_per_msg:
                 recv_per_msg[msg] = 0
             recv_per_msg[msg] += val
 
-        for msg, val in p['bytessent_per_msg'].items():
+        for msg, val in p["bytessent_per_msg"].items():
             if msg not in sent_per_msg:
                 sent_per_msg[msg] = 0
             sent_per_msg[msg] += val
@@ -306,7 +306,7 @@ def watch_bitcoind_logs():
 
 
 def get_latest_host() -> models.Host:
-    h = models.Host.objects.filter(name=settings.HOSTNAME).order_by('-id').first()
+    h = models.Host.objects.filter(name=settings.HOSTNAME).order_by("-id").first()
     assert h
     return h
 
@@ -403,6 +403,7 @@ def process_line(
         # TODO make this less special casey
         if isinstance(got, models.MempoolAccept):
             mempool_activity(got.avro_record(), linehash)  # type: ignore
+            server_tasks.process_mempool_accept(got.txhash, got.timestamp, got.host)
             continue
 
         got.host = host

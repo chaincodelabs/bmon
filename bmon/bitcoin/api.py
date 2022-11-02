@@ -2,7 +2,7 @@ import time
 import typing as t
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 from .rpc import BitcoinRpc
@@ -14,13 +14,13 @@ from django.conf import settings
 log = logging.getLogger(__name__)
 
 
-@lru_cache
+@cache
 def read_raw_bitcoind_version() -> str:
     assert settings.BITCOIND_VERSION_PATH
     return Path(settings.BITCOIND_VERSION_PATH).read_text().strip()
 
 
-@lru_cache
+@cache
 def bitcoind_version(ver: None | str = None) -> tuple[tuple[int, ...], None | str]:
     """Returns the version tuple and the git sha, if any."""
     ver = ver or read_raw_bitcoind_version()
@@ -39,13 +39,21 @@ def bitcoind_version(ver: None | str = None) -> tuple[tuple[int, ...], None | st
     return vertuple, gitsha
 
 
-def is_pre_taproot() -> bool:
+def is_pre_taproot(ver: str | tuple[int, ...] | None = None) -> bool:
     """This this bitcoind node pre-taproot?"""
-    ver_tuple, _ = bitcoind_version()
+    if isinstance(ver, str):
+        ver_tuple = bitcoind_version(ver)[0]
+    elif isinstance(ver, tuple):
+        ver_tuple = ver
+    elif ver is None:
+        ver_tuple = bitcoind_version()[0]
+    else:
+        raise ValueError("unexpected ver argument")
+
     return ver_tuple < (0, 21, 1)
 
 
-@lru_cache
+@cache
 def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int = 5) -> BitcoinRpc:
     """
     Return an RPC object to bitcoind.
@@ -78,7 +86,7 @@ def get_rpc(host: None | str = None, boot_tries: int = 5, boot_delay_secs: int =
     raise RuntimeError(f"couldn't boot RPC {url}")
 
 
-@lru_cache
+@cache
 def get_rpc_for_hosts(hosts: t.Tuple[infra.Host]) -> t.Dict[str, BitcoinRpc]:
     # TODO: assumes that all hosts use same ports, credentials
     return {host.name: get_rpc(host.bmon_ip) for host in hosts}

@@ -30,7 +30,7 @@ def sh(cmd, **kwargs):
     return subprocess.run(cmd, shell=True, **kwargs)
 
 
-@functools.lru_cache
+@functools.cache
 def getenv():
     return config.get_env_object()
 
