@@ -66,10 +66,12 @@ def clean_queue(q: huey.RedisHuey):
     processed = 0
 
     while True:
+        processed += 1
         try:
             t = q.dequeue()
         except Exception:
             num_exs += 1
+            continue
 
         if not t:
             break
