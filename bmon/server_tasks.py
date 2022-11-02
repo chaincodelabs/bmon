@@ -5,19 +5,22 @@ There are only one of these workers, so here is where we queue up periodic analy
 tasks that should only be run in one place, with a view of the whole herd of bitcoind
 nodes.
 """
-from collections import defaultdict
 import os
+import time
 import logging
+import datetime
+from collections import defaultdict
 
 import django
+import redis
 from django.conf import settings
 from huey import RedisHuey, crontab
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bmon.settings")
 django.setup()
 
-from bmon import models
-from bmon.bitcoin.api import gather_rpc, RPC_ERROR_RESULT
+from bmon import models, mempool, bitcoin
+from .hosts import get_bitcoind_hosts_to_policy_cohort
 
 
 log = logging.getLogger(__name__)
@@ -26,18 +29,42 @@ server_q = RedisHuey(
     "bmon-server", url=settings.REDIS_SERVER_URL, immediate=settings.TESTING
 )
 
+redisdb = redis.Redis.from_url(settings.REDIS_SERVER_URL, decode_responses=True)
+
+
+def get_mempool_aggregator() -> mempool.MempoolAcceptAggregator:
+    """
+    Cache this for 90 seconds; we want to refresh periodically in case host versions
+    change, potentially putting them in a different policy cohort.
+    """
+    SECONDS_TO_CACHE = 90
+    CACHE_KEY = '__cache'
+
+    if (got := getattr(get_mempool_aggregator, CACHE_KEY, None)):
+        [ts, cached] = got
+        if (time.time() - ts) <= SECONDS_TO_CACHE:
+            return cached
+
+    hosts_to_policy = {
+        h.name: v for h, v in get_bitcoind_hosts_to_policy_cohort().items()}
+
+    agg = mempool.MempoolAcceptAggregator(redisdb, hosts_to_policy)
+
+    setattr(get_mempool_aggregator, CACHE_KEY, (time.time(), agg))
+    return get_mempool_aggregator()
+
 
 @server_q.periodic_task(crontab(minute="*/10"))
 def check_for_overlapping_peers():
     def getpeerinfo(rpc):
         return rpc.getpeerinfo()
 
-    results = gather_rpc(getpeerinfo)
+    results = bitcoin.gather_rpc(getpeerinfo)
     peer_to_hosts = defaultdict(list)
     hosts_contacted = []
 
     for hostname, peers in results.items():
-        if peers == RPC_ERROR_RESULT:
+        if peers == bitcoin.RPC_ERROR_RESULT:
             log.warning("Unable to retrieve peers from host %r", hostname)
             continue
 
@@ -69,3 +96,23 @@ def persist_bitcoind_event(event: dict, _: str):
 
     instance = Model.objects.create(**event)
     print(f"Saved {instance}")
+
+
+@server_q.task()
+def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
+    agg = get_mempool_aggregator()
+
+    if agg.mark_seen(host, txid, seen_at) == mempool.PropagationStatus.CompleteAll:
+        process_completed_propagations(txid)
+
+
+@server_q.task()
+def process_completed_propagations(txid: str):
+    agg = get_mempool_aggregator()
+    agg.process_completed_propagations([txid])
+
+
+@server_q.periodic_task(crontab(minute="*/2"))
+def process_aged_propagations():
+    agg = get_mempool_aggregator()
+    agg.process_all_aged()

@@ -6,4 +6,6 @@ extend-ignore =
   E501,
   # linebreak operator
   W503,
-  W504
+  W504,
+  # whitespace before index
+  E203

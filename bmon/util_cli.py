@@ -1,6 +1,6 @@
 import pprint
 import logging
-from functools import lru_cache
+from functools import cache
 from collections import defaultdict
 
 from clii import App
@@ -91,7 +91,7 @@ def compare_mempools() -> None:
     num_hosts = len(host_to_set)
     over_half = (num_hosts // 2) + 1
 
-    @lru_cache
+    @cache
     def hosts_with_txid(txid: str) -> tuple[str, ...]:
         return tuple(h for h, pool in host_to_set.items() if txid in pool)
 
