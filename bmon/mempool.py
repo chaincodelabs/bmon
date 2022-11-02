@@ -173,7 +173,9 @@ class MempoolAcceptAggregator:
         ts_set = False
         tries = 3
         while tries > 0 and not ts_set:
-            ts_set = self.redis.set(ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS)
+            ts_set = self.redis.set(
+                ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
+            )
 
             if not ts_set:
                 log.error("failed to set key for %s:%s", txid, host)
@@ -212,14 +214,20 @@ class MempoolAcceptAggregator:
         take account of who has seen what by calling `process_completed_propagations`.
         """
         now = timezone.now().timestamp()
-        min_age = min_age if min_age is not None else self.KEY_LIFETIME_SECS
-        assert min_age is not None
-        start_score = start_score if start_score is not None else now - min_age
+        start_score = (
+            start_score
+            if start_score is not None
+            else now - (min_age if min_age is not None else self.KEY_LIFETIME_SECS)
+        )
         old_enough_txids = self.redis.zrange(
             self.MEMP_ACCEPT_SORTED_KEY,
             "-inf",  # type: ignore
             start_score,  # type: ignore
             byscore=True,
+        )
+        log.info(
+            "sending %d txids to be processed for prop. completion",
+            len(old_enough_txids),
         )
 
         return self.process_completed_propagations(old_enough_txids, process_event)
@@ -242,6 +250,8 @@ class MempoolAcceptAggregator:
         to_remove = []
 
         log.info("processing %d tx propagation completions", len(txids))
+        if assert_complete:
+            log.info("assuming %s has been seen be all nodes", txids)
 
         for txid in txids:
             log.info("processing complete propagation for txid %s", txid)
