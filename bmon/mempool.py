@@ -213,11 +213,12 @@ class MempoolAcceptAggregator:
         After some period of waiting for nodes to see a given tx in their mempool,
         take account of who has seen what by calling `process_completed_propagations`.
         """
+        OBSERVATION_WINDOW_SECS = 60 * 60
         now = timezone.now().timestamp()
         start_score = (
             start_score
             if start_score is not None
-            else now - (min_age if min_age is not None else self.KEY_LIFETIME_SECS)
+            else now - (min_age if min_age is not None else OBSERVATION_WINDOW_SECS)
         )
         old_enough_txids = self.redis.zrange(
             self.MEMP_ACCEPT_SORTED_KEY,
@@ -331,10 +332,7 @@ class MempoolAcceptAggregator:
             ):
                 log.error("duplicate tx propagation event attempt: %s", txid)
 
-            # TODO maybe delete these at some point, but in the meantime rely on the
-            # TTLs because we need to debug certain weird behavior.
-            #
-            # self.redis.delete(*keys)
+            self.redis.delete(*keys)
             to_remove.append(txid)
 
         if to_remove:

@@ -114,8 +114,7 @@ def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
     agg = get_mempool_aggregator()
 
     if agg.mark_seen(host, txid, seen_at) == mempool.PropagationStatus.CompleteAll:
-        pass
-        # process_completed_propagations(txid)
+        process_completed_propagations(txid)
 
 
 @mempool_q.task()
@@ -124,7 +123,7 @@ def process_completed_propagations(txid: str):
     agg.process_completed_propagations([txid], assert_complete=True)
 
 
-@mempool_q.periodic_task(crontab(minute="*/8"))
+@mempool_q.periodic_task(crontab(minute="*/1"))
 def process_aged_propagations():
     agg = get_mempool_aggregator()
     agg.process_all_aged()

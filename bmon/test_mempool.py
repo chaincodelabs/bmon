@@ -130,12 +130,6 @@ def test_mempool_accept_processing():
         "mpa:prop_event:txid2",
         "mpa:prop_event:txid1",
         "mpa:prop_event_set",
-        "mpa:txid1:a",
-        "mpa:txid1:b",
-        "mpa:txid1:c",
-        "mpa:txid1:d",
-        "mpa:txid1:e",
-        "mpa:txid2:e",
     }
 
     print("Smoke-test metric generation")
