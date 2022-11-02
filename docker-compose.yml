@@ -317,6 +317,7 @@ services:
     environment:
       <<: *env
       DJANGO_SETTINGS_MODULE: bmon.settings_test
+      WAIT_FOR: "${BMON_REDIS_HOST}:6379,${DB_HOST}:5432"
     ports:
       - 8080:8080
     volumes:
