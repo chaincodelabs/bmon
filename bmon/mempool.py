@@ -238,13 +238,14 @@ class MempoolAcceptAggregator:
                 if len(self.hosts_for_cohort(c) - all_hosts) == 0
             ]
 
-            first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
-            assert first_saw
-
-            all_complete = all_hosts == set(self.host_to_cohort.keys())
+            hosts_expected = set(self.host_to_cohort.keys())
+            all_complete = all_hosts == hosts_expected
 
             if assert_complete:
                 assert all_complete
+
+            first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
+            assert first_saw
 
             event = TxPropagation(
                 txid,
