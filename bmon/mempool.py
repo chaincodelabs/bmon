@@ -235,6 +235,10 @@ class MempoolAcceptAggregator:
                 else:
                     host_to_timestamp[host] = float(res)
 
+            if not host_to_timestamp:
+                log.error("no timestamp entries found for %s", txid)
+                continue
+
             all_hosts: set[str] = set(i for i in host_to_timestamp)
             cohorts_complete: list[PolicyCohort] = [
                 c
@@ -299,7 +303,14 @@ class MempoolAcceptAggregator:
             for key, event in zip(chunk, self.redis.mget(chunk)):
                 try:
                     assert event
-                    yield TxPropagation(**json.loads(event))
+                    loaded = json.loads(event)
+                    txprop = TxPropagation(**loaded)
+
+                    if not txprop.host_to_timestamp:
+                        log.error("txprop without timestamp data", extra={'txprop': txprop})
+                    else:
+                        yield txprop
+
                 except Exception:
                     log.exception(
                         "failed to deserialize TxPropagation from redis: %s: %s",
