@@ -79,7 +79,7 @@ def count_tasks():
     print(_count_tasks(server_tasks.server_q))
 
 
-def clean_queue(q: huey.RedisHuey):
+def clean_queue(q: huey.RedisHuey, filter_str: str):
     num_exs = 0
     re = 0
     processed = 0
@@ -99,7 +99,7 @@ def clean_queue(q: huey.RedisHuey):
         if not t:
             break
 
-        if 'process_' in str(t):
+        if filter_str in str(t):
             continue
         else:
             q.enqueue(t)
