@@ -109,6 +109,7 @@ class MempoolAcceptAggregator:
         self.redis = redis
         self.host_to_cohort = host_to_cohort
 
+    @cache
     def cohort(self, host: str) -> set[str]:
         return self.hosts_for_cohort(self.host_to_cohort[host])
 
@@ -116,6 +117,7 @@ class MempoolAcceptAggregator:
     def cohorts(self) -> set[PolicyCohort]:
         return set(self.host_to_cohort.values())
 
+    @cache
     def hosts_for_cohort(self, cohort: PolicyCohort) -> set[str]:
         return {
             h for h in self.host_to_cohort.keys() if self.host_to_cohort[h] == cohort
@@ -209,6 +211,10 @@ class MempoolAcceptAggregator:
 
         return self.process_completed_propagations(old_enough_txids, process_event)
 
+    @cached_property
+    def host_names(self) -> set[str]:
+        return set(self.host_to_cohort.keys())
+
     def process_completed_propagations(
         self,
         txids: list[str],
@@ -220,11 +226,16 @@ class MempoolAcceptAggregator:
         """
         now = timezone.now().timestamp()
         processed_events = []
+        to_remove = []
+
+        log.info("processing %d tx propagation completions", len(txids))
 
         for txid in txids:
+            log.info("processing complete propagation for txid %s", txid)
             keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
             got = self.redis.mget(keys)
             host_to_timestamp: dict[str, float] = {}
+            hosts_that_saw = set()
 
             for tried, res in zip(keys, got):
                 if not res:
@@ -237,22 +248,20 @@ class MempoolAcceptAggregator:
                     continue
 
                 host_to_timestamp[host] = float(res)
+                hosts_that_saw.add(host)
 
             if not host_to_timestamp:
                 log.error("no timestamp entries found for %s", txid)
-                self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
+                to_remove.append(txid)
                 continue
 
-            all_hosts: set[str] = set(i for i in host_to_timestamp)
             cohorts_complete: list[PolicyCohort] = [
                 c
                 for c in self.cohorts
-                if len(self.hosts_for_cohort(c) - all_hosts) == 0
+                if len(self.hosts_for_cohort(c) - hosts_that_saw) == 0
             ]
 
-            hosts_expected = set(self.host_to_cohort.keys())
-            all_complete = all_hosts == hosts_expected
-
+            all_complete = hosts_that_saw == self.host_names
             if assert_complete:
                 if not all_complete:
                     log.error("expected to have all host timestamps for txid %s", txid)
@@ -303,7 +312,10 @@ class MempoolAcceptAggregator:
             # TTLs because we need to debug certain weird behavior.
             #
             # self.redis.delete(*keys)
-            self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
+            to_remove.append(txid)
+
+        if to_remove:
+            self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, *to_remove)
 
         return processed_events
 
