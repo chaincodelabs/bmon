@@ -268,19 +268,6 @@ def ship_mempool_activity():
             log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
 
 
-ListenerList = t.Sequence[logparse.Listener]
-
-LOG_LISTENERS: ListenerList = (
-    logparse.ConnectBlockListener(),
-    logparse.MempoolAcceptListener(),
-    logparse.MempoolRejectListener(),
-    logparse.BlockConnectedListener(),
-    logparse.BlockDisconnectedListener(),
-    logparse.ReorgListener(),
-    logparse.PongListener(),
-)
-
-
 def watch_bitcoind_logs():
     """
     Continuously watch a bitcoind debug.log and route events to async handlers.
@@ -343,6 +330,19 @@ def create_host_record():
         log.info(f"Booting with existing host record: {host}")
 
     return host
+
+
+ListenerList = t.Sequence[logparse.Listener]
+
+LOG_LISTENERS: ListenerList = (
+    logparse.ConnectBlockListener(),
+    logparse.MempoolAcceptListener(),
+    logparse.MempoolRejectListener(),
+    logparse.BlockConnectedListener(),
+    logparse.BlockDisconnectedListener(),
+    logparse.ReorgListener(),
+    logparse.PongListener(),
+)
 
 
 def process_line(

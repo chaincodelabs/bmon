@@ -109,7 +109,7 @@ def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
 @server_q.task()
 def process_completed_propagations(txid: str):
     agg = get_mempool_aggregator()
-    agg.process_completed_propagations([txid])
+    agg.process_completed_propagations([txid], assert_complete=True)
 
 
 @server_q.periodic_task(crontab(minute="*/2"))

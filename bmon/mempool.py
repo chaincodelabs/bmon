@@ -206,6 +206,7 @@ class MempoolAcceptAggregator:
         self,
         txids: list[str],
         process_event: t.Callable[[TxPropagation], None] | None = None,
+        assert_complete: bool = False,
     ) -> list[TxPropagation]:
         """
         Render separate redis keys into a single distince TxPropagation event.
@@ -240,11 +241,16 @@ class MempoolAcceptAggregator:
             first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
             assert first_saw
 
+            all_complete = all_hosts == set(self.host_to_cohort.keys())
+
+            if assert_complete:
+                assert all_complete
+
             event = TxPropagation(
                 txid,
                 host_to_timestamp,
                 cohorts_complete=cohorts_complete,
-                all_complete=(len(all_hosts) == len(self.host_to_cohort)),
+                all_complete=all_complete,
                 time_window=(now - float(first_saw)),
             )
 
@@ -298,12 +304,12 @@ class MempoolAcceptAggregator:
                     continue
 
 
-def full_scan(redis, query) -> list[str]:
+def full_scan(redis: redis.Redis, query: str) -> list[str]:
     cursor = None
     results = []
 
     while cursor != 0:
-        cursor, res = redis.scan(cursor or 0, query)
+        cursor, res = redis.scan(cursor or 0, match=query)
         results.extend(res)
 
     return results
