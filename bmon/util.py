@@ -45,11 +45,15 @@ def profile(cmd):
     p.strip_dirs().sort_stats(pstats.SortKey.CUMULATIVE).print_stats(30)
 
 
-def exec_server_tasks(n):
+def exec_tasks(n, huey_instance):
     for _ in range(n):
         t = time.time()
-        task = server_tasks.server_q.dequeue()
+        task = huey_instance.dequeue()
         print("executing task %s" % task)
         assert task
         task.execute()
         print("  took %s" % (time.time() - t))
+
+
+def exec_mempool_tasks(n):
+    return exec_tasks(n, server_tasks.mempool_q)

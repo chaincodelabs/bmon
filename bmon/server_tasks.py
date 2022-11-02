@@ -29,6 +29,14 @@ server_q = RedisHuey(
     "bmon-server",
     url=settings.REDIS_SERVER_URL,
     immediate=settings.TESTING,
+)
+
+# Special-case mempool events because they're so high volume; if something goes
+# wrong, we don't want to disrupt other event types.
+mempool_q = RedisHuey(
+    "bmon-server-mempool",
+    url=settings.REDIS_SERVER_URL,
+    immediate=settings.TESTING,
     results=False,
 )
 
@@ -101,7 +109,7 @@ def persist_bitcoind_event(event: dict, _: str):
     print(f"Saved {instance}")
 
 
-@server_q.task()
+@mempool_q.task()
 def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
     agg = get_mempool_aggregator()
 
@@ -109,13 +117,13 @@ def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
         process_completed_propagations(txid)
 
 
-@server_q.task()
+@mempool_q.task()
 def process_completed_propagations(txid: str):
     agg = get_mempool_aggregator()
     agg.process_completed_propagations([txid], assert_complete=True)
 
 
-@server_q.periodic_task(crontab(minute="*/2"))
+@mempool_q.periodic_task(crontab(minute="*/2"))
 def process_aged_propagations():
     agg = get_mempool_aggregator()
     agg.process_all_aged()

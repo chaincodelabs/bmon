@@ -253,16 +253,23 @@ def provision_bmon_server(
         run(f"{docker_compose} rm -f {services}")
         run(f"{docker_compose} up -d {services}")
 
+    always = " ".join([
+        "web",
+        "server-task-worker",
+        "server-mempool-task-worker",
+        "server-monitor",
+    ])
+
     match restart_spec:
         case "":
-            cycle("web server-task-worker server-monitor")
+            cycle(always)
         case "none":
             pass
         case "all":
             run("systemctl --user restart bmon-server")
         case _:
             run(f"{docker_compose} pull {restart_spec}")
-            cycle(f"web server-task-worker {restart_spec}")
+            cycle(f"{always} {restart_spec}")
 
 
 def provision_monitored_bitcoind(

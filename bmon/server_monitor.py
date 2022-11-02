@@ -27,6 +27,11 @@ SERVER_EVENT_QUEUE_DEPTH = Gauge(
     "The depth of the queue processing all events.",
 )
 
+SERVER_MEMPOOL_EVENT_QUEUE_DEPTH = Gauge(
+    "bmon_server_mempool_event_queue_depth",
+    "The depth of the queue processing for server mempool events.",
+)
+
 MEMPOOL_TOTAL_TXIDS_ACCEPTED = Gauge(
     "bmon_mempool_total_txids_accepted",
     "The number of unique transactions we've accepted to all mempools",
@@ -87,6 +92,8 @@ def refresh_metrics(
     hosts_to_cohort: dict[models.Host, PolicyCohort] | None = None,
 ):
     SERVER_EVENT_QUEUE_DEPTH.set(len(server_tasks.server_q))
+    SERVER_MEMPOOL_EVENT_QUEUE_DEPTH.set(len(server_tasks.mempool_q))
+
     host_to_cohort = hosts_to_cohort or get_bitcoind_hosts_to_policy_cohort()
     labels_for_host: dict[str, dict[str, str]] = {
         h.name: {

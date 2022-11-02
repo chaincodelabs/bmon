@@ -157,6 +157,20 @@ services:
       - redis
     command: huey_consumer.py bmon.server_tasks.server_q -w 8
 
+  server-mempool-task-worker:
+    profiles: ["server"]
+    user: "${UID}"
+    image: docker.io/jamesob/bmon:latest
+    environment:
+      <<: *env
+      WAIT_FOR: "${DB_HOST}:5432,${BMON_REDIS_HOST}:6379"
+    volumes:
+      - ./:/src
+    links:
+      - db
+      - redis
+    command: huey_consumer.py bmon.server_tasks.mempool_q -w 8
+
   server-monitor:
     profiles: ["server"]
     user: "${UID}"
