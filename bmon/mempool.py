@@ -125,7 +125,7 @@ class MempoolAcceptAggregator:
         return int(self.redis.get(self.MEMP_ACCEPT_TOTAL_SEEN_KEY) or 0)
 
     def get_total_txids_processed_per_host(self) -> dict[str, int]:
-        keys = full_scan(self.redis, "%s:*" % self.MEMP_ACCEPT_TOTAL_SEEN_KEY)
+        keys = [f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{h}" for h in self.host_to_cohort]
         vals = self.redis.mget(keys)
         kvs = {}
 
@@ -134,7 +134,7 @@ class MempoolAcceptAggregator:
                 assert v
                 kvs[k.split(":")[-1]] = int(v)
             except Exception:
-                log.error("got invalid value for %s", k)
+                log.error("missing total txids for host key %s", k)
                 continue
 
         return kvs
@@ -174,7 +174,7 @@ class MempoolAcceptAggregator:
 
         for key, res in zip(scan_for, self.redis.mget(scan_for)):
             if res is not None:
-                hosts_seen.add(key.split(':')[-1])
+                hosts_seen.add(key.split(":")[-1])
 
         if hosts_seen == set(self.host_to_cohort.keys()):
             return PropagationStatus.CompleteAll
@@ -219,21 +219,21 @@ class MempoolAcceptAggregator:
         processed_events = []
 
         for txid in txids:
-            keys = full_scan(self.redis, f"mpa:{txid}:*")
+            keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
             got = self.redis.mget(keys)
             host_to_timestamp: dict[str, float] = {}
 
             for tried, res in zip(keys, got):
                 if not res:
-                    log.error("got empty value for %s", tried)
+                    # Expected that we may be missing some hosts.
                     continue
-                try:
-                    host = tried.split(":")[-1]
-                except Exception:
-                    log.exception("bad mempool accept key")
+                host = tried.split(":")[-1]
+
+                if host not in self.host_to_cohort:
+                    log.error("unknown host %s for txid %s", host, txid)
                     continue
-                else:
-                    host_to_timestamp[host] = float(res)
+
+                host_to_timestamp[host] = float(res)
 
             if not host_to_timestamp:
                 log.error("no timestamp entries found for %s", txid)
@@ -256,7 +256,9 @@ class MempoolAcceptAggregator:
 
             first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
             if not first_saw:
-                log.error("missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY)
+                log.error(
+                    "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
+                )
                 continue
 
             event = TxPropagation(
@@ -275,11 +277,24 @@ class MempoolAcceptAggregator:
             else:
                 processed_events.append(event)
 
+            prop_event_key = "mpa:prop_event:%s" % txid
             self.redis.set(
-                "mpa:prop_event:%s" % txid,
+                prop_event_key,
                 json.dumps(event.asdict()),
                 ex=self.RESULT_LIFETIME_SECS,
             )
+
+            # Add to the indexing set (to avoid full scans for tx prop events.
+            if (
+                self.redis.zadd(
+                    "mpa:prop_event_set",
+                    {prop_event_key: timezone.now().timestamp()},
+                    nx=True,
+                )
+                <= 0
+            ):
+                log.error("duplicate tx propagation event attempt: %s", txid)
+
             # TODO maybe delete these at some point, but in the meantime rely on the
             # TTLs because we need to debug certain weird behavior.
             #
@@ -294,10 +309,24 @@ class MempoolAcceptAggregator:
 
         (Last hour because of how we set TTLs based on `RESULT_LIFETIME_SECS`.)
         """
-        return full_scan(self.redis, "mpa:prop_event:*")
+        cursor = None
+        keys = []
+
+        while cursor != 0:
+            cursor, res = self.redis.zscan("mpa:prop_event_set", cursor or 0)
+            # omit scores
+            keys.extend([i[0] for i in res])
+
+        return keys
 
     def get_propagation_events(self) -> t.Iterator[TxPropagation]:
+        now = timezone.now().timestamp()
+        hour_ago = now - (60 * 60)
+        removed = self.redis.zremrangebyscore("mpa:prop_event_set", "-inf", hour_ago)
         keys = self.get_propagation_event_keys()
+
+        if removed > 0:
+            log.info("removed %s old tx propagation events", removed)
 
         def chunks(lst, n):
             for i in range(0, len(lst), n):
@@ -318,7 +347,7 @@ class MempoolAcceptAggregator:
                     continue
 
                 if not txprop.host_to_timestamp:
-                    log.error("txprop without timestamp data", extra={'txprop': txprop})
+                    log.error("txprop without timestamp data", extra={"txprop": txprop})
                     continue
                 else:
                     yield txprop

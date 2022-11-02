@@ -129,6 +129,7 @@ def test_mempool_accept_processing():
         "mpa:total_txids",
         "mpa:prop_event:txid2",
         "mpa:prop_event:txid1",
+        "mpa:prop_event_set",
         "mpa:txid1:a",
         "mpa:txid1:b",
         "mpa:txid1:c",

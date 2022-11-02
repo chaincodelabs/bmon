@@ -113,9 +113,6 @@ def refresh_metrics(
 
     REDIS_KEYS.set(server_tasks.redisdb.dbsize())
 
-    # TODO
-    return
-
     total_txids_in_hour = 0
     total_txids_in_hour_per_host = {h: 0 for h in mempool_agg.host_to_cohort.keys()}
     total_txids_in_hour_by_all = 0
