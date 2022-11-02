@@ -1,9 +1,11 @@
 import decimal
 import json
+import re
 import cProfile
 import time
 import pstats
 import huey
+from collections import Counter
 
 from django.db import models
 from django.db.models.sql.query import Query
@@ -58,6 +60,16 @@ def exec_tasks(n, huey_instance):
 
 def exec_mempool_tasks(n):
     return exec_tasks(n, server_tasks.mempool_q)
+
+
+def _count_tasks(q):
+    p = re.compile(br'bmon\.[a-zA-Z_\.]+')
+    print(Counter(p.search(msg).group().decode() for msg in q.storage.enqueued_items()))
+
+
+def count_tasks():
+    _count_tasks(server_tasks.mempool_q)
+    _count_tasks(server_tasks.server_q)
 
 
 def clean_queue(q: huey.RedisHuey):

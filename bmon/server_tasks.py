@@ -124,7 +124,7 @@ def process_completed_propagations(txid: str):
     agg.process_completed_propagations([txid], assert_complete=True)
 
 
-@mempool_q.periodic_task(crontab(minute="*/2"))
+@mempool_q.periodic_task(crontab(minute="*/8"))
 def process_aged_propagations():
     agg = get_mempool_aggregator()
     agg.process_all_aged()

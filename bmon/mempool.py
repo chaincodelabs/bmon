@@ -150,6 +150,9 @@ class MempoolAcceptAggregator:
         # index into txids that have been hanging around for awhile.
         assert seen_at.tzinfo == datetime.timezone.utc
 
+        if host not in self.host_to_cohort:
+            raise ValueError("host %s not known to mempool aggregator", host)
+
         if self.redis.get(f"mpa:{txid}:{host}"):
             log.error("duplicate MempoolAccept event detected: %s", txid)
             return None
@@ -237,6 +240,7 @@ class MempoolAcceptAggregator:
 
             if not host_to_timestamp:
                 log.error("no timestamp entries found for %s", txid)
+                self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
                 continue
 
             all_hosts: set[str] = set(i for i in host_to_timestamp)
