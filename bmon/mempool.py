@@ -250,10 +250,14 @@ class MempoolAcceptAggregator:
             all_complete = all_hosts == hosts_expected
 
             if assert_complete:
-                assert all_complete
+                if not all_complete:
+                    log.error("expected to have all host timestamps for txid %s", txid)
+                    continue
 
             first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
-            assert first_saw
+            if not first_saw:
+                log.error("missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY)
+                continue
 
             event = TxPropagation(
                 txid,
@@ -305,12 +309,6 @@ class MempoolAcceptAggregator:
                     assert event
                     loaded = json.loads(event)
                     txprop = TxPropagation(**loaded)
-
-                    if not txprop.host_to_timestamp:
-                        log.error("txprop without timestamp data", extra={'txprop': txprop})
-                    else:
-                        yield txprop
-
                 except Exception:
                     log.exception(
                         "failed to deserialize TxPropagation from redis: %s: %s",
@@ -318,6 +316,12 @@ class MempoolAcceptAggregator:
                         event,
                     )
                     continue
+
+                if not txprop.host_to_timestamp:
+                    log.error("txprop without timestamp data", extra={'txprop': txprop})
+                    continue
+                else:
+                    yield txprop
 
 
 def full_scan(redis: redis.Redis, query: str) -> list[str]:
