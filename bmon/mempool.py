@@ -121,9 +121,6 @@ class MempoolAcceptAggregator:
             h for h in self.host_to_cohort.keys() if self.host_to_cohort[h] == cohort
         }
 
-    def txkey_scan(self, txid: str) -> str:
-        return f"mpa:{txid}:*"
-
     def get_total_txids_processed(self) -> int:
         return int(self.redis.get(self.MEMP_ACCEPT_TOTAL_SEEN_KEY) or 0)
 
@@ -152,6 +149,11 @@ class MempoolAcceptAggregator:
         # Maintain a sorted set of txids to times first seen; this allows us to quickly
         # index into txids that have been hanging around for awhile.
         assert seen_at.tzinfo == datetime.timezone.utc
+
+        if self.redis.get(f"mpa:{txid}:{host}"):
+            log.error("duplicate MempoolAccept event detected: %s", txid)
+            return None
+
         if (
             self.redis.zadd(
                 self.MEMP_ACCEPT_SORTED_KEY, {txid: timezone.now().timestamp()}, nx=True
@@ -165,8 +167,10 @@ class MempoolAcceptAggregator:
             f"mpa:{txid}:{host}", seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
         )
 
-        scan_res = full_scan(self.redis, self.txkey_scan(txid))
+        scan_res = full_scan(self.redis, f"mpa:{txid}:*")
         hosts_seen = {row.split(":")[-1] for row in scan_res}
+
+        assert len(self.host_to_cohort) > 0
 
         if len(scan_res) == len(self.host_to_cohort):
             return PropagationStatus.CompleteAll
@@ -210,7 +214,7 @@ class MempoolAcceptAggregator:
         processed_events = []
 
         for txid in txids:
-            keys = full_scan(self.redis, self.txkey_scan(txid))
+            keys = full_scan(self.redis, f"mpa:{txid}:*")
             got = self.redis.mget(keys)
             host_to_timestamp: dict[str, float] = {}
 

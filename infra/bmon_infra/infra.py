@@ -255,7 +255,7 @@ def provision_bmon_server(
 
     match restart_spec:
         case "":
-            cycle("web server-task-worker")
+            cycle("web server-task-worker server-monitor")
         case "none":
             pass
         case "all":
