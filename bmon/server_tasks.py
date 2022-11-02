@@ -26,7 +26,10 @@ from .hosts import get_bitcoind_hosts_to_policy_cohort
 log = logging.getLogger(__name__)
 
 server_q = RedisHuey(
-    "bmon-server", url=settings.REDIS_SERVER_URL, immediate=settings.TESTING
+    "bmon-server",
+    url=settings.REDIS_SERVER_URL,
+    immediate=settings.TESTING,
+    results=False,
 )
 
 redisdb = redis.Redis.from_url(settings.REDIS_SERVER_URL, decode_responses=True)
