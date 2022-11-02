@@ -168,9 +168,19 @@ class MempoolAcceptAggregator:
             self.redis.incr(self.MEMP_ACCEPT_TOTAL_SEEN_KEY)
 
         self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
-        self.redis.set(
-            f"mpa:{txid}:{host}", seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
-        )
+
+        ts_key = f"mpa:{txid}:{host}"
+        ts_set = False
+        tries = 3
+        while tries > 0 and not ts_set:
+            ts_set = self.redis.set(ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS)
+
+            if not ts_set:
+                log.error("failed to set key for %s:%s", txid, host)
+            tries -= 1
+
+        if not ts_set:
+            raise ValueError(f"couldn't set key for {txid}:{host}", txid, host)
 
         assert len(self.host_to_cohort) > 0
 
@@ -181,10 +191,13 @@ class MempoolAcceptAggregator:
             if res is not None:
                 hosts_seen.add(key.split(":")[-1])
 
-        if hosts_seen == set(self.host_to_cohort.keys()):
+        if hosts_seen == self.host_names:
             return PropagationStatus.CompleteAll
         elif (self.cohort(host) - hosts_seen) == set():
             return PropagationStatus.CompleteCohort
+
+        if not self.redis.get(ts_key):
+            log.error("redis key disappeared %s", ts_key)
 
         return None
 

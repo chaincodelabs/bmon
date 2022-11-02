@@ -576,6 +576,16 @@ def runall(cmd: str, sudo: bool = False):
 
 
 @cli.cmd
+def ps():
+    docker_status_cmd = (
+        'docker ps -a --filter "network=bmon_default" '
+        r'--format "{{.State}}\t\t{{.RunningFor}}\t\t{{.Names}}" | '
+        'sort | sed -e "s/bmon_//" | sed -Ee "s/_[0-9]+//"'
+    )
+    runall(docker_status_cmd)
+
+
+@cli.cmd
 def rg_bitcoind(search: str):
     cli.args.hostname_filter = "(bitcoin|b-)"
     runall(f'rg "{search}" services/prod/bitcoin/data/debug.log')
