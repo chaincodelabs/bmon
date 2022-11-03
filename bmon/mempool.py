@@ -10,11 +10,11 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 from functools import cache, cached_property
 
+import walrus
 from django.utils import timezone
 
-from . import models
+from . import models, redis_util
 from .bitcoin import gather_rpc, RPC_ERROR_RESULT, bitcoind_version, is_pre_taproot
-import redis
 
 
 log = logging.getLogger(__name__)
@@ -99,14 +99,14 @@ class MempoolAcceptAggregator:
     In keys, "mpa" is short for "mempool accept"
     """
 
-    KEY_LIFETIME_SECS = 3 * 60 * 60  # 3 hours
-    RESULT_LIFETIME_SECS = 1 * 60 * 60  # 1 hour
+    KEY_LIFETIME_SECS = 4 * 60 * 60
+    RESULT_LIFETIME_SECS = 1 * 60 * 60
 
     MEMP_ACCEPT_SORTED_KEY = "mpa:txids"
     MEMP_ACCEPT_TOTAL_SEEN_KEY = "mpa:total_txids"
 
-    def __init__(self, redis: redis.Redis, host_to_cohort: dict[str, PolicyCohort]):
-        self.redis = redis
+    def __init__(self, redisdb: walrus.Database, host_to_cohort: dict[str, PolicyCohort]):
+        self.redis = redisdb
         self.host_to_cohort = host_to_cohort
 
     @cache
@@ -122,6 +122,10 @@ class MempoolAcceptAggregator:
         return {
             h for h in self.host_to_cohort.keys() if self.host_to_cohort[h] == cohort
         }
+
+    @cached_property
+    def host_names(self) -> set[str]:
+        return set(self.host_to_cohort.keys())
 
     def get_total_txids_processed(self) -> int:
         return int(self.redis.get(self.MEMP_ACCEPT_TOTAL_SEEN_KEY) or 0)
@@ -170,27 +174,18 @@ class MempoolAcceptAggregator:
         self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
 
         ts_key = f"mpa:{txid}:{host}"
-        ts_set = False
-        tries = 3
-        while tries > 0 and not ts_set:
-            ts_set = self.redis.set(
-                ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
-            )
-
-            if not ts_set:
-                log.error("failed to set key for %s:%s", txid, host)
-            tries -= 1
-
-        if not ts_set:
+        if not redis_util.try_set_key(
+            self.redis, ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
+        ):
             raise ValueError(f"couldn't set key for {txid}:{host}", txid, host)
 
         assert len(self.host_to_cohort) > 0
 
-        scan_for = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
+        check_for = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
         hosts_seen = set()
 
-        for key, res in zip(scan_for, self.redis.mget(scan_for)):
-            if res is not None:
+        for key, res in zip(check_for, self.redis.mget(check_for)):
+            if res:
                 hosts_seen.add(key.split(":")[-1])
 
         if hosts_seen == self.host_names:
@@ -205,7 +200,6 @@ class MempoolAcceptAggregator:
 
     def process_all_aged(
         self,
-        process_event: t.Callable[[TxPropagation], None] | None = None,
         min_age: None | int | float = None,
         start_score: None | int | float = None,
     ) -> list[TxPropagation]:
@@ -227,118 +221,126 @@ class MempoolAcceptAggregator:
             byscore=True,
         )
         log.info(
-            "sending %d txids to be processed for prop. completion",
+            "sending 'old enough' %d txids to be processed for prop. completion",
             len(old_enough_txids),
         )
+        events = []
+        event = None
 
-        return self.process_completed_propagations(old_enough_txids, process_event)
-
-    @cached_property
-    def host_names(self) -> set[str]:
-        return set(self.host_to_cohort.keys())
-
-    def process_completed_propagations(
-        self,
-        txids: list[str],
-        process_event: t.Callable[[TxPropagation], None] | None = None,
-        assert_complete: bool = False,
-    ) -> list[TxPropagation]:
-        """
-        Render separate redis keys into a single distince TxPropagation event.
-        """
-        now = timezone.now().timestamp()
-        processed_events = []
-        to_remove = []
-
-        log.info("processing %d tx propagation completions", len(txids))
-        if assert_complete:
-            log.info("assuming %s has been seen be all nodes", txids)
-
-        for txid in txids:
-            log.info("processing complete propagation for txid %s", txid)
-            keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
-            got = self.redis.mget(keys)
-            host_to_timestamp: dict[str, float] = {}
-            hosts_that_saw = set()
-
-            for tried, res in zip(keys, got):
-                if not res:
-                    # Expected that we may be missing some hosts.
-                    continue
-                host = tried.split(":")[-1]
-
-                if host not in self.host_to_cohort:
-                    log.error("unknown host %s for txid %s", host, txid)
-                    continue
-
-                host_to_timestamp[host] = float(res)
-                hosts_that_saw.add(host)
-
-            if not host_to_timestamp:
-                log.error("no timestamp entries found for %s", txid)
-                to_remove.append(txid)
-                continue
-
-            cohorts_complete: list[PolicyCohort] = [
-                c
-                for c in self.cohorts
-                if len(self.hosts_for_cohort(c) - hosts_that_saw) == 0
-            ]
-
-            all_complete = hosts_that_saw == self.host_names
-            if assert_complete:
-                if not all_complete:
-                    log.error("expected to have all host timestamps for txid %s", txid)
-                    continue
-
-            first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
-            if not first_saw:
-                log.error(
-                    "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
-                )
-                continue
-
-            event = TxPropagation(
-                txid,
-                host_to_timestamp,
-                cohorts_complete=cohorts_complete,
-                all_complete=all_complete,
-                time_window=(now - float(first_saw)),
-            )
-
+        for txid in old_enough_txids:
             try:
-                if process_event:
-                    process_event(event)
+                event = self.finalize_propagation(txid, False)
             except Exception:
-                log.exception("failed to process event")
-            else:
-                processed_events.append(event)
+                log.exception("failed to finalize tx prop. event for %s", txid)
+                continue
 
-            prop_event_key = "mpa:prop_event:%s" % txid
-            self.redis.set(
-                prop_event_key,
-                json.dumps(event.asdict()),
-                ex=self.RESULT_LIFETIME_SECS,
+            if event:
+                events.append(event)
+
+        if not events:
+            return []
+
+        removed: int = self.redis.zrem(
+            self.MEMP_ACCEPT_SORTED_KEY, *[e.txid for e in events]
+        )
+        if removed != len(events):
+            log.error(
+                "removal from txid prop. index failed (%s, expected %s)",
+                removed,
+                len(events),
             )
 
-            # Add to the indexing set (to avoid full scans for tx prop events.
-            if (
-                self.redis.zadd(
-                    "mpa:prop_event_set",
-                    {prop_event_key: timezone.now().timestamp()},
-                    nx=True,
-                )
-                <= 0
-            ):
-                log.error("duplicate tx propagation event attempt: %s", txid)
+        return events
 
-            self.redis.delete(*keys)
-            to_remove.append(txid)
+    def finalize_propagation(
+        self, txid: str, assert_complete: bool
+    ) -> TxPropagation | None:
+        """
+        When an event has been seen by all hosts (or the observation window has closed),
+        finalize the disparate redis entries into a single propagation event.
+        """
+        EVENT_INDEX_KEY = "mpa:prop_event_set"
+        EVENT_KEY = "mpa:prop_event:%s" % txid
 
-        if to_remove:
-            self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, *to_remove)
+        if self.redis.zscore(EVENT_INDEX_KEY, txid) is not None:
+            raise RuntimeError("duplicate tx propagation event attempt: %s", txid)
 
-        return processed_events
+        log.info("processing complete propagation for txid %s", txid)
+        keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
+        host_to_timestamp: dict[str, float] = {}
+        hosts_that_saw = set()
+
+        got = self.redis.mget(keys)
+
+        for tried, res in zip(keys, got):
+            if not res:
+                # Expected that we may be missing some hosts.
+                continue
+            host = tried.split(":")[-1]
+
+            if host not in self.host_to_cohort:
+                log.error("unknown host %s for txid %s", host, txid)
+                continue
+
+            host_to_timestamp[host] = float(res)
+            hosts_that_saw.add(host)
+
+        if not host_to_timestamp:
+            log.error("no timestamp entries found for %s", txid)
+            self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
+            return None
+
+        cohorts_complete: list[PolicyCohort] = [
+            c
+            for c in self.cohorts
+            if len(self.hosts_for_cohort(c) - hosts_that_saw) == 0
+        ]
+
+        all_complete = hosts_that_saw == self.host_names
+        if assert_complete:
+            if not all_complete:
+                log.error(
+                    "expected to have all host timestamps for txid %s", txid)
+                return None
+
+        first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
+        if not first_saw:
+            log.error(
+                "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY)
+            return None
+
+        now = timezone.now().timestamp()
+
+        event = TxPropagation(
+            txid,
+            host_to_timestamp,
+            cohorts_complete=cohorts_complete,
+            all_complete=all_complete,
+            time_window=(now - float(first_saw)),
+        )
+
+        if not redis_util.try_set_key(
+            self.redis,
+            EVENT_KEY,
+            json.dumps(event.asdict()),
+            # Set expiry for an extra minute to avoid .get() errors - we rely
+            # on maintaining the index in `mpa:prop_event_set` based on
+            # time-score anyway, so this cache is belt-and-suspenders.
+            ex=(self.RESULT_LIFETIME_SECS + (60 * 1)),
+        ):
+            return None
+
+        # Add to the indexing set (to avoid full scans for tx prop events).
+        if (result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)) <= 0:
+            log.error(
+                "already in event index - duplicate tx prop. event? %s",
+                txid,
+                extra={"result": result},
+            )
+            return None
+
+        self.redis.delete(*keys)
+        return event
 
     def get_propagation_event_keys(self) -> list[str]:
         """
@@ -360,16 +362,17 @@ class MempoolAcceptAggregator:
         now = timezone.now().timestamp()
         hour_ago = now - (60 * 60)
         removed = self.redis.zremrangebyscore("mpa:prop_event_set", "-inf", hour_ago)
-        keys = self.get_propagation_event_keys()
 
         if removed > 0:
             log.info("removed %s old tx propagation events", removed)
+
+        keys = self.get_propagation_event_keys()
 
         def chunks(lst, n):
             for i in range(0, len(lst), n):
                 yield lst[i : (i + n)]
 
-        for chunk in chunks(keys, 100):
+        for chunk in chunks(keys, 500):
             for key, event in zip(chunk, self.redis.mget(chunk)):
                 try:
                     assert event
@@ -386,19 +389,8 @@ class MempoolAcceptAggregator:
                 if not txprop.host_to_timestamp:
                     log.error("txprop without timestamp data", extra={"txprop": txprop})
                     continue
-                else:
-                    yield txprop
 
-
-def full_scan(redis: redis.Redis, query: str) -> list[str]:
-    cursor = None
-    results = []
-
-    while cursor != 0:
-        cursor, res = redis.scan(cursor or 0, match=query)
-        results.extend(res)
-
-    return results
+                yield txprop
 
 
 @dataclass

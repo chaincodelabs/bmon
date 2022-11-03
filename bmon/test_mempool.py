@@ -64,20 +64,18 @@ def test_mempool_accept_processing():
     print("All specific txid keys should have a TTL")
     num_checked = 0
 
-    for key in mempool.full_scan(redis, "mpa:txid*"):
+    for key in redis.keys("mpa:txid*"):
         assert redis.ttl(key)
         num_checked += 1
 
     assert num_checked >= len(hosts)
 
-    processed_events = []
-
     # Nothing's ready yet.
-    assert len(agg.process_all_aged(processed_events.append)) == 0
-    processed = agg.process_all_aged(processed_events.append, start_score=now_ts)
+    assert len(agg.process_all_aged()) == 0
+    processed = agg.process_all_aged(start_score=now_ts)
     assert len(processed) == 0
 
-    processed = agg.process_all_aged(processed_events.append, start_score=(now_ts + 1))
+    processed = agg.process_all_aged(start_score=(now_ts + 1))
     assert len(processed) == 2
 
     [txprop1, txprop2] = processed
@@ -118,7 +116,7 @@ def test_mempool_accept_processing():
     assert set(agg.get_propagation_events()) == {prop1, prop2}
 
     for key in all_processed:
-        assert int(redis.ttl(key)) <= 60 * 60
+        assert int(redis.ttl(key)) <= (60 * 60) + 60
 
     assert set(redis.keys()) == {
         "mpa:total_txids:a",

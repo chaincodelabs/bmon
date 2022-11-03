@@ -22,7 +22,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 def json_dumps(*args, **kwargs):
     """Handles serialization of decimals."""
-    kwargs.setdefault('cls', DecimalEncoder)
+    kwargs.setdefault("cls", DecimalEncoder)
     return json.dumps(*args, **kwargs)
 
 
@@ -36,15 +36,15 @@ def print_sql(q: models.QuerySet | Query):
     from sqlparse import format
 
     """Prettyprint a Django queryset."""
-    if hasattr(q, 'q'):
+    if hasattr(q, "q"):
         q = q.query  # type: ignore
     formatted = format(str(q), reindent=True)
     print(highlight(formatted, PostgresLexer(), TerminalFormatter()))
 
 
 def profile(cmd):
-    cProfile.run(cmd, 'stats')
-    p = pstats.Stats('stats')
+    cProfile.run(cmd, "stats")
+    p = pstats.Stats("stats")
     p.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(30)
 
 
@@ -63,8 +63,14 @@ def exec_mempool_tasks(n):
 
 
 def _count_tasks(q) -> Counter:
-    p = re.compile(br'bmon\.[a-zA-Z_\.]+')
-    return Counter(p.search(msg).group().decode() for msg in q.storage.enqueued_items())
+    p = re.compile(rb"bmon\.[a-zA-Z_\.]+")
+
+    def search(msg):
+        m = p.search(msg)
+        assert m
+        return m
+
+    return Counter(search(msg).group().decode() for msg in q.storage.enqueued_items())
 
 
 def get_task_counts():

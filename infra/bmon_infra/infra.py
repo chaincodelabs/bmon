@@ -586,12 +586,6 @@ def ps():
 
 
 @cli.cmd
-def rg_bitcoind(search: str):
-    cli.args.hostname_filter = "(bitcoin|b-)"
-    runall(f'rg "{search}" services/prod/bitcoin/data/debug.log')
-
-
-@cli.cmd
 def rpc(cmd: str):
     """Run a bitcoind RPC command across all bitcoind hosts."""
     _, hostmap = get_hosts_for_cli(need_secrets=False, hostname_filter="bmon")
@@ -614,10 +608,12 @@ def wireguard_peer_template(hostname: str):
     print(get_wireguard_peer_template(hostname))
 
 
-def _run_rg(query: str, tail_limit: int, context: int):
+def _run_rg(query: str, tail_limit: int, context: int, all: bool):
     os.chdir('./bmon/services/prod/bitcoin/data')
     context_str = '' if context == -1 else f'-C {context}'
-    cmd = f"rg --color=always -z {context_str} '{query}' debug.log*"
+    filename = 'debug.log*' if all else 'debug.log'
+
+    cmd = f"rg --color=always -z {context_str} '{query}' {filename}"
     if tail_limit != -1:
         cmd += f"| tail -n {tail_limit}"
 
@@ -627,18 +623,24 @@ def _run_rg(query: str, tail_limit: int, context: int):
 @cli.cmd
 @cli.arg('tail_limit', '-n')
 @cli.arg('context', '-C')
-def rg(search_query: str, tail_limit: int = -1, context: int = -1):
-    """Ripgrep through the bitcoind logs."""
+@cli.arg('all', '-a')
+def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = False):
+    """
+    Ripgrep through the bitcoind logs.
+
+    Kwargs:
+        all: if True, search through all rotated logs as well
+    """
     cli.args.tag_filter = 'bitcoind'
 
     _, hostmap = get_hosts_for_cli(need_secrets=False)
     hosts = list(hostmap.values())
     with executor(*hosts) as exec:
-        got = exec.run(_run_rg, search_query, tail_limit, context)
+        got = exec.run(_run_rg, search_query, tail_limit, context, all)
 
         for host, result in got.all_results.items():
             for res in result.splitlines():
-                print(f"{host.name:<12} |  ", end="")
+                print(f"{host.name:<10} |  ", end="")
                 print(res.strip().decode())
 
 

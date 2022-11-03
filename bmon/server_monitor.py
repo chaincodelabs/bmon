@@ -105,7 +105,7 @@ def refresh_metrics(
         h.name: {
             "host": h.name,
             "bitcoin_version": h.bitcoin_version,
-            "region": h.region,
+            "region": h.region or '',
             "cohort": cohort.name,
         }
         for h, cohort in host_to_cohort.items()

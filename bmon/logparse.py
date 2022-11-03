@@ -9,7 +9,6 @@ import typing as t
 from pathlib import Path
 
 import walrus
-from django.conf import settings
 from django.utils import timezone
 
 from bmon.models import ConnectBlockDetails, ConnectBlockEvent
@@ -242,7 +241,6 @@ class MempoolAcceptListener:
                     matches.update(match.groupdict())
 
             return models.MempoolAccept(
-                host=settings.HOSTNAME,
                 timestamp=timestamp,
                 peer_num=int(matches["peer_num"]),
                 txhash=matches["txhash"],

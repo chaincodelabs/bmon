@@ -33,6 +33,9 @@ def clear_redis():
 
 
 def make_host(name: str, bitcoin_version: str = "v23.0"):
+    assert settings.BITCOIN_DBCACHE
+    assert settings.BITCOIN_PRUNE
+
     return models.Host.objects.get_or_create(
         name=name,
         cpu_info="test",
@@ -54,6 +57,9 @@ def make_host(name: str, bitcoin_version: str = "v23.0"):
 
 @pytest.fixture()
 def fake_hosts():
+    """
+    These hosts should match up with the file in ./infra/hosts_dev.yml
+    """
     host1 = make_host('bitcoind', 'v0.18.0')
     host2 = make_host('bitcoind-02')
     return host1, host2

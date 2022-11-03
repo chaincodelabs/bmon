@@ -402,8 +402,9 @@ def process_line(
 
         # TODO make this less special casey
         if isinstance(got, models.MempoolAccept):
+            got.host = host.name
             mempool_activity(got.avro_record(), linehash)  # type: ignore
-            server_tasks.process_mempool_accept(got.txhash, got.timestamp, got.host)
+            server_tasks.process_mempool_accept(got.txhash, got.timestamp, host.name)
             continue
 
         got.host = host
