@@ -372,10 +372,16 @@ class MempoolAcceptAggregator:
             for i in range(0, len(lst), n):
                 yield lst[i : (i + n)]
 
+        keys_to_rm = []
+
         for chunk in chunks(keys, 500):
             for key, event in zip(chunk, self.redis.mget(chunk)):
+                if not event:
+                    log.error("missing tx prop. event in index: %s", key)
+                    keys_to_rm.append(key)
+                    continue
+
                 try:
-                    assert event
                     loaded = json.loads(event)
                     txprop = TxPropagation(**loaded)
                 except Exception:
@@ -391,6 +397,10 @@ class MempoolAcceptAggregator:
                     continue
 
                 yield txprop
+
+        if keys_to_rm:
+            rmd = self.redis.zrem("mpa:prop_event_set", *keys_to_rm)
+            log.info("removed %d bad keys from tx prop. event index", rmd)
 
 
 @dataclass
