@@ -116,7 +116,7 @@ def test_mempool_accept_processing():
     assert set(agg.get_propagation_events()) == {prop1, prop2}
 
     for key in all_processed:
-        assert int(redis.ttl(key)) <= (60 * 60) + 60
+        assert int(redis.ttl(key)) <= (60 * 60) + (60 * 5)
 
     assert set(redis.keys()) == {
         "mpa:total_txids:a",

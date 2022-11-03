@@ -100,7 +100,6 @@ class MempoolAcceptAggregator:
     """
 
     KEY_LIFETIME_SECS = 4 * 60 * 60
-    RESULT_LIFETIME_SECS = 1 * 60 * 60
 
     MEMP_ACCEPT_SORTED_KEY = "mpa:txids"
     MEMP_ACCEPT_TOTAL_SEEN_KEY = "mpa:total_txids"
@@ -326,7 +325,7 @@ class MempoolAcceptAggregator:
             # Set expiry for an extra minute to avoid .get() errors - we rely
             # on maintaining the index in `mpa:prop_event_set` based on
             # time-score anyway, so this cache is belt-and-suspenders.
-            ex=(self.RESULT_LIFETIME_SECS + (60 * 1)),
+            ex=((60 * 60) + (60 * 5)),  # an hour with a five minute grace period
         ):
             return None
 
@@ -345,11 +344,15 @@ class MempoolAcceptAggregator:
     def get_propagation_event_keys(self) -> list[str]:
         """
         Return all the propagation events over the last hour.
-
-        (Last hour because of how we set TTLs based on `RESULT_LIFETIME_SECS`.)
         """
         cursor = None
         keys = []
+        now = timezone.now().timestamp()
+        hour_ago = now - (60 * 60)
+        removed = self.redis.zremrangebyscore("mpa:prop_event_set", "-inf", hour_ago)
+
+        if removed > 0:
+            log.info("removed %s old tx propagation events", removed)
 
         while cursor != 0:
             cursor, res = self.redis.zscan("mpa:prop_event_set", cursor or 0)
@@ -359,13 +362,6 @@ class MempoolAcceptAggregator:
         return keys
 
     def get_propagation_events(self) -> t.Iterator[TxPropagation]:
-        now = timezone.now().timestamp()
-        hour_ago = now - (60 * 60)
-        removed = self.redis.zremrangebyscore("mpa:prop_event_set", "-inf", hour_ago)
-
-        if removed > 0:
-            log.info("removed %s old tx propagation events", removed)
-
         keys = self.get_propagation_event_keys()
 
         def chunks(lst, n):
