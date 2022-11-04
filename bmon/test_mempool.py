@@ -72,10 +72,10 @@ def test_mempool_accept_processing():
 
     # Nothing's ready yet.
     assert len(agg.process_all_aged()) == 0
-    processed = agg.process_all_aged(start_score=now_ts)
+    processed = agg.process_all_aged(latest_time_allowed=now_ts)
     assert len(processed) == 0
 
-    processed = agg.process_all_aged(start_score=(now_ts + 1))
+    processed = agg.process_all_aged(latest_time_allowed=(now_ts + 1))
     assert len(processed) == 2
 
     [txprop1, txprop2] = processed
