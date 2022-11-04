@@ -157,48 +157,46 @@ class MempoolAcceptAggregator:
         # Maintain a sorted set of txids to times first seen; this allows us to quickly
         # index into txids that have been hanging around for awhile.
         assert seen_at.tzinfo == datetime.timezone.utc
+        assert len(self.host_to_cohort) > 0
 
         if host not in self.host_to_cohort:
             raise ValueError("host %s not known to mempool aggregator", host)
 
-        with self.get_txid_lock(txid):
-            if self.redis.get(f"mpa:{txid}:{host}"):
-                log.error("duplicate MempoolAccept event detected: %s", txid)
-                return None
+        if self.redis.get(f"mpa:{txid}:{host}"):
+            log.error("duplicate MempoolAccept event detected: %s", txid)
+            return None
 
-            if (
-                self.redis.zadd(
-                    self.MEMP_ACCEPT_SORTED_KEY,
-                    {txid: timezone.now().timestamp()},
-                    nx=True,
-                )
-                > 0
-            ):
-                self.redis.incr(self.MEMP_ACCEPT_TOTAL_SEEN_KEY)
+        ts_key = f"mpa:{txid}:{host}"
+        assert self.redis.set(
+            ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
+        )
 
-            self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
-
-            ts_key = f"mpa:{txid}:{host}"
-            assert self.redis.set(
-                ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
+        if (
+            self.redis.zadd(
+                self.MEMP_ACCEPT_SORTED_KEY,
+                {txid: timezone.now().timestamp()},
+                nx=True,
             )
+            > 0
+        ):
+            self.redis.incr(self.MEMP_ACCEPT_TOTAL_SEEN_KEY)
 
-            assert len(self.host_to_cohort) > 0
+        self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
 
-            check_for = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
-            hosts_seen = set()
+        check_for = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
+        hosts_seen = set()
 
-            for key, res in zip(check_for, self.redis.mget(check_for)):
-                if res:
-                    hosts_seen.add(key.split(":")[-1])
+        for key, res in zip(check_for, self.redis.mget(check_for)):
+            if res:
+                hosts_seen.add(key.split(":")[-1])
 
-            if hosts_seen == self.host_names:
-                return PropagationStatus.CompleteAll
-            elif (self.cohort(host) - hosts_seen) == set():
-                return PropagationStatus.CompleteCohort
+        if hosts_seen == self.host_names:
+            return PropagationStatus.CompleteAll
+        elif (self.cohort(host) - hosts_seen) == set():
+            return PropagationStatus.CompleteCohort
 
-            if not self.redis.get(ts_key):
-                log.error("redis key disappeared %s", ts_key)
+        if not self.redis.get(ts_key):
+            log.error("redis key disappeared %s", ts_key)
 
         return None
 
@@ -255,96 +253,95 @@ class MempoolAcceptAggregator:
 
         now = timezone.now().timestamp()
 
-        with self.get_txid_lock(txid):
-            if self.redis.zscore(EVENT_INDEX_KEY, txid) is not None:
-                raise RuntimeError("duplicate tx propagation event attempt: %s", txid)
+        if self.redis.zscore(EVENT_INDEX_KEY, txid) is not None:
+            raise RuntimeError("duplicate tx propagation event attempt: %s", txid)
 
-            type = "complete" if assert_complete else "aged"
-            log.info(f"processing {type} propagation for txid %s", txid)
-            keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
-            assert len(keys) > 0
-            host_to_timestamp: dict[str, float] = {}
-            hosts_that_saw = set()
+        type = "complete" if assert_complete else "aged"
+        log.info(f"processing {type} propagation for txid %s", txid)
+        keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
+        assert len(keys) > 0
+        host_to_timestamp: dict[str, float] = {}
+        hosts_that_saw = set()
 
-            first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
-            if not first_saw:
-                log.error(
-                    "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
-                )
-                return None
+        first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
+        if not first_saw:
+            log.error(
+                "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
+            )
+            return None
 
-            got = self.redis.mget(keys)
+        got = self.redis.mget(keys)
 
-            for tried, res in zip(keys, got):
-                if not res:
-                    # Expected that we may be missing some hosts.
-                    continue
-                host = tried.split(":")[-1]
+        for tried, res in zip(keys, got):
+            if not res:
+                # Expected that we may be missing some hosts.
+                continue
+            host = tried.split(":")[-1]
 
-                if host not in self.host_to_cohort:
-                    log.error("unknown host %s for txid %s", host, txid)
-                    continue
+            if host not in self.host_to_cohort:
+                log.error("unknown host %s for txid %s", host, txid)
+                continue
 
-                host_to_timestamp[host] = float(res)
-                hosts_that_saw.add(host)
+            host_to_timestamp[host] = float(res)
+            hosts_that_saw.add(host)
 
-            if not host_to_timestamp:
-                log.error(
-                    f"[{type}] no timestamp entries found for %s",
-                    txid,
-                    extra=dict(
-                        assert_complete=assert_complete,
-                        entry_age=(now - first_saw),
-                    ),
-                )
-                self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
-                return None
-
-            cohorts_complete: list[PolicyCohort] = [
-                c
-                for c in self.cohorts
-                if len(self.hosts_for_cohort(c) - hosts_that_saw) == 0
-            ]
-
-            all_complete = hosts_that_saw == self.host_names
-            if assert_complete:
-                if not all_complete:
-                    log.error("expected to have all host timestamps for txid %s", txid)
-                    return None
-
-            now = timezone.now().timestamp()
-
-            event = TxPropagation(
+        if not host_to_timestamp:
+            log.error(
+                f"[{type}] no timestamp entries found for %s",
                 txid,
-                host_to_timestamp,
-                cohorts_complete=cohorts_complete,
-                all_complete=all_complete,
-                time_window=(now - float(first_saw)),
+                extra=dict(
+                    assert_complete=assert_complete,
+                    entry_age=(now - first_saw),
+                ),
             )
+            self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
+            return None
 
-            assert self.redis.set(
-                EVENT_KEY,
-                json.dumps(event.asdict()),
-                # Set expiry for an extra minute to avoid .get() errors - we rely
-                # on maintaining the index in `mpa:prop_event_set` based on
-                # time-score anyway, so this cache is belt-and-suspenders.
-                ex=((60 * 60) + (60 * 5)),  # an hour with a five minute grace period
-            )
+        cohorts_complete: list[PolicyCohort] = [
+            c
+            for c in self.cohorts
+            if len(self.hosts_for_cohort(c) - hosts_that_saw) == 0
+        ]
 
-            # Add to the indexing set (to avoid full scans for tx prop events).
-            if (
-                result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)
-            ) <= 0:
-                log.error(
-                    "already in event index - duplicate tx prop. event? %s",
-                    txid,
-                    extra={"result": result},
-                )
+        all_complete = hosts_that_saw == self.host_names
+        if assert_complete:
+            if not all_complete:
+                log.error("expected to have all host timestamps for txid %s", txid)
                 return None
 
-            assert self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid) == 1
-            log.info("removed old sortedset index key for %s", txid)
-            self.redis.delete(*keys)
+        now = timezone.now().timestamp()
+
+        event = TxPropagation(
+            txid,
+            host_to_timestamp,
+            cohorts_complete=cohorts_complete,
+            all_complete=all_complete,
+            time_window=(now - float(first_saw)),
+        )
+
+        assert self.redis.set(
+            EVENT_KEY,
+            json.dumps(event.asdict()),
+            # Set expiry for an extra minute to avoid .get() errors - we rely
+            # on maintaining the index in `mpa:prop_event_set` based on
+            # time-score anyway, so this cache is belt-and-suspenders.
+            ex=((60 * 60) + (60 * 5)),  # an hour with a five minute grace period
+        )
+
+        # Add to the indexing set (to avoid full scans for tx prop events).
+        if (
+            result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)
+        ) <= 0:
+            log.error(
+                "already in event index - duplicate tx prop. event? %s",
+                txid,
+                extra={"result": result},
+            )
+            return None
+
+        assert self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid) == 1
+        log.info("removed old sortedset index key for %s", txid)
+        self.redis.delete(*keys)
 
         return event
 
