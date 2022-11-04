@@ -179,10 +179,11 @@ class MempoolAcceptAggregator:
             self.redis.zadd(
                 self.MEMP_ACCEPT_SORTED_KEY,
                 {txid: timezone.now().timestamp()},
-                nx=True,
             )
             > 0
         ):
+            if self.redis.zscore("mpa:prop_event_set", txid) is not None:
+                raise RuntimeError("already processed this as fully propagated: %s", txid)
             self.redis.incr(self.MEMP_ACCEPT_TOTAL_SEEN_KEY)
 
         self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
@@ -339,7 +340,7 @@ class MempoolAcceptAggregator:
 
         # Add to the indexing set (to avoid full scans for tx prop events).
         if (
-            result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)
+            result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now})
         ) <= 0:
             log.error(
                 f"[{type}] already in event index - duplicate tx prop. event? %s",

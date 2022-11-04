@@ -78,7 +78,7 @@ def test_mempool_accept_processing():
     processed = agg.process_all_aged(latest_time_allowed=(now_ts + 1))
     assert len(processed) == 2
 
-    [txprop1, txprop2] = processed
+    [txprop2, txprop1] = processed
 
     assert txprop1.host_to_timestamp == dict(
         **{h: now_ts for h in most_hosts}, **{"e": now_ts + 1}
@@ -105,7 +105,7 @@ def test_mempool_accept_processing():
     assert redis.get("mpa:total_txids:e") == "2"
 
     all_processed = agg.get_propagation_event_keys()
-    assert all_processed == ["mpa:prop_event:txid1", "mpa:prop_event:txid2"]
+    assert all_processed == ["mpa:prop_event:txid2", "mpa:prop_event:txid1"]
 
     [prop1, prop2] = [
         mempool.TxPropagation.from_redis(d) for d in sorted(redis.mget(all_processed))
