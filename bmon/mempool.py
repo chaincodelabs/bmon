@@ -13,7 +13,7 @@ from functools import cache, cached_property
 import redis
 from django.utils import timezone
 
-from . import models, redis_util
+from . import models
 from .bitcoin import gather_rpc, RPC_ERROR_RESULT, bitcoind_version, is_pre_taproot
 
 
@@ -168,7 +168,9 @@ class MempoolAcceptAggregator:
 
             if (
                 self.redis.zadd(
-                    self.MEMP_ACCEPT_SORTED_KEY, {txid: timezone.now().timestamp()}, nx=True
+                    self.MEMP_ACCEPT_SORTED_KEY,
+                    {txid: timezone.now().timestamp()},
+                    nx=True,
                 )
                 > 0
             ):
@@ -177,10 +179,9 @@ class MempoolAcceptAggregator:
             self.redis.incr(f"{self.MEMP_ACCEPT_TOTAL_SEEN_KEY}:{host}")
 
             ts_key = f"mpa:{txid}:{host}"
-            if not redis_util.try_set_key(
-                self.redis, ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
-            ):
-                raise ValueError(f"couldn't set key for {txid}:{host}", txid, host)
+            assert self.redis.set(
+                ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
+            )
 
             assert len(self.host_to_cohort) > 0
 
@@ -240,19 +241,6 @@ class MempoolAcceptAggregator:
             if event:
                 events.append(event)
 
-        if not events:
-            return []
-
-        removed: int = self.redis.zrem(
-            self.MEMP_ACCEPT_SORTED_KEY, *[e.txid for e in events]
-        )
-        if removed != len(events):
-            log.error(
-                "removal from txid prop. index failed (%s, expected %s)",
-                removed,
-                len(events),
-            )
-
         return events
 
     def finalize_propagation(
@@ -271,7 +259,8 @@ class MempoolAcceptAggregator:
             if self.redis.zscore(EVENT_INDEX_KEY, txid) is not None:
                 raise RuntimeError("duplicate tx propagation event attempt: %s", txid)
 
-            log.info("processing complete propagation for txid %s", txid)
+            type = "complete" if assert_complete else "aged"
+            log.info(f"processing {type} propagation for txid %s", txid)
             keys = [f"mpa:{txid}:{host}" for host in self.host_to_cohort]
             assert len(keys) > 0
             host_to_timestamp: dict[str, float] = {}
@@ -280,7 +269,8 @@ class MempoolAcceptAggregator:
             first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
             if not first_saw:
                 log.error(
-                    "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY)
+                    "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
+                )
                 return None
 
             got = self.redis.mget(keys)
@@ -299,10 +289,14 @@ class MempoolAcceptAggregator:
                 hosts_that_saw.add(host)
 
             if not host_to_timestamp:
-                log.error("no timestamp entries found for %s", txid, extra=dict(
-                    assert_complete=assert_complete,
-                    entry_age=(now - first_saw),
-                ))
+                log.error(
+                    f"[{type}] no timestamp entries found for %s",
+                    txid,
+                    extra=dict(
+                        assert_complete=assert_complete,
+                        entry_age=(now - first_saw),
+                    ),
+                )
                 self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
                 return None
 
@@ -315,8 +309,7 @@ class MempoolAcceptAggregator:
             all_complete = hosts_that_saw == self.host_names
             if assert_complete:
                 if not all_complete:
-                    log.error(
-                        "expected to have all host timestamps for txid %s", txid)
+                    log.error("expected to have all host timestamps for txid %s", txid)
                     return None
 
             now = timezone.now().timestamp()
@@ -329,19 +322,19 @@ class MempoolAcceptAggregator:
                 time_window=(now - float(first_saw)),
             )
 
-            if not redis_util.try_set_key(
-                self.redis,
+            assert self.redis.set(
                 EVENT_KEY,
                 json.dumps(event.asdict()),
                 # Set expiry for an extra minute to avoid .get() errors - we rely
                 # on maintaining the index in `mpa:prop_event_set` based on
                 # time-score anyway, so this cache is belt-and-suspenders.
                 ex=((60 * 60) + (60 * 5)),  # an hour with a five minute grace period
-            ):
-                return None
+            )
 
             # Add to the indexing set (to avoid full scans for tx prop events).
-            if (result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)) <= 0:
+            if (
+                result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)
+            ) <= 0:
                 log.error(
                     "already in event index - duplicate tx prop. event? %s",
                     txid,
@@ -349,7 +342,9 @@ class MempoolAcceptAggregator:
                 )
                 return None
 
+            assert self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid) == 1
             self.redis.delete(*keys)
+
         return event
 
     def get_propagation_event_keys(self) -> list[str]:
