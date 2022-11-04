@@ -343,6 +343,7 @@ class MempoolAcceptAggregator:
                 return None
 
             assert self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid) == 1
+            log.info("removed old sortedset index key for %s", txid)
             self.redis.delete(*keys)
 
         return event
