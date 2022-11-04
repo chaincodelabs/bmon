@@ -166,6 +166,10 @@ class MempoolAcceptAggregator:
             log.error("duplicate MempoolAccept event detected: %s", txid)
             return None
 
+        # Keep a debug log
+        self.redis.rpush(f"mpa:log:{txid}", f"{host}  |  {seen_at}  |  {timezone.now()}")
+        self.redis.expire(f"mpa:log:{txid}", 60 * 60 * 4, nx=True)
+
         ts_key = f"mpa:{txid}:{host}"
         assert self.redis.set(
             ts_key, seen_at.timestamp(), ex=self.KEY_LIFETIME_SECS
@@ -199,6 +203,9 @@ class MempoolAcceptAggregator:
             log.error("redis key disappeared %s", ts_key)
 
         return None
+
+    def get_txid_debug_log(self, txid: str) -> list[str]:
+        return self.redis.lrange(f"mpa:log:{txid}", 0, -1)
 
     def process_all_aged(
         self,
@@ -266,7 +273,8 @@ class MempoolAcceptAggregator:
         first_saw = self.redis.zscore(self.MEMP_ACCEPT_SORTED_KEY, txid)
         if not first_saw:
             log.error(
-                "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY
+                "missing score for %s in %s", txid, self.MEMP_ACCEPT_SORTED_KEY,
+                extra={'log': self.get_txid_debug_log(txid)}
             )
             return None
 
@@ -292,6 +300,7 @@ class MempoolAcceptAggregator:
                 extra=dict(
                     assert_complete=assert_complete,
                     entry_age=(now - first_saw),
+                    log=self.get_txid_debug_log(txid),
                 ),
             )
             self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid)
@@ -333,15 +342,15 @@ class MempoolAcceptAggregator:
             result := self.redis.zadd(EVENT_INDEX_KEY, {EVENT_KEY: now}, nx=True)
         ) <= 0:
             log.error(
-                "already in event index - duplicate tx prop. event? %s",
+                f"[{type}] already in event index - duplicate tx prop. event? %s",
                 txid,
-                extra={"result": result},
+                extra={"result": result, "log": self.get_txid_debug_log(txid)},
             )
             return None
 
         assert self.redis.zrem(self.MEMP_ACCEPT_SORTED_KEY, txid) == 1
-        log.info("removed old sortedset index key for %s", txid)
-        self.redis.delete(*keys)
+        log.debug("removed old sortedset index key for %s", txid)
+        self.redis.delete(*(keys + [f"mpa:log:{txid}"]))
 
         return event
 
