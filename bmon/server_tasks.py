@@ -118,6 +118,7 @@ def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
 
 
 @mempool_q.periodic_task(crontab(minute="*/1"))
+@mempool_q.lock_task('process_aged_propagations')
 def process_aged_propagations():
     agg = get_mempool_aggregator()
     agg.process_all_aged()
