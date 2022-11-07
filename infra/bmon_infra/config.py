@@ -242,7 +242,7 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
     if host.bitcoin_dbcache is not None:
         bitcoin_flags += f" -dbcache={host.bitcoin_dbcache}"
     if host.bitcoin_listen:
-        bitcoin_flags += " -listen"
+        bitcoin_flags += " -listen=1"
 
     settings = dict(dev_settings)
     settings.update(

@@ -323,7 +323,7 @@ def create_host_record():
 
     # TODO hack
     listen = False
-    if '-listen' in settings.BITCOIN_FLAGS:
+    if '-listen=1' in settings.BITCOIN_FLAGS:
         listen = True
 
     host, created = models.Host.objects.get_or_create(
