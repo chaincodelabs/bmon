@@ -208,6 +208,7 @@ services:
     command: bitcoind -datadir=/bitcoin/data ${BITCOIN_FLAGS}
     ports:
       - 8332:8332
+      - 8333:8333
 
   promtail:
     profiles: ["bitcoind"]
