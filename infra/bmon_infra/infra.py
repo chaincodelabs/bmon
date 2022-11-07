@@ -351,8 +351,8 @@ def provision_monitored_bitcoind(
         # Sync to tip so that we don't generate a bunch of spurious events
         run(f"{docker_compose} pull bitcoind")
         run(f"{docker_compose} up -d bitcoind")
-        got = run(f"{python} dev bitcoind-wait-for-synced").stdout
-        assert "Synced to height" in got
+        print("Syncing bitcoind instance to tip, then cycling debug.log")
+        run(f"{python} dev bitcoind-wait-for-synced")
         run(f"{docker_compose} stop bitcoind")
         run(f"rm {btc_data}/debug.log")
         run(f"touch {btc_data}/debug.log")

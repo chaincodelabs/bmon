@@ -103,9 +103,10 @@ def bitcoind_wait_for_synced():
         else:
             is_synced = float(got["verificationprogress"]) > 0.9999
             time.sleep(1)
+            tries = 12
 
-            if i % 100 == 0:
-                print(f"At height {got['blocks']} ({got['verificationprogress']})")
+            if i % 40 == 0:
+                print(f"At height {got['blocks']} ({got['verificationprogress']})", flush=True)
 
             i += 1
 
