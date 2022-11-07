@@ -88,6 +88,7 @@ def get_bmon_peer_id(bitcoind_peer_id: int) -> int:
 
 
 @events_q.periodic_task(crontab(minute="*"))
+@events_q.lock_task('update-peers')
 def sync_peer_data(peer_id: None | int = None):
     sync_peer_data_blocking(peer_id)
 
@@ -164,24 +165,25 @@ def sync_peer_data_blocking(peer_id: None | int = None) -> dict[int, int]:
     Returns:
         A map of newly cached bitcoind peer ids to bmon Peer ids.
     """
-    log.info("syncing peer data (peer_id=%s)", peer_id)
-    try:
-        peerinfo = get_rpc().getpeerinfo()
-    except Exception:
-        log.exception("failed to get peerinfo")
-        return {}
+    with redisdb.lock('peers'):
+        log.info("syncing peer data (peer_id=%s)", peer_id)
+        try:
+            peerinfo = get_rpc().getpeerinfo()
+        except Exception:
+            log.exception("failed to get peerinfo")
+            return {}
 
-    for peer in peerinfo:
-        if "addr" not in peer or "id" not in peer:
-            log.warning("malformed peer, skipping: %s", peer)
-            continue
+        for peer in peerinfo:
+            if "addr" not in peer or "id" not in peer:
+                log.warning("malformed peer, skipping: %s", peer)
+                continue
 
-        peerinfo_cache[peer["id"]] = util.json_dumps(peer)
+            peerinfo_cache[peer["id"]] = util.json_dumps(peer)
 
-    if peer_id is not None:
-        peerinfo = [p for p in peerinfo if p["id"] == peer_id]
+        if peer_id is not None:
+            peerinfo = [p for p in peerinfo if p["id"] == peer_id]
 
-    return commit_peers_db(peerinfo)
+        return commit_peers_db(peerinfo)
 
 
 def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
@@ -191,7 +193,17 @@ def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
     new_ids = {}
     for peer in peerinfo:
         kwargs, defaults = models.Peer.peerinfo_data(peer)
-        obj, created = models.Peer.objects.get_or_create(defaults=defaults, **kwargs)
+        try:
+            obj, created = models.Peer.objects.get_or_create(defaults=defaults, **kwargs)
+        except models.Peer.MultipleObjectsReturned:
+            qs = models.Peer.objects.filter(**kwargs).order_by('-id')
+            latest = qs.first()
+            assert latest
+            deleted = qs.filter(exclude__id=latest.id).delete()
+            log.warning("deleted %s duplicate Peers", deleted)
+
+            obj, created = models.Peer.objects.get_or_create(defaults=defaults, **kwargs)
+
         if created:
             log.info("synced peer %d (num=%d) to database: %s", obj.id, obj.num, kwargs)
             peer_id_map[obj.num] = obj.id
