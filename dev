@@ -83,7 +83,7 @@ def bitcoind_wait_for_synced():
     This is helpful for bootstrapping new monited bitcoind instances without
     generating a bunch of spurious data.
     """
-    tries = 5
+    tries = 12
     backoff_secs = 2
     is_synced = False
     got = {}
@@ -98,7 +98,8 @@ def bitcoind_wait_for_synced():
             print(f"exception getting verification progress: {e}")
             tries -= 1
             time.sleep(backoff_secs)
-            backoff_secs *= 2
+            if backoff_secs < 120:
+                backoff_secs *= 2
         else:
             is_synced = float(got["verificationprogress"]) > 0.9999
             time.sleep(1)
