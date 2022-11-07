@@ -32,7 +32,8 @@ hosts:
         a: bitcoin-0.james.bmon.info
         endpoint: 10.8.1.1
         pubkey: /Qzuh/N11tPhzjCmq9+H+OzbeHnDLvniCPgxc+5R8l8=
-    bitcoin_docker_tag: jamesob/bitcoind:23.0
+    bitcoin:
+      docker_tag: jamesob/bitcoind:23.0
 
   b-01.slug:
     tags: [bitcoind, vagrant]
@@ -45,9 +46,10 @@ hosts:
         endpoint: 10.8.1.1
         a: b-01.slug.james.bmon.info
         pubkey: VzvkMZx+ZpzCmZvgFECohT1pa2QyC40qp7dHFaEzGn8=
-    bitcoin_prune: 550 
-    bitcoin_dbcache: 1200
-    bitcoin_docker_tag: jamesob/bitcoind:22.0
+    bitcoin:
+      prune: 550 
+      dbcache: 1200
+      docker_tag: jamesob/bitcoind:22.0
 
   b-02.slug:
     tags: [bitcoind, vagrant]
@@ -60,9 +62,10 @@ hosts:
         endpoint: 10.8.1.1
         a: b-02.slug.james.bmon.info
         pubkey: t/jLtFWsGaEy/RGp5ehcY7cVIdsKW8d1iJzTTUBmIxU=
-    bitcoin_prune: 550 
-    bitcoin_dbcache: 1200
-    bitcoin_docker_tag: jamesob/bitcoind:0.18.1
+    bitcoin:
+      prune: 550 
+      dbcache: 1200
+      docker_tag: jamesob/bitcoind:0.18.1
         
   b-03.slug:
     tags: [bitcoind, vagrant]
@@ -76,9 +79,10 @@ hosts:
         endpoint: 10.8.1.1
         a: b-03.slug.james.bmon.info
         pubkey: FCuA6MLGa5PuNX95ZKfjo9WodcI2r3u2792wy6gjxSw=
-    bitcoin_prune: 550 
-    bitcoin_dbcache: 1200
-    bitcoin_docker_tag: jamesob/bitcoind:0.19.1
+    bitcoin:
+      prune: 550 
+      dbcache: 1200
+      docker_tag: jamesob/bitcoind:0.19.1
 
   b-04.slug:
     tags: [bitcoind, vagrant]
@@ -92,9 +96,10 @@ hosts:
         endpoint: 10.8.1.1
         a: b-04.slug.james.bmon.info
         pubkey: L3DN/gKgDT9gF2qrvcybjV09MC9G4zT7u1Lsa34dTR4=
-    bitcoin_prune: 550 
-    bitcoin_dbcache: 1200
-    bitcoin_docker_tag: jamesob/bitcoind:22.0
+    bitcoin:
+      prune: 550 
+      dbcache: 1200
+      docker_tag: jamesob/bitcoind:22.0
 
   ssd-1.ccl:
     tags: [bitcoind]
@@ -106,9 +111,10 @@ hosts:
         ip: 10.33.0.50
         endpoint: au92.org
         pubkey: 17Zj7t2SD9Yy9BON350GgohO+uJ+84fzO5AtARU+yQE=
-    bitcoin_prune: 5000
-    bitcoin_dbcache: 3000
-    bitcoin_docker_tag: jamesob/bitcoind:master
+    bitcoin:
+      prune: 5000
+      dbcache: 3000
+      docker_tag: jamesob/bitcoind:master
 
   ssd-2.ccl:
     tags: [bitcoind]
@@ -120,23 +126,12 @@ hosts:
         ip: 10.33.0.51
         endpoint: au92.org
         pubkey: 6XVsUu/fhRSqZ5nlysVg+3Sobl/Lx88ej0v02QRhGRY=
-    bitcoin_prune: 5000
-    bitcoin_dbcache: 3000
-    bitcoin_docker_tag: jamesob/bitcoind:bip324-enable
-    bitcoin_extra_args: -v2transport=1
-
-  # b-osaka-ibm-01:
-  #   tags: [bitcoind]
-  #   ssh_hostname: 163.69.88.222
-  #   check_host_keys: accept
-  #   wireguard:
-  #     wg-bmon:
-  #       ip: 10.33.0.120
-  #       endpoint: au92.org
-  #       pubkey: 3ugtM89DDa2YODxj0M+TgMD9MOQnzOzLO+XtOTKNrXU=
-  #   bitcoin_prune: 5000
-  #   bitcoin_dbcache: 3000
-  #   bitcoin_docker_tag: jamesob/bitcoind:0.18.1
+    bitcoin:
+      prune: 5000
+      dbcache: 3000
+      docker_tag: jamesob/bitcoind:bip324-enable
+      extra_args: -v2transport=1
+      listen: 1
 
   b-milan-goog-01:
     tags: [bitcoind]
@@ -149,9 +144,10 @@ hosts:
         ip: 10.33.0.141
         endpoint: au92.org
         pubkey: 
-    bitcoin_prune: 5000
-    bitcoin_dbcache: 3000
-    bitcoin_docker_tag: jamesob/bitcoind:0.19.1
+    bitcoin:
+      prune: 5000
+      dbcache: 3000
+      docker_tag: jamesob/bitcoind:0.19.1
 
   b-paris-goog-01:
     tags: [bitcoind]
@@ -164,6 +160,7 @@ hosts:
         ip: 10.33.0.140
         endpoint: au92.org
         pubkey: 
-    bitcoin_prune: 5000
-    bitcoin_dbcache: 3000
-    bitcoin_docker_tag: jamesob/bitcoind:0.19.1
+    bitcoin:
+      prune: 5000
+      dbcache: 3000
+      docker_tag: jamesob/bitcoind:0.19.1

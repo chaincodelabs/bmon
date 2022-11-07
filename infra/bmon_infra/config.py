@@ -142,9 +142,9 @@ class Host(wireguard.Host):
         bitcoin_docker_tag: Op[str] = None,
         bitcoin_prune: int = 0,
         bitcoin_dbcache: int = 450,
+        bitcoin_listen: bool = False,
         bitcoin_extra_args: Op[str] = None,
         prom_exporter_port: Op[int] = 9100,
-        bitcoind_exporter_port: Op[int] = 9332,
         outbound_wireguard: Op[str] = None,
         **kwargs,
     ):
@@ -152,8 +152,9 @@ class Host(wireguard.Host):
         self.bitcoin_prune = bitcoin_prune
         self.bitcoin_dbcache = bitcoin_dbcache
         self.bitcoin_extra_args = bitcoin_extra_args
+        self.bitcoin_listen = bitcoin_listen
         self.prom_exporter_port = prom_exporter_port
-        self.bitcoind_exporter_port = bitcoind_exporter_port
+        self.bitcoind_exporter_port = 9332
         self.outbound_wireguard = outbound_wireguard
 
         if BMON_SSHKEY.exists():
@@ -165,6 +166,15 @@ class Host(wireguard.Host):
     def bmon_ip(self):
         """An IP that makes the host routable to any other bmon host."""
         return self.wireguards["wg-bmon"].ip
+
+    @classmethod
+    def from_dict(cls, name: str, d: dict) -> 'Host':
+        bitcoin = d.pop('bitcoin', {})
+
+        for k, v in bitcoin.items():
+            d[f"bitcoin_{k}"] = v
+
+        return super(Host, cls).from_dict(name, d)
 
 
 def get_hosts(
@@ -231,6 +241,8 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_flags += f" -prune={host.bitcoin_prune}"
     if host.bitcoin_dbcache is not None:
         bitcoin_flags += f" -dbcache={host.bitcoin_dbcache}"
+    if host.bitcoin_listen:
+        bitcoin_flags += " -listen"
 
     settings = dict(dev_settings)
     settings.update(

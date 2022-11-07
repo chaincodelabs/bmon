@@ -9,3 +9,4 @@ def test_create_host():
     assert h.bitcoin_dbcache == 450
     assert h.bitcoin_extra == {'flags': '-regtest'}
     assert h.bitcoin_prune == 0
+    assert not h.bitcoin_listen

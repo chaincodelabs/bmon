@@ -54,6 +54,7 @@ def prom_config_bitcoind(_):
                     "bitcoin_gitsha": db_hosts[host.name].bitcoin_gitsha,
                     "bitcoin_dbcache": str(host.bitcoin_dbcache),
                     "bitcoin_prune": str(host.bitcoin_prune),
+                    "bitcoin_listen": '1' if host.bitcoin_listen else '0',
                 },
             }
         )
