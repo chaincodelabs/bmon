@@ -15,6 +15,7 @@ import getpass
 import json
 import os
 import typing as t
+from typing import Optional as Op
 from string import Template
 from pathlib import Path
 from types import SimpleNamespace
@@ -138,13 +139,13 @@ class Host(wireguard.Host):
     def __init__(
         self,
         *args,
-        bitcoin_docker_tag: str | None = None,
+        bitcoin_docker_tag: Op[str] = None,
         bitcoin_prune: int = 0,
         bitcoin_dbcache: int = 450,
-        bitcoin_extra_args: str | None = None,
-        prom_exporter_port: int | None = 9100,
-        bitcoind_exporter_port: int | None = 9332,
-        outbound_wireguard: str | None = None,
+        bitcoin_extra_args: Op[str] = None,
+        prom_exporter_port: Op[int] = 9100,
+        bitcoind_exporter_port: Op[int] = 9332,
+        outbound_wireguard: Op[str] = None,
         **kwargs,
     ):
         self.bitcoin_docker_tag = bitcoin_docker_tag
@@ -167,7 +168,7 @@ class Host(wireguard.Host):
 
 
 def get_hosts(
-    hosts_file_path: str | None = None,
+    hosts_file_path: Op[str] = None,
 ) -> tuple[dict[str, wireguard.Server], dict[str, Host]]:
     """Return Host objects."""
     hostsfile = Path(hosts_file_path or os.environ["BMON_HOSTS_FILE"])
@@ -379,7 +380,7 @@ def make_services_data(envtype: str):
     p(root / "bmon" / "credentials").mkdir()
 
 
-def get_env_object(envfile: str | Path = ".env") -> SimpleNamespace:
+def get_env_object(envfile: t.Union[str, Path] = ".env") -> SimpleNamespace:
     """Return the contents of the .env file in a namespace."""
     lines = Path(envfile).read_text().splitlines()
     lines = [line for line in lines if line and not line.startswith("#")]

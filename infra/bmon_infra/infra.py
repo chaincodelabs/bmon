@@ -260,16 +260,15 @@ def provision_bmon_server(
         run(f"{docker_compose} rm -f {services}")
         run(f"{docker_compose} up -d {services}")
 
-    match restart_spec:
-        case "":
-            cycle(always)
-        case "none":
-            pass
-        case "all":
-            run("systemctl --user restart bmon-server")
-        case _:
-            run(f"{docker_compose} pull {restart_spec}")
-            cycle(f"{always} {restart_spec}")
+    if restart_spec == "":
+        cycle(always)
+    elif restart_spec == "none":
+        pass
+    elif restart_spec == "all":
+        run("systemctl --user restart bmon-server")
+    else:
+        run(f"{docker_compose} pull {restart_spec}")
+        cycle(f"{always} {restart_spec}")
 
 
 def provision_monitored_bitcoind(
@@ -394,19 +393,18 @@ def provision_monitored_bitcoind(
         "bitcoind-monitor"
     )
 
-    match restart_spec:
-        case "":
-            cycle(alwaysrestart)
-        case "none":
-            pass
-        case "all":
-            run("systemctl --user restart bmon-bitcoind")
-        case _:
-            run(f"{docker_compose} pull {restart_spec}")
-            cycle(f"{alwaysrestart} {restart_spec}")
+    if restart_spec == "":
+        cycle(alwaysrestart)
+    elif restart_spec == "none":
+        pass
+    elif restart_spec == "all":
+        run("systemctl --user restart bmon-bitcoind")
+    else:
+        run(f"{docker_compose} pull {restart_spec}")
+        cycle(f"{alwaysrestart} {restart_spec}")
 
 
-def get_bitcoind_version(docker_compose_path: str | Path = "docker-compose") -> str:
+def get_bitcoind_version(docker_compose_path: t.Union[str, Path] = "docker-compose") -> str:
     [ver_line] = [
         i
         for i in (

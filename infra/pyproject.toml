@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bmon-infra"
 description = "Infra for bmon"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 keywords = ["bitcoin"]
 license = {text = "MIT License"}
 classifiers = [
