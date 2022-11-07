@@ -67,20 +67,14 @@ Modify `./etc/prom-alerts.yml` and redeploy to the server with
 
 ## Onboarding a new bitcoind host
 
-1. Run `./bin/bootstrap-bitcoind` with the required arguments. If for some reason 
+1. Add an entry to `./infra/hosts_prod.yml` corresponding to the desired bitcoind
+   settings. You might want to specify `ssh_hostname:` and `become_method:`.
+1. Run `bmon-infra bootstrap` with the required arguments. If for some reason 
    the script doesn't or can't run to completion, just do the stuff that's in there
    manually - it shouldn't be hard to figure out. This will output a wireguard pubkey
    that you should use in subsequent steps.
 1. Modify `wg-bmon` wireguard configuration on the serverside (the bmon administrator
    has to do this) using the bitcoind wg pubkey.
-1. Generate a client wireguard peer configuration with `bmon-infra
-   wireguard-peer-template <hostname>` and install it on the bitcoind host:
-       ```sh
-       sudo vim /etc/wireguard/wg-bmon.conf
-       sudo systemctl enable --now wg-quick@wg-bmon
-       ```
-1. Add an entry to `./infra/hosts_prod.yml` corresponding to the desired bitcoind
-   settings.
 1. Update the bmon secrets store with `sudo_password` for host.
 1. Test deployment to the new host
         ```sh

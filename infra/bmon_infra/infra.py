@@ -503,8 +503,10 @@ def deploy(
             exec.run(_run_cmd, docker_status_cmd)
 
 
-def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):
+def bootstrap_bitcoind(regular_user: str, wgs, wg, bmon_pubkey: str = ""):
     assert fscm.s.is_debian() or fscm.s.is_ubuntu()
+    assert getpass.getuser() == 'root'
+
     home = Path(f"/home/{regular_user}")
 
     fscm.contrib.python.install_python3()
@@ -517,7 +519,9 @@ def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):
     p(docker / "config.json").contents('{ "detachKeys": "ctrl-z,z" }')
 
     if bmon_pubkey:
+        p(home / '.ssh').mkdir()
         auth_keys = home / ".ssh/authorized_keys"
+        run(f'touch {auth_keys}')
         fscm.lineinfile(auth_keys, bmon_pubkey, bmon_pubkey[:30])
         p(auth_keys).chown(f"{regular_user}:{regular_user}")
 
@@ -529,28 +533,42 @@ def bootstrap_bitcoind(regular_user: str, bmon_pubkey: str = ""):
     else:
         pubkey = run(f"cat {wgkey} | wg pubkey", q=True).stdout.strip()
 
+    p('/etc/wireguard/wg-bmon.conf').content(wireguard.peer_config(wgs, wg)).chmod(644)
+
     fscm.s.group_member(regular_user, "sudo")
 
     return pubkey
 
 
 @cli.cmd
-def bootstrap(host: str, sudo_pass: str, regular_user: str):
+def bootstrap(host: str, sudo_pass: str = "", regular_user: str = ""):
     """Bootstrap a bitcoind node."""
-    host = host
     username = getpass.getuser()
+    regular_user = regular_user or username
     if "@" in host:
         username, host = host.split("@")
+
+    wg_servers, hosts = get_hosts()
+    wgs = wg_servers["wg-bmon"]
+    [host] = [h for h in hosts.values() if h.name == host]
+    wg = host.wireguards["wg-bmon"]
+
     bmon_pubkey = BMON_SSHPUBKEY.read_text() if BMON_SSHPUBKEY.exists() else ""
 
+    become_method = host.become_method
+    if sudo_pass:
+        become_method = 'su'
+
     with fscm.remote.mitogen_context(
-        hostname=host, username=username, password=sudo_pass
+        hostname=host.ssh_hostname, username=username,
     ) as (
         router,
         context,
     ):
-        s = router.su(via=context, password=sudo_pass)
-        got = s.call(bootstrap_bitcoind, regular_user, bmon_pubkey)
+        if username != 'root':
+            context = getattr(router, become_method)(via=context, password=sudo_pass)
+
+        got = context.call(bootstrap_bitcoind, regular_user, wgs, wg, bmon_pubkey)
 
         print(f"Wireguard pubkey for {host}: {got}")
 
@@ -638,7 +656,7 @@ def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = F
 
         for host, result in got.all_results.items():
             for res in result.splitlines():
-                print(f"{host.name:<10} |  ", end="")
+                print(f"{host:<10} |  ", end="")
                 print(res.strip().decode())
 
 
