@@ -321,6 +321,11 @@ def create_host_record():
 
     bitcoin_version = bitcoin.api.read_raw_bitcoind_version()
 
+    # TODO hack
+    listen = False
+    if '-listen' in settings.BITCOIN_FLAGS:
+        listen = True
+
     host, created = models.Host.objects.get_or_create(
         name=settings.HOSTNAME,
         cpu_info=get_lshw("processor")["product"],
@@ -334,6 +339,7 @@ def create_host_record():
         bitcoin_extra={
             "flags": settings.BITCOIN_FLAGS,
         },
+        bitcoin_listen=listen,
         defaults={
             "region": "",
         },
