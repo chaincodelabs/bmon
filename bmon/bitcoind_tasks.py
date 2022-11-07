@@ -118,6 +118,9 @@ def compute_peer_stats_blocking(peerinfo: list[dict] | None = None):
     sent_per_msg = {}
 
     for p in peerinfo:
+        # Pingtime is conditionally included in nodes <= v0.19.0
+        if 'pingtime' not in p:
+            continue
         pingtime = float(p["pingtime"])
         if pingtime < minping:
             minping = pingtime
