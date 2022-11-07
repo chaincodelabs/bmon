@@ -55,6 +55,7 @@ class Host(BaseModel):
     bitcoin_gitsha = models.CharField(max_length=256, null=True, blank=True)
     bitcoin_dbcache = models.IntegerField()
     bitcoin_prune = models.IntegerField()
+    bitcoin_listen = models.BooleanField(default=False)
     bitcoin_extra = models.JSONField(
         help_text="Extra data about this bitcoind instance"
     )
@@ -73,6 +74,7 @@ class Host(BaseModel):
                     "bitcoin_dbcache",
                     "bitcoin_prune",
                     "bitcoin_extra",
+                    "bitcoin_listen",
                 ],
                 name="unique_host",
             ),
