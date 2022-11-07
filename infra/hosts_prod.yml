@@ -124,3 +124,46 @@ hosts:
     bitcoin_dbcache: 3000
     bitcoin_docker_tag: jamesob/bitcoind:bip324-enable
     bitcoin_extra_args: -v2transport=1
+
+  # b-osaka-ibm-01:
+  #   tags: [bitcoind]
+  #   ssh_hostname: 163.69.88.222
+  #   check_host_keys: accept
+  #   wireguard:
+  #     wg-bmon:
+  #       ip: 10.33.0.120
+  #       endpoint: au92.org
+  #       pubkey: 3ugtM89DDa2YODxj0M+TgMD9MOQnzOzLO+XtOTKNrXU=
+  #   bitcoin_prune: 5000
+  #   bitcoin_dbcache: 3000
+  #   bitcoin_docker_tag: jamesob/bitcoind:0.18.1
+
+  b-milan-goog-01:
+    tags: [bitcoind]
+    ssh_hostname: 34.154.73.245
+    become_method: sudo
+    check_host_keys: accept
+    username: james
+    wireguard:
+      wg-bmon:
+        ip: 10.33.0.141
+        endpoint: au92.org
+        pubkey: 
+    bitcoin_prune: 5000
+    bitcoin_dbcache: 3000
+    bitcoin_docker_tag: jamesob/bitcoind:0.19.1
+
+  b-paris-goog-01:
+    tags: [bitcoind]
+    ssh_hostname: 34.163.100.36
+    become_method: sudo
+    check_host_keys: accept
+    username: james
+    wireguard:
+      wg-bmon:
+        ip: 10.33.0.140
+        endpoint: au92.org
+        pubkey: 
+    bitcoin_prune: 5000
+    bitcoin_dbcache: 3000
+    bitcoin_docker_tag: jamesob/bitcoind:0.19.1

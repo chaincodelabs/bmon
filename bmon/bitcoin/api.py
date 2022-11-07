@@ -1,6 +1,7 @@
 import time
 import typing as t
 import logging
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from pathlib import Path
@@ -128,3 +129,43 @@ def gather_rpc(rpc_call_arg: str | t.Callable[[BitcoinRpc], t.Any]) -> t.Dict[st
                 results[hostname] = RPC_ERROR_RESULT
 
     return results
+
+
+def wait_for_synced():
+    """
+    Wait until bitcoind's tip is reasonably current.
+
+    This is helpful for bootstrapping new monited bitcoind instances without
+    generating a bunch of spurious data.
+    """
+    tries = 12
+    backoff_secs = 2
+    is_synced = False
+    got = {}
+    i = 0
+    rpc = get_rpc()
+
+    while not is_synced:
+        try:
+            got = rpc('getblockchaininfo')
+        except Exception as e:
+            print(f"exception getting verification progress: {e}")
+            tries -= 1
+            time.sleep(backoff_secs)
+            if backoff_secs < 120:
+                backoff_secs *= 2
+        else:
+            is_synced = float(got["verificationprogress"]) > 0.9999
+            time.sleep(1)
+            tries = 12
+
+            if i % 40 == 0:
+                print(f"At height {got['blocks']} ({got['verificationprogress']})", flush=True)
+
+            i += 1
+
+    if not is_synced:
+        print("Failed to sync!")
+        sys.exit(1)
+
+    print(f"Synced to height: {got['blocks']}")

@@ -15,7 +15,7 @@ try:
 except Exception:
     bitcoind_tasks = None  # type: ignore
 
-from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT
+from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT, wait_for_synced
 from . import logparse, models
 
 
@@ -74,6 +74,11 @@ def shipmempool() -> None:
 def rpc(*cmd) -> None:
     """Gather bitcoind RPC results from all hosts. Should be run on the bmon server."""
     pprint.pprint(gather_rpc(" ".join(cmd)))
+
+
+@cli.cmd
+def wait_for_bitcoind_sync() -> None:
+    wait_for_synced()
 
 
 @cli.cmd

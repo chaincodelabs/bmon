@@ -280,7 +280,6 @@ def provision_monitored_bitcoind(
 ):
     assert (username := getpass.getuser()) != "root"
     docker_compose = VENV_PATH / "bin" / "docker-compose"
-    python = VENV_PATH / "bin" / "python"
     assert docker_compose.exists()
 
     # We can't use docker-compose yet because the .env file may not necessarily exist
@@ -352,7 +351,7 @@ def provision_monitored_bitcoind(
         run(f"{docker_compose} pull bitcoind")
         run(f"{docker_compose} up -d bitcoind")
         print("Syncing bitcoind instance to tip, then cycling debug.log")
-        run(f"{python} dev bitcoind-wait-for-synced")
+        run(f"{docker_compose} run --rm shell bmon-util wait-for-bitcoind-sync")
         run(f"{docker_compose} stop bitcoind")
         run(f"rm {btc_data}/debug.log")
         run(f"touch {btc_data}/debug.log")
