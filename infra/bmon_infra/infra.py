@@ -350,8 +350,8 @@ def provision_monitored_bitcoind(
         # Sync to tip so that we don't generate a bunch of spurious events
 
         # Ensure we're using the right config
-        run(f"rm {btc_data}/bitcoin.conf")
-        run(f"rm {btc_data}/debug.log")
+        run(f"rm -f {btc_data}/bitcoin.conf")
+        run(f"rm -f {btc_data}/debug.log")
         run("bmon-config -t prod")
 
         run(f"{docker_compose} pull bitcoind")
@@ -359,7 +359,7 @@ def provision_monitored_bitcoind(
         print("Syncing bitcoind instance to tip, then cycling debug.log")
         run(f"{docker_compose} run --rm shell bmon-util wait-for-bitcoind-sync")
         run(f"{docker_compose} stop bitcoind")
-        run(f"rm {btc_data}/debug.log")
+        run(f"rm -f {btc_data}/debug.log")
         run(f"touch {btc_data}/debug.log")
 
     p(services_path / "bmon" / "credentials" / "chaincode-gcp.json").contents(

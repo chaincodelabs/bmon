@@ -250,7 +250,7 @@ services:
     # Can't have this as a dependency because of local dev.
     # links:
     #   - redis-bitcoind
-    command: huey_consumer.py bmon.bitcoind_tasks.events_q -w 8
+    command: huey_consumer.py bmon.bitcoind_tasks.events_q -w 3
 
   bitcoind-mempool-worker:
     <<: *bitcoind-worker
@@ -261,7 +261,7 @@ services:
       - ${BITCOIND_VERSION_PATH}:/bitcoin-version:ro
     # Consume mempool activity in its own worker since it's so high volume.
     # Tell huey to -q to avoid lots of noise.
-    command: huey_consumer.py bmon.bitcoind_tasks.mempool_q -w 4 -q
+    command: huey_consumer.py bmon.bitcoind_tasks.mempool_q -w 3 -q
 
   bitcoind-watcher:
     profiles: ["bitcoind"]
