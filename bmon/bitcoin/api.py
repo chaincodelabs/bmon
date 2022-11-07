@@ -147,7 +147,7 @@ def wait_for_synced():
 
     while not is_synced:
         try:
-            got = rpc('getblockchaininfo')
+            got = rpc.getblockchaininfo()
         except Exception as e:
             print(f"exception getting verification progress: {e}")
             tries -= 1

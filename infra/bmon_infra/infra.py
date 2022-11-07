@@ -325,6 +325,7 @@ def provision_monitored_bitcoind(
     services_path = BMON_PATH / "services" / "prod"
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
+    btc_data = services_path / "bitcoin/data"
 
     if host.bitcoin_prune:
         DATADIR_URL = f"http://{server_wg_ip}/bitcoin-pruned-550.tar.gz"
@@ -335,7 +336,6 @@ def provision_monitored_bitcoind(
         gb_in_kb = 1000**2
 
         if btc_size_kb < gb_in_kb:
-            btc_data = services_path / "bitcoin/data"
             print(f"Fetching prepopulated (pruned) datadir from {DATADIR_URL}")
             run(f"curl -s {DATADIR_URL} | tar xz -C /tmp")
             run(f"rm -rf {btc_data}")
@@ -348,6 +348,12 @@ def provision_monitored_bitcoind(
 
     if sync_to_tip:
         # Sync to tip so that we don't generate a bunch of spurious events
+
+        # Ensure we're using the right config
+        run(f"rm {btc_data}/bitcoin.conf")
+        run(f"rm {btc_data}/debug.log")
+        run("bmon-config -t prod")
+
         run(f"{docker_compose} pull bitcoind")
         run(f"{docker_compose} up -d bitcoind")
         print("Syncing bitcoind instance to tip, then cycling debug.log")
