@@ -199,7 +199,7 @@ def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
             qs = models.Peer.objects.filter(**kwargs).order_by('-id')
             latest = qs.first()
             assert latest
-            deleted = qs.filter(exclude__id=latest.id).delete()
+            deleted = qs.exclude(id=latest.id).delete()
             log.warning("deleted %s duplicate Peers", deleted)
 
             obj, created = models.Peer.objects.get_or_create(defaults=defaults, **kwargs)
