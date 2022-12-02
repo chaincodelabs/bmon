@@ -338,7 +338,7 @@ mempool_activity_avro_schema = fastavro.parse_schema(
         "fields": [
             {"name": "event_type", "type": mempool_event_type_enum},
             {"name": "host", "type": "string"},
-            {"name": "timestamp", "type": "string"},
+            {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-micros"}},
             {"name": "txhash", "type": "string"},
             {"name": "peer_num", "type": ["null", "int"]},
             {"name": "pool_size_txns", "type": ["null", "int"]},
@@ -415,7 +415,7 @@ class MempoolAccept(models.Model):
         return {
             "event_type": "mempool_accept",
             "host": self.host,
-            "timestamp": self.timestamp.isoformat(),
+            "timestamp": self.timestamp,
             "txhash": self.txhash,
             "pool_size_txns": self.pool_size_txns,
             "pool_size_kb": self.pool_size_kb,
