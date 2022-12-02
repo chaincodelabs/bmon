@@ -48,7 +48,7 @@ BITCOIND_LOG_PATH = os.environ.get('BMON_BITCOIND_LOG_PATH')
 
 # GCP credentials for uploading mempool activity.
 CHAINCODE_GCP_CRED_PATH = os.environ.get('CHAINCODE_GCP_CRED_PATH')
-CHAINCODE_GCP_BUCKET = 'bmon-mempool-log-uploads'
+CHAINCODE_GCP_BUCKET = 'mempool-event-logs'
 
 # For testing
 LOCALHOST_AUTH_TOKEN = '4396049cdfe946f88ec63da115cbcfcf'

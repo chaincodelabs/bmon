@@ -263,6 +263,12 @@ def queue_mempool_to_ship():
     ship_mempool_activity()
 
 
+def construct_gcp_path_from_datetime_str(dt):
+    d = datetime.datetime.fromisoformat(dt).strftime('%Y-%m-%d')
+    dt_formatted = dt.replace(':', '-')
+    return f"{settings.CHAINCODE_GCP_BUCKET}/mempool_events/source=bmon/dt={d}/{settings.HOSTNAME}.{dt_formatted}.avro"
+
+
 @mempool_q.task()
 def ship_mempool_activity():
     """Send mempool activity file to a remote server."""
@@ -273,8 +279,8 @@ def ship_mempool_activity():
         bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
 
         for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob("to-ship*"):
-            timestr = shipfile.name.split(".")[1].replace(":", "-")
-            target = f"{settings.HOSTNAME}.{timestr}.avro"
+            timestr = shipfile.name.split(".")[1]
+            target = construct_gcp_path_from_datetime_str(timestr)
             d = bucket.blob(target)
             d.upload_from_filename(shipfile)
 
