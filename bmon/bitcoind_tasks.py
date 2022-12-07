@@ -266,7 +266,7 @@ def queue_mempool_to_ship():
 def construct_gcp_path_from_datetime_str(dt):
     d = datetime.datetime.fromisoformat(dt).strftime('%Y-%m-%d')
     dt_formatted = dt.replace(':', '-')
-    return f"{settings.CHAINCODE_GCP_BUCKET}/mempool_events/source=bmon/dt={d}/{settings.HOSTNAME}.{dt_formatted}.avro"
+    return f"mempool_events/source=bmon/dt={d}/{settings.HOSTNAME}.{dt_formatted}.avro"
 
 
 @mempool_q.task()
