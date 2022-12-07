@@ -67,7 +67,9 @@ def run_listener(listener_name: str) -> None:
 def shipmempool() -> None:
     """Ship off mempool activity to GCP."""
     assert bitcoind_tasks
+    bitcoind_tasks.mempool_q.immediate = True
     bitcoind_tasks.queue_mempool_to_ship()
+    bitcoind_tasks.ship_mempool_activity()
 
 
 @cli.cmd
