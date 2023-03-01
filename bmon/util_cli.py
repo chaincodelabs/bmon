@@ -16,7 +16,7 @@ except Exception:
     bitcoind_tasks = None  # type: ignore
 
 from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT, wait_for_synced
-from . import logparse, models
+from . import logparse, models, util, server_tasks
 
 
 log = logging.getLogger(__name__)
@@ -70,6 +70,18 @@ def shipmempool() -> None:
     bitcoind_tasks.mempool_q.immediate = True
     bitcoind_tasks.queue_mempool_to_ship()
     bitcoind_tasks.ship_mempool_activity()
+
+
+@cli.cmd
+def wipe_mempool_backlog() -> None:
+    if not bitcoind_tasks:
+        # Server
+        util.remove_mempool_events(server_tasks.server_q)
+        server_tasks.mempool_q.flush_queue()
+        server_tasks.mempool_q.flush_schedule()
+        server_tasks.mempool_q.flush_results()
+    else:
+        util.remove_mempool_events(bitcoind_tasks.events_q)
 
 
 @cli.cmd

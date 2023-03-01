@@ -85,6 +85,11 @@ def count_tasks():
     print(_count_tasks(server_tasks.server_q))
 
 
+def remove_mempool_events(q: huey.RedisHuey):
+    clean_queue(q, 'Mempool')
+    clean_queue(q, 'Pong')
+
+
 def clean_queue(q: huey.RedisHuey, filter_str: str):
     num_exs = 0
     re = 0
