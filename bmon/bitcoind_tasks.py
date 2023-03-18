@@ -90,8 +90,7 @@ def get_bmon_peer_id(bitcoind_peer_id: int) -> int:
 @events_q.periodic_task(crontab(minute="*"))
 @events_q.lock_task('update-peers')
 def sync_peer_data(peer_id: None | int = None):
-    # sync_peer_data_blocking(peer_id)
-    pass
+    sync_peer_data_blocking(peer_id)
 
 
 @events_q.periodic_task(crontab(minute="*"))
@@ -364,8 +363,8 @@ ListenerList = t.Sequence[logparse.Listener]
 
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
-    # logparse.MempoolAcceptListener(),
-    # logparse.MempoolRejectListener(),
+    logparse.MempoolAcceptListener(),
+    logparse.MempoolRejectListener(),
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),

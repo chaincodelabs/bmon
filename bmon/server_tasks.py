@@ -111,11 +111,10 @@ def persist_bitcoind_event(event: dict, _: str):
 
 @mempool_q.task()
 def process_mempool_accept(txid: str, seen_at: datetime.datetime, host: str):
-    return  # FIXME remove
-    # agg = get_mempool_aggregator()
+    agg = get_mempool_aggregator()
 
-    # if agg.mark_seen(host, txid, seen_at) == mempool.PropagationStatus.CompleteAll:
-    #     agg.finalize_propagation(txid, assert_complete=True)
+    if agg.mark_seen(host, txid, seen_at) == mempool.PropagationStatus.CompleteAll:
+        agg.finalize_propagation(txid, assert_complete=True)
 
 
 @mempool_q.periodic_task(crontab(minute="*/1"))
