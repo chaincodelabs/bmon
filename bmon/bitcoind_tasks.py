@@ -90,7 +90,8 @@ def get_bmon_peer_id(bitcoind_peer_id: int) -> int:
 @events_q.periodic_task(crontab(minute="*"))
 @events_q.lock_task('update-peers')
 def sync_peer_data(peer_id: None | int = None):
-    sync_peer_data_blocking(peer_id)
+    # sync_peer_data_blocking(peer_id)
+    pass
 
 
 @events_q.periodic_task(crontab(minute="*"))
