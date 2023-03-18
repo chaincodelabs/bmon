@@ -75,13 +75,13 @@ def shipmempool() -> None:
 @cli.cmd
 def wipe_mempool_backlog() -> None:
     if not bitcoind_tasks:
-        # Server
-        util.remove_mempool_events(server_tasks.server_q)
-        server_tasks.mempool_q.flush_queue()
-        server_tasks.mempool_q.flush_schedule()
-        server_tasks.mempool_q.flush_results()
+        q = server_tasks.mempool_q
     else:
-        util.remove_mempool_events(bitcoind_tasks.events_q)
+        q = bitcoind_tasks.mempool_q
+
+    print(f"Wiping queue {q} ({q.storage.queue_size()} entries)")
+    q.flush()
+    print(f"{q.storage.queue_size()} entries left")
 
 
 @cli.cmd

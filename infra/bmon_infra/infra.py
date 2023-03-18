@@ -598,6 +598,24 @@ def runall(cmd: str, sudo: bool = False):
 
 
 @cli.cmd
+def wipemempool(hostname_filt: str):
+    _, hostmap = get_hosts_for_cli()
+    hosts = [v for v in hostmap.values() if hostname_filt in v.name]
+    [server] = [v for v in hostmap.values() if 'server' in v.tags]
+
+    with executor(*hosts) as exec:
+        if not (res := exec.run(
+                _run_cmd, "docker-compose run --rm bitoind-mempool-worker bmon-util wipe-mempool-backlog")).ok:
+            print(f"Command failed on hosts: {res.failed}")
+            sys.exit(1)
+
+    with executor(server) as exec:
+        if not (res := exec.run(
+                _run_cmd, "docker-compose run --rm server-mempool-task-worker bmon-util wipe-mempool-backlog")).ok:
+            print(f"Command failed on hosts: {res.failed}")
+            sys.exit(1)
+
+@cli.cmd
 def ps():
     docker_status_cmd = (
         'docker ps -a --filter "network=bmon_default" '
