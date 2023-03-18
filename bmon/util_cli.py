@@ -16,7 +16,7 @@ except Exception:
     bitcoind_tasks = None  # type: ignore
 
 from .bitcoin.api import gather_rpc, RPC_ERROR_RESULT, wait_for_synced
-from . import logparse, models, util, server_tasks
+from . import logparse, models, server_tasks
 
 
 log = logging.getLogger(__name__)

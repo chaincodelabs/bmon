@@ -245,12 +245,14 @@ def provision_bmon_server(
     # Files, like pruned datadirs, will be served out of here.
     p("/www/data", sudo=True).chmod("755").chown("james:james").mkdir()
 
-    always = " ".join([
-        "web",
-        "server-task-worker",
-        "server-mempool-task-worker",
-        "server-monitor",
-    ])
+    always = " ".join(
+        [
+            "web",
+            "server-task-worker",
+            "server-mempool-task-worker",
+            "server-monitor",
+        ]
+    )
 
     # Update the docker image.
     run(f"{docker_compose} pull {always}")
@@ -410,7 +412,9 @@ def provision_monitored_bitcoind(
         cycle(f"{alwaysrestart} {restart_spec}")
 
 
-def get_bitcoind_version(docker_compose_path: t.Union[str, Path] = "docker-compose") -> str:
+def get_bitcoind_version(
+    docker_compose_path: t.Union[str, Path] = "docker-compose"
+) -> str:
     [ver_line] = [
         i
         for i in (
@@ -511,7 +515,7 @@ def deploy(
 
 def bootstrap_bitcoind(regular_user: str, wgs, wg, bmon_pubkey: str = ""):
     assert fscm.s.is_debian() or fscm.s.is_ubuntu()
-    assert getpass.getuser() == 'root'
+    assert getpass.getuser() == "root"
 
     home = Path(f"/home/{regular_user}")
 
@@ -525,9 +529,9 @@ def bootstrap_bitcoind(regular_user: str, wgs, wg, bmon_pubkey: str = ""):
     p(docker / "config.json").contents('{ "detachKeys": "ctrl-z,z" }')
 
     if bmon_pubkey:
-        p(home / '.ssh').mkdir()
+        p(home / ".ssh").mkdir()
         auth_keys = home / ".ssh/authorized_keys"
-        run(f'touch {auth_keys}')
+        run(f"touch {auth_keys}")
         fscm.lineinfile(auth_keys, bmon_pubkey, bmon_pubkey[:30])
         p(auth_keys).chown(f"{regular_user}:{regular_user}")
 
@@ -539,7 +543,7 @@ def bootstrap_bitcoind(regular_user: str, wgs, wg, bmon_pubkey: str = ""):
     else:
         pubkey = run(f"cat {wgkey} | wg pubkey", q=True).stdout.strip()
 
-    p('/etc/wireguard/wg-bmon.conf').content(wireguard.peer_config(wgs, wg)).chmod(644)
+    p("/etc/wireguard/wg-bmon.conf").content(wireguard.peer_config(wgs, wg)).chmod(644)
 
     fscm.s.group_member(regular_user, "sudo")
 
@@ -563,15 +567,16 @@ def bootstrap(host: str, sudo_pass: str = "", regular_user: str = ""):
 
     become_method = host.become_method
     if sudo_pass:
-        become_method = 'su'
+        become_method = "su"
 
     with fscm.remote.mitogen_context(
-        hostname=host.ssh_hostname, username=username,
+        hostname=host.ssh_hostname,
+        username=username,
     ) as (
         router,
         context,
     ):
-        if username != 'root':
+        if username != "root":
             context = getattr(router, become_method)(via=context, password=sudo_pass)
 
         got = context.call(bootstrap_bitcoind, regular_user, wgs, wg, bmon_pubkey)
@@ -601,19 +606,28 @@ def runall(cmd: str, sudo: bool = False):
 def wipemempool(hostname_filt: str):
     _, hostmap = get_hosts_for_cli()
     hosts = [v for v in hostmap.values() if hostname_filt in v.name]
-    [server] = [v for v in hostmap.values() if 'server' in v.tags]
+    [server] = [v for v in hostmap.values() if "server" in v.tags]
 
     with executor(*hosts) as exec:
-        if not (res := exec.run(
-                _run_cmd, "docker-compose run --rm bitcoind-mempool-worker bmon-util wipe-mempool-backlog")).ok:
+        if not (
+            res := exec.run(
+                _run_cmd,
+                "docker-compose run --rm bitcoind-mempool-worker bmon-util wipe-mempool-backlog",
+            )
+        ).ok:
             print(f"Command failed on hosts: {res.failed}")
             sys.exit(1)
 
     with executor(server) as exec:
-        if not (res := exec.run(
-                _run_cmd, "docker-compose run --rm server-mempool-task-worker bmon-util wipe-mempool-backlog")).ok:
+        if not (
+            res := exec.run(
+                _run_cmd,
+                "docker-compose run --rm server-mempool-task-worker bmon-util wipe-mempool-backlog",
+            )
+        ).ok:
             print(f"Command failed on hosts: {res.failed}")
             sys.exit(1)
+
 
 @cli.cmd
 def ps():
@@ -649,9 +663,9 @@ def wireguard_peer_template(hostname: str):
 
 
 def _run_rg(query: str, tail_limit: int, context: int, all: bool):
-    os.chdir('./bmon/services/prod/bitcoin/data')
-    context_str = '' if context == -1 else f'-C {context}'
-    filename = 'debug.log*' if all else 'debug.log'
+    os.chdir("./bmon/services/prod/bitcoin/data")
+    context_str = "" if context == -1 else f"-C {context}"
+    filename = "debug.log*" if all else "debug.log"
 
     cmd = f"rg --color=always -z {context_str} '{query}' {filename}"
     if tail_limit != -1:
@@ -661,9 +675,9 @@ def _run_rg(query: str, tail_limit: int, context: int, all: bool):
 
 
 @cli.cmd
-@cli.arg('tail_limit', '-n')
-@cli.arg('context', '-C')
-@cli.arg('all', '-a')
+@cli.arg("tail_limit", "-n")
+@cli.arg("context", "-C")
+@cli.arg("all", "-a")
 def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = False):
     """
     Ripgrep through the bitcoind logs.
@@ -671,7 +685,7 @@ def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = F
     Kwargs:
         all: if True, search through all rotated logs as well
     """
-    cli.args.tag_filter = 'bitcoind'
+    cli.args.tag_filter = "bitcoind"
 
     _, hostmap = get_hosts_for_cli(need_secrets=False)
     hosts = list(hostmap.values())
