@@ -1,6 +1,6 @@
 Vagrant.configure("2") do |config|
 
-  ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_rsa.pub").first.strip
+  ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_rsa_yubikey.pub").first.strip
 
   config.vm.provision "shell" do |s|
     s.inline = <<-SHELL

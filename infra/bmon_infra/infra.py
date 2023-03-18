@@ -70,7 +70,8 @@ def get_hosts_for_cli(
                 getattr(host_secrets, host.name, fscm.Secrets())
             )
 
-            if host.outbound_wireguard:
+            # FIXME
+            if False and host.outbound_wireguard:
                 print(
                     f"loading outbound wireguard {host.outbound_wireguard!r} for {host}"
                 )

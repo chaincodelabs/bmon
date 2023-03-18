@@ -19,12 +19,16 @@ def _get_wireguard_ip(host):
 
 
 def _get_db_hosts() -> dict[str, models.Host]:
+    bitcoind_hosts = {h.name for h in config.get_hosts()[1].values() if "bitcoind" in h.tags}
     latest_ids = (
         models.Host.objects.values("name")
         .annotate(max_id=Max("id"))
         .values_list("max_id", flat=True)
     )
-    return {h.name: h for h in models.Host.objects.filter(id__in=latest_ids)}
+    return {
+        h.name: h for h in models.Host.objects.filter(id__in=latest_ids)
+        if h.name in bitcoind_hosts
+    }
 
 
 @api.get("/prom-config-bitcoind")
