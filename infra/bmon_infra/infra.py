@@ -605,7 +605,7 @@ def wipemempool(hostname_filt: str):
 
     with executor(*hosts) as exec:
         if not (res := exec.run(
-                _run_cmd, "docker-compose run --rm bitoind-mempool-worker bmon-util wipe-mempool-backlog")).ok:
+                _run_cmd, "docker-compose run --rm bitcoind-mempool-worker bmon-util wipe-mempool-backlog")).ok:
             print(f"Command failed on hosts: {res.failed}")
             sys.exit(1)
 

@@ -83,6 +83,8 @@ class Host(BaseModel):
     def __repr__(self):
         return _repr(self, ["name", "bitcoin_version", "bitcoin_gitref"])
 
+    __str__ = __repr__
+
 
 PEER_UNIQUE_TOGETHER_FIELDS = (
     "host",
