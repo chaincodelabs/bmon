@@ -694,7 +694,7 @@ def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = F
 
         for host, result in got.all_results.items():
             for res in result.splitlines():
-                print(f"{host:<10} |  ", end="")
+                print(f"{host.name:<10} |  ", end="")
                 print(res.strip().decode())
 
 
