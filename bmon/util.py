@@ -5,12 +5,18 @@ import cProfile
 import time
 import pstats
 import huey
+import http.client
+import urllib
+import os
+import logging
 from collections import Counter
 
 from django.db import models
 from django.db.models.sql.query import Query
 
 from . import server_tasks
+
+log = logging.getLogger(__name__)
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -88,6 +94,31 @@ def count_tasks():
 def remove_mempool_events(q: huey.RedisHuey):
     clean_queue(q, 'Mempool')
     clean_queue(q, 'Pong')
+
+
+def pushover_notification(msg: str) -> bool:
+    token = os.environ.get('PUSHOVER_TOKEN')
+
+    if not token:
+        log.error("no pushover token configured")
+        return False
+
+    try:
+        conn = http.client.HTTPSConnection("api.pushover.net:443")
+        conn.request("POST", "/1/messages.json",
+          urllib.parse.urlencode({
+            "token": token,
+            "user": os.environ.get('PUSHOVER_USER'),
+            "message": msg,
+          }), { "Content-type": "application/x-www-form-urlencoded" })
+        resp = conn.getresponse()
+        if resp.status != 200:
+            log.error("pushover request failed", extra={'response': resp, 'msg': msg})
+            return False
+    except Exception:
+        log.exception("pushover request failed")
+        return False
+    return True
 
 
 def clean_queue(q: huey.RedisHuey, filter_str: str):
