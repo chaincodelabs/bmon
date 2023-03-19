@@ -436,6 +436,11 @@ def process_line(
 
         got.host = host
 
+        if isinstance(got, models.ReorgEvent):
+            util.pushover_notification(
+                f"[{host.name}] reorg: height={got.min_height} "
+                f"depth={len(got.old_blockhashes)}")
+
         try:
             got.full_clean()
         except Exception:
