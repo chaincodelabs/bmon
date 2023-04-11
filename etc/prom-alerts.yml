@@ -12,7 +12,7 @@ groups:
 - name: has_disk
   rules: 
   - alert: LowDisk
-    expr: (100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) < 5
+    expr: (100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) > 93
     for: 5m
     labels:
       severity: critical

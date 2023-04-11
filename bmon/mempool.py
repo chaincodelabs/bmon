@@ -28,7 +28,6 @@ class PolicyCohort(str, Enum):
     """
     Different deployed versions of bitcoind h
     """
-
     segwit = "segwit"
     taproot = "taproot"
 
