@@ -6,5 +6,5 @@ receivers:
       - token: ${PUSHOVER_TOKEN}
         user_key: ${PUSHOVER_USER}
         retry: 30m
-        message: '{{ .Annotations.summary }}'
+        message: "{{ range .Alerts }}{{ .Annotations.summary }}\n{{ end }}"
         url: "http://alerts.bmon.j.co"
