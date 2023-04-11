@@ -93,7 +93,7 @@ services:
 
   prom:
     profiles: ["server"]
-    image: docker.io/prom/prometheus
+    image: docker.io/prom/prometheus:latest
     user: "${UID}"
     volumes:
       - ${ENV_ROOT}/prom/etc:/etc/prometheus
@@ -105,7 +105,7 @@ services:
 
   alertman:
     profiles: ["server"]
-    image: docker.io/prom/alertmanager
+    image: docker.io/prom/alertmanager:latest
     user: "${UID}:1000"
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
