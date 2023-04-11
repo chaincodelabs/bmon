@@ -6,3 +6,4 @@ receivers:
       - token: ${PUSHOVER_TOKEN}
         user_key: ${PUSHOVER_USER}
         retry: 30m
+        message: '{{ .CommonAnnotations.summary }}'

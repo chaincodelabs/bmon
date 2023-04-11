@@ -320,7 +320,7 @@ def provision_monitored_bitcoind(
         WantedBy=timers.target
         """
             )
-        ).chmod(755)
+        ).chmod(755).chown("root:root")
         .changes
     ):
         run("systemctl daemon-reload", sudo=True)
