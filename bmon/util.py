@@ -80,10 +80,20 @@ def _count_tasks(q) -> Counter:
 
 
 def get_task_counts():
+    """
+    XXX THIS CAN BE SLOW!
+    """
     counts = {}
     counts.update(dict(_count_tasks(server_tasks.mempool_q)))
     counts.update(dict(_count_tasks(server_tasks.server_q)))
     return counts
+
+
+def get_task_counts_fast():
+    return {
+        'mempool_q': len(server_tasks.mempool_q),
+        'server_q': len(server_tasks.server_q),
+    }
 
 
 def count_tasks():

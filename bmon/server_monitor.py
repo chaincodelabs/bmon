@@ -159,7 +159,9 @@ def refresh_metrics(
     MEMPOOL_MAX_PROPAGATION_SPREAD_IN_HOUR.set(max_spread)
     MEMPOOL_MIN_PROPAGATION_SPREAD_IN_HOUR.set(min_spread)
 
-    counts = util.get_task_counts()
+    # TOO SLOW
+    # counts = util.get_task_counts()
+    counts = util.get_task_counts_fast()
 
     for name, count in counts.items():
         TASK_COUNT.labels(name=name).set(count)
