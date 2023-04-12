@@ -364,7 +364,7 @@ ListenerList = t.Sequence[logparse.Listener]
 ignore_older_than = None
 
 if not settings.DEBUG:
-    ignore_older_than = datetime.timedelta(days=1)
+    ignore_older_than = datetime.timedelta(hours=6)
 
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
