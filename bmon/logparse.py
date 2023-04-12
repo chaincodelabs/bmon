@@ -232,22 +232,31 @@ class MempoolAcceptListener:
         re.compile(r"poolsz (?P<pool_size_txns>\d+) txn, (?P<pool_size_kb>\d+) kB"),
     }
 
-    def process_line(self, line: str) -> None | models.MempoolAccept:
-        if " AcceptToMemoryPool:" in line and " accepted " in line:
-            matches = {}
-            timestamp = get_time(line)
-            for patt in self._accept_sub_patts:
-                if match := patt.search(line):
-                    matches.update(match.groupdict())
+    def __init__(self, ignore_older_than: t.Optional[datetime.timedelta] = None):
+        self.ignore_older_than = ignore_older_than
 
-            return models.MempoolAccept(
-                timestamp=timestamp,
-                peer_num=int(matches["peer_num"]),
-                txhash=matches["txhash"],
-                pool_size_kb=int(matches["pool_size_kb"]),
-                pool_size_txns=int(matches["pool_size_txns"]),
-            )
-        return None
+    def process_line(self, line: str) -> None | models.MempoolAccept:
+        if not (" AcceptToMemoryPool:" in line and " accepted " in line):
+            return None
+
+        matches = {}
+        timestamp = get_time(line)
+
+        if self.ignore_older_than and \
+                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+            return None
+
+        for patt in self._accept_sub_patts:
+            if match := patt.search(line):
+                matches.update(match.groupdict())
+
+        return models.MempoolAccept(
+            timestamp=timestamp,
+            peer_num=int(matches["peer_num"]),
+            txhash=matches["txhash"],
+            pool_size_kb=int(matches["pool_size_kb"]),
+            pool_size_txns=int(matches["pool_size_txns"]),
+        )
 
 
 class MempoolRejectListener:
@@ -257,6 +266,9 @@ class MempoolRejectListener:
 
     5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711 from peer=12 was not accepted: insufficient fee, rejecting replacement 5bff289c800bb1ddf4f3e82ae2964b968d3ffa718e7481f560130060102e9711, not enough additional fees to relay; 0.00 < 0.00009128
     """
+
+    def __init__(self, ignore_older_than: t.Optional[datetime.timedelta] = None):
+        self.ignore_older_than = ignore_older_than
 
     _accept_sub_patts = {
         _PEER_PATT,
@@ -274,6 +286,11 @@ class MempoolRejectListener:
 
         matches = {}
         timestamp = get_time(line)
+
+        if self.ignore_older_than and \
+                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+            return None
+
         for patt in self._accept_sub_patts:
             if match := patt.search(line):
                 matches.update(match.groupdict())
@@ -321,10 +338,18 @@ class PongListener:
 
     2022-10-23T13:21:28.681866Z received: pong (8 bytes) peer=3
     """
+    def __init__(self, ignore_older_than: t.Optional[datetime.timedelta] = None):
+        self.ignore_older_than = ignore_older_than
 
     def process_line(self, line):
         if " received: pong " not in line:
             return
+
+        timestamp = get_time(line)
+
+        if self.ignore_older_than and \
+                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+            return None
 
         if match := _PEER_PATT.search(line):
             return int(match.groups()[0])

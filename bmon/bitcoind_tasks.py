@@ -361,14 +361,19 @@ def create_host_record():
 
 ListenerList = t.Sequence[logparse.Listener]
 
+ignore_older_than = None
+
+if not settings.DEBUG:
+    ignore_older_than = datetime.timedelta(days=1)
+
 LOG_LISTENERS: ListenerList = (
     logparse.ConnectBlockListener(),
-    logparse.MempoolAcceptListener(),
-    logparse.MempoolRejectListener(),
+    logparse.MempoolAcceptListener(ignore_older_than=ignore_older_than),
+    logparse.MempoolRejectListener(ignore_older_than=ignore_older_than),
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),
-    logparse.PongListener(),
+    logparse.PongListener(ignore_older_than=ignore_older_than),
 )
 
 
