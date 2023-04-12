@@ -404,7 +404,7 @@ def process_line(
         if got is None:
             continue
 
-        log.debug("Got an instance %r from line (%s) %r", got, linehash, line)
+        log.info("Got an instance %r from line (%s) %r", got, linehash, line)
 
         if isinstance(listener, logparse.PongListener):
             # We got a peer ID, not a model instance.
