@@ -243,7 +243,7 @@ class MempoolAcceptListener:
         timestamp = get_time(line)
 
         if self.ignore_older_than and \
-                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+                (timezone.now() - timestamp) > self.ignore_older_than:
             return None
 
         for patt in self._accept_sub_patts:
@@ -288,7 +288,7 @@ class MempoolRejectListener:
         timestamp = get_time(line)
 
         if self.ignore_older_than and \
-                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+                (timezone.now() - timestamp) > self.ignore_older_than:
             return None
 
         for patt in self._accept_sub_patts:
@@ -348,7 +348,7 @@ class PongListener:
         timestamp = get_time(line)
 
         if self.ignore_older_than and \
-                (datetime.datetime.utcnow() - timestamp) > self.ignore_older_than:
+                (timezone.now() - timestamp) > self.ignore_older_than:
             return None
 
         if match := _PEER_PATT.search(line):
