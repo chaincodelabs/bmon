@@ -74,22 +74,22 @@ services:
     links:
       - prom
       - alertman
-      - loki
+      # - loki
     ports:
       - 3000:3000
 
-  loki:
-    profiles: ["server"]
-    image: docker.io/grafana/loki
-    user: "${UID}"
-    volumes:
-      - ${ENV_ROOT}/loki:/loki
-      - ${ENV_ROOT}/loki/etc:/etc/loki
-    links:
-      - alertman
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - 3100:3100
+  # loki:
+  #   profiles: ["server"]
+  #   image: docker.io/grafana/loki
+  #   user: "${UID}"
+  #   volumes:
+  #     - ${ENV_ROOT}/loki:/loki
+  #     - ${ENV_ROOT}/loki/etc:/etc/loki
+  #   links:
+  #     - alertman
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   ports:
+  #     - 3100:3100
 
   prom:
     profiles: ["server"]
@@ -212,20 +212,20 @@ services:
       - 8332:8332
       - 8333:8333
 
-  promtail:
-    profiles: ["bitcoind"]
-    image: docker.io/grafana/promtail
-    user: "${UID}"
-    environment:
-      BMON_REDIS_LOCAL_URL: 
-      BMON_REDIS_SERVER_URL: 
-      WAIT_FOR: "${LOKI_HOST}:${LOKI_PORT}"
-    volumes:
-      - ${ENV_ROOT}/promtail:/etc/promtail
-      - ${BITCOIN_DATA_PATH}:/bitcoin/data
-    command: --config.file=/etc/promtail/config.yml
-    links:
-      - bitcoind
+  # promtail:
+  #   profiles: ["bitcoind"]
+  #   image: docker.io/grafana/promtail
+  #   user: "${UID}"
+  #   environment:
+  #     BMON_REDIS_LOCAL_URL: 
+  #     BMON_REDIS_SERVER_URL: 
+  #     WAIT_FOR: "${LOKI_HOST}:${LOKI_PORT}"
+  #   volumes:
+  #     - ${ENV_ROOT}/promtail:/etc/promtail
+  #     - ${BITCOIN_DATA_PATH}:/bitcoin/data
+  #   command: --config.file=/etc/promtail/config.yml
+  #   links:
+  #     - bitcoind
 
   redis-bitcoind:
     profiles: ["prod-bitcoind"]
