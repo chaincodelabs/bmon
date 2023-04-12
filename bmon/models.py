@@ -82,6 +82,10 @@ class Host(BaseModel):
             ),
         ]
 
+        indexes = [
+            models.Index(fields=['name']),
+        ]
+
     def __repr__(self):
         return _repr(self, ["name", "bitcoin_version", "bitcoin_gitref"])
 
@@ -168,6 +172,11 @@ class PeerStats(BaseModel):
 
     bytesrecv_per_msg = models.JSONField()
     bytessent_per_msg = models.JSONField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]
 
 
 class RequestBlockEvent(BaseModel):
