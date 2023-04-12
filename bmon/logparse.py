@@ -41,6 +41,7 @@ def read_logfile_forever(
 
     if seek_to_cursor:
         log.info("attempting to seek to logline cursor %s", seek_to_cursor)
+        lineno = 0
 
         while True:
             line = current.readline()
@@ -58,6 +59,10 @@ def read_logfile_forever(
                     start_pos,
                 )
                 break
+
+            lineno += 1
+            if lineno % 10_000 == 0:
+                log.info("still seeking... %s lines seen", lineno)
 
         if not start_pos:
             log.warning(
