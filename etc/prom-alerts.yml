@@ -7,7 +7,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "Instance {{ $labels.instance }} down"
+      summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) down"
 
 - name: has_disk
   rules: 
@@ -17,7 +17,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "Instance {{ $labels.instance }} is low on disk"
+      summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) is low on disk"
 
 - name: low_peers
   rules: 
@@ -27,7 +27,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "{{ $labels.instance }} ({{ $labels.bitcoin_version }}) has low peers"
+      summary: "{{ $labels.instance }} ({{ $labels.bitcoin_version }}) ({{ $labels.hostname }}) has low peers"
 
 - name: logs_not_watched
   rules:
@@ -37,4 +37,4 @@ groups:
       labels:
         severity: critical
       annotations:
-        summary: "{{ $labels.instance }} has stopped processing bitcoind logs"
+        summary: "{{ $labels.instance }} ({{ $labels.hostname }}) has stopped processing bitcoind logs"
