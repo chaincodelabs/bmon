@@ -60,6 +60,8 @@ class Host(BaseModel):
         help_text="Extra data about this bitcoind instance"
     )
 
+    disabled = models.BooleanField(default=False)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
