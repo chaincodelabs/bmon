@@ -2,6 +2,10 @@ import fastavro
 from django.db import models
 from django.conf import settings
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 def _repr(instance, attrs):
     attr_strs = []
@@ -390,7 +394,11 @@ class MempoolReject(BaseModel):
         ]
 
     def __repr__(self):
-        return _repr(self, ["host", "timestamp", "txhash", "reason_code", "peer_num"])
+        try:
+            return _repr(self, ["host", "timestamp", "txhash", "reason_code", "peer_num"])
+        except Exception:
+            log.exception("mempoolreject repr")
+            return _repr(self, ["timestamp", "txhash", "reason_code", "peer_num"])
 
     __str__ = __repr__
 
