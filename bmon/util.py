@@ -92,12 +92,12 @@ def count_tasks():
 
 
 def remove_mempool_events(q: huey.RedisHuey):
-    clean_queue(q, 'Mempool')
-    clean_queue(q, 'Pong')
+    clean_queue(q, "Mempool")
+    clean_queue(q, "Pong")
 
 
 def pushover_notification(msg: str) -> bool:
-    token = os.environ.get('PUSHOVER_TOKEN')
+    token = os.environ.get("PUSHOVER_TOKEN")
 
     if not token:
         log.error("no pushover token configured")
@@ -105,15 +105,21 @@ def pushover_notification(msg: str) -> bool:
 
     try:
         conn = http.client.HTTPSConnection("api.pushover.net:443")
-        conn.request("POST", "/1/messages.json",
-          urllib.parse.urlencode({
-            "token": token,
-            "user": os.environ.get('PUSHOVER_USER'),
-            "message": msg,
-          }), { "Content-type": "application/x-www-form-urlencoded" })
+        conn.request(
+            "POST",
+            "/1/messages.json",
+            urllib.parse.urlencode(
+                {
+                    "token": token,
+                    "user": os.environ.get("PUSHOVER_USER"),
+                    "message": msg,
+                }
+            ),
+            {"Content-type": "application/x-www-form-urlencoded"},
+        )
         resp = conn.getresponse()
         if resp.status != 200:
-            log.error("pushover request failed", extra={'response': resp, 'msg': msg})
+            log.error("pushover request failed", extra={"response": resp, "msg": msg})
             return False
     except Exception:
         log.exception("pushover request failed")
