@@ -404,7 +404,19 @@ def process_line(
         if got is None:
             continue
 
-        log.info("Got an instance %r from line (%s) %r", got, linehash, line)
+        # TODO make this less special casey
+        if isinstance(got, models.MempoolAccept):
+            got.host = host.name
+            mempool_activity(got.avro_record(), linehash)  # type: ignore
+            server_tasks.process_mempool_accept(got.txhash, got.timestamp, host.name)
+            continue
+
+        if hasattr(got, 'host'):
+            got.host = host
+
+        # MempoolAccept too noisy for this log statement
+        if not isinstance(got, models.MempoolAccept):
+            log.info("Got an instance %r from line (%s) %r", got, linehash, line)
 
         if isinstance(listener, logparse.PongListener):
             # We got a peer ID, not a model instance.
@@ -431,15 +443,6 @@ def process_line(
                 return None
 
             got.peer_id = int(peer_id)  # type: ignore
-
-        # TODO make this less special casey
-        if isinstance(got, models.MempoolAccept):
-            got.host = host.name
-            mempool_activity(got.avro_record(), linehash)  # type: ignore
-            server_tasks.process_mempool_accept(got.txhash, got.timestamp, host.name)
-            continue
-
-        got.host = host
 
         if isinstance(got, models.ReorgEvent):
             util.pushover_notification(
