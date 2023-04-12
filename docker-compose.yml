@@ -57,8 +57,10 @@ services:
     volumes:
       - ${ENV_ROOT}/postgres/data:/var/lib/postgresql/data
       - /etc/passwd:/etc/passwd:ro
+      - ./etc/postgres.conf:/etc/postgresql/postgresql.conf
     ports:
       - 5432:5432
+    command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
 
   redis:
     profiles: ["server"]
