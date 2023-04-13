@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 def _repr(instance, attrs):
     attr_strs = []
     for attr in attrs:
-        attr_strs.append(f"{attr}='{getattr(instance, attr)}'")
+        attr_strs.append(f"{attr}='{getattr(instance, attr, '')}'")
     return f'{instance.__class__.__name__}({" ".join(attr_strs)})'
 
 
