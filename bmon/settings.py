@@ -244,4 +244,8 @@ if SENTRY_DSN:
         # something more human-readable.
         # release="myapp@1.0.0",
         server_name=HOSTNAME,
+
+        _experiments={
+            "profiles_sample_rate": 1.0,
+        },
     )
