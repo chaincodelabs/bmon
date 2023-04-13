@@ -373,7 +373,7 @@ LOG_LISTENERS: ListenerList = (
     logparse.BlockConnectedListener(),
     logparse.BlockDisconnectedListener(),
     logparse.ReorgListener(),
-    logparse.PongListener(ignore_older_than=ignore_older_than),
+    logparse.PongListener(ignore_older_than=datetime.timedelta(minutes=10)),
 )
 
 
@@ -388,6 +388,7 @@ def process_line(
     """
     linehash = logparse.linehash(line)
     ls: ListenerList = listeners or LOG_LISTENERS
+    assert host
 
     for listener in ls:
         try:
@@ -411,18 +412,17 @@ def process_line(
             server_tasks.process_mempool_accept(got.txhash, got.timestamp, host.name)
             continue
 
-        if hasattr(got, 'host'):
-            got.host = host
-
-        # MempoolAccept too noisy for this log statement
-        if not isinstance(got, models.MempoolAccept):
-            log.info("Got an instance %r from line (%s) %r", got, linehash, line)
-
         if isinstance(listener, logparse.PongListener):
             # We got a peer ID, not a model instance.
             assert isinstance(got, int)
             sync_peer_data(got)
             continue
+
+        got.host = host
+
+        # MempoolAccept too noisy for this log statement
+        if not isinstance(got, models.MempoolAccept):
+            log.info("Got an instance %r from line (%s) %r", got, linehash, line)
 
         if isinstance(got, models.MempoolReject):
             # Need to fill out the `peeer` foreign key
