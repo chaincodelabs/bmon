@@ -325,6 +325,8 @@ def provision_monitored_bitcoind(
     ):
         run("systemctl daemon-reload", sudo=True)
 
+    run("systemctl start logrotate.timer", sudo=True)
+
     services_path = BMON_PATH / "services" / "prod"
 
     p(sysd := Path.home() / ".config" / "systemd" / "user").mkdir()
