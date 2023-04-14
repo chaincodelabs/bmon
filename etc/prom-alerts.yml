@@ -22,12 +22,12 @@ groups:
 - name: low_mem
   rules: 
   - alert: LowMem
-    expr: (node_memory_MemFree_bytes / node_memory_MemAvailable_bytes) < 0.10
+    expr: (node_memory_MemAvailable_bytes / (1024 * 1024)) < 400
     for: 5m
     labels:
       severity: critical
     annotations:
-      summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) is low on memory"
+      summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) is low on memory ({{ $value }}MB)"
 
 - name: low_peers
   rules: 
