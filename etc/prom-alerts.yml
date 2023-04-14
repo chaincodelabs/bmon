@@ -15,9 +15,19 @@ groups:
     expr: (100 - (node_filesystem_avail_bytes{mountpoint="/"} * 100) / node_filesystem_size_bytes{mountpoint="/"}) > 93
     for: 5m
     labels:
-      severity: critical
+      severity: warning
     annotations:
       summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) is low on disk"
+
+- name: low_mem
+  rules: 
+  - alert: LowMem
+    expr: (node_memory_MemFree_bytes / node_memory_MemAvailable_bytes) < 0.10
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} ({{ $labels.hostname }}) is low on memory"
 
 - name: low_peers
   rules: 
@@ -25,7 +35,7 @@ groups:
     expr: bitcoin_peers < 6
     for: 5m
     labels:
-      severity: critical
+      severity: warning
     annotations:
       summary: "{{ $labels.instance }} ({{ $labels.bitcoin_version }}) ({{ $labels.hostname }}) has low peers"
 
@@ -38,3 +48,23 @@ groups:
         severity: critical
       annotations:
         summary: "{{ $labels.instance }} ({{ $labels.hostname }}) has stopped processing bitcoind logs"
+
+- name: large_debug
+  rules:
+    - alert: BitcoindLargeDebug
+      expr: bmon_bitcoind_debug_log_size_mibibytes > 1000
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.instance }} ({{ $labels.hostname }}) has stopped rotating bitcoind logs"
+
+- name: large_activity_cache
+  rules:
+    - alert: BitcoindLargeActivityCache
+      expr: bmon_mempool_activity_cache_size_mibibytes > 50
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.instance }} ({{ $labels.hostname }}) has stopped pushing mempool activity"

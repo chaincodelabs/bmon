@@ -444,7 +444,7 @@ def deploy(
             restart "app" services.
     """
     if rebuild_docker:
-        run("docker-compose build && docker-compose push")
+        run("DOCKER_BUILDKIT=1 docker-compose build && docker-compose push")
 
     if restart == "all" and (
         cli.args.tag_filter == "server" or cli.args.hostname_filter == "bmon"
