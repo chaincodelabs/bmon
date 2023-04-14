@@ -88,28 +88,21 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'console',
         },
-        # Add Handler for Sentry for `warning` and above
-        # 'sentry': {
-        #     'level': 'WARNING',
-        #     'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-        # },
     },
     'loggers': {
         '': {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'handlers': [
                 'console',
-                # 'sentry',
             ],
         },
         'bitcoin-rpc': {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'handlers': [
                 'console',
-                # 'sentry',
             ],
         },
-        'huey': NO_LOG,
+        # 'huey': NO_LOG,
         'parso': NO_LOG,
         'clii': NO_LOG,
     },

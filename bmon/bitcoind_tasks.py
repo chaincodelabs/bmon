@@ -31,13 +31,15 @@ log = logging.getLogger(__name__)
 redisdb = walrus.Database.from_url(settings.REDIS_LOCAL_URL, decode_responses=True)
 
 events_q = RedisHuey(
-    "bmon-bitcoind-events", url=settings.REDIS_LOCAL_URL, immediate=settings.TESTING
+    "bmon-bitcoind-events", url=settings.REDIS_LOCAL_URL, immediate=settings.TESTING,
+    duration_warn=5,  # warn if task takes longer than 5 seconds
 )
 
 # The mempool queue is special-cased because it's so high volume, we don't want it
 # starving other queues.
 mempool_q = RedisHuey(
-    "bmon-mempool-events", url=settings.REDIS_LOCAL_URL, immediate=settings.TESTING
+    "bmon-mempool-events", url=settings.REDIS_LOCAL_URL, immediate=settings.TESTING,
+    duration_warn=5,  # warn if task takes longer than 5 seconds
 )
 
 

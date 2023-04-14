@@ -29,6 +29,7 @@ server_q = RedisHuey(
     "bmon-server",
     url=settings.REDIS_SERVER_URL,
     immediate=settings.TESTING,
+    duration_warn=5,  # warn if task takes longer than 5 seconds
 )
 
 # Special-case mempool events because they're so high volume; if something goes
@@ -38,6 +39,7 @@ mempool_q = RedisHuey(
     url=settings.REDIS_SERVER_URL,
     immediate=settings.TESTING,
     results=False,
+    duration_warn=5,  # warn if task takes longer than 5 seconds
 )
 
 redisdb = redis.Redis.from_url(settings.REDIS_SERVER_URL, decode_responses=True)

@@ -17,7 +17,7 @@ dependencies = [
     'psycopg2',  # for postgresql support
     'django',
     'redis[hiredis]',
-    'huey',
+    'huey @ git+https://github.com/jamesob/huey.git',
     'walrus',
     'django-ninja',
     'whitenoise',
