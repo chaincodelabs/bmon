@@ -33,8 +33,18 @@ class PolicyCohort(str, Enum):
 
     @classmethod
     def for_host(cls, host: models.Host) -> "PolicyCohort":
-        vertuple = bitcoind_version(host.bitcoin_version)[0]
-        return cls.segwit if is_pre_taproot(vertuple) else cls.taproot
+        return cls.for_version(host.bitcoin_version)
+
+    @classmethod
+    def for_version(cls, bitcoin_version: str) -> "PolicyCohort":
+        return (
+            cls.segwit if is_pre_taproot(bitcoind_version(bitcoin_version)[0])
+            else cls.taproot)
+
+    @classmethod
+    def hostnames_for_policy(cls, policy: "PolicyCohort") -> t.Set[str]:
+        pairs = list(models.Host.objects.values_list('name', 'bitcoin_version'))
+        return {name for name, ver in pairs if cls.for_version(ver) == policy}
 
 
 class PropagationStatus(str, Enum):

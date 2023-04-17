@@ -219,7 +219,7 @@ def commit_peers_db(peerinfo: list[dict]) -> dict[int, int]:
 
 # Coordinate mempool activity with a lock since we're writing out to a single file.
 mempool_activity_lock = redisdb.lock("mempool-activity", ttl=1_000)
-mempool_ship_lock = redisdb.lock("mempool-log-ship")
+mempool_ship_lock = redisdb.lock("mempool-log-ship", ttl=(1_000 * 60 * 8))
 
 LAST_SHIPPED_KEY = "mempool.last_shipped"
 CURRENT_MEMPOOL_FILE = settings.MEMPOOL_ACTIVITY_CACHE_PATH / "current"
@@ -274,21 +274,25 @@ def construct_gcp_path_from_datetime_str(dt):
 @mempool_q.task()
 def ship_mempool_activity():
     """Send mempool activity file to a remote server."""
-    with mempool_ship_lock:
-        client = google.cloud.storage.Client.from_service_account_json(
-            settings.CHAINCODE_GCP_CRED_PATH
-        )
-        bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
+    if mempool_ship_lock.acquire(block=False):
+        try:
+            client = google.cloud.storage.Client.from_service_account_json(
+                settings.CHAINCODE_GCP_CRED_PATH
+            )
+            bucket = client.get_bucket(settings.CHAINCODE_GCP_BUCKET)
 
-        for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob("to-ship*"):
-            timestr = shipfile.name.split(".")[1]
-            target = construct_gcp_path_from_datetime_str(timestr)
-            d = bucket.blob(target)
-            d.upload_from_filename(shipfile)
+            for shipfile in settings.MEMPOOL_ACTIVITY_CACHE_PATH.glob("to-ship*"):
+                timestr = shipfile.name.split(".")[1]
+                target = construct_gcp_path_from_datetime_str(timestr)
+                d = bucket.blob(target)
+                d.upload_from_filename(shipfile)
 
-            moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"shipped.{timestr}.avro"
-            subprocess.check_call(f"mv {shipfile} {moved}", shell=True)
-            log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
+                moved = settings.MEMPOOL_ACTIVITY_CACHE_PATH / f"shipped.{timestr}.avro"
+                subprocess.check_call(f"mv {shipfile} {moved}", shell=True)
+                log.info("pushed mempool activity %s to Chaincode GCP", shipfile)
+        except Exception:
+            mempool_ship_lock.release()
+            raise
 
 
 def watch_bitcoind_logs():
