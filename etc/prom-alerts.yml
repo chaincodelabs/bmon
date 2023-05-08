@@ -52,7 +52,7 @@ groups:
 - name: large_debug
   rules:
     - alert: BitcoindLargeDebug
-      expr: bmon_bitcoind_debug_log_size_mibibytes > 1000
+      expr: bmon_bitcoind_debug_log_size_mibibytes > 5000
       for: 5m
       labels:
         severity: critical
