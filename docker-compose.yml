@@ -32,14 +32,14 @@ x-service-config: &service
 
 x-redis-config: &redis-config
   image: docker.io/library/redis
-  user: "${UID}"
+  user: "${USER_ID}"
   ports:
     - 6379:6379
   volumes:
     - ${ENV_ROOT}/redis/data:/data
   # Configure redis for persistence with AOF;
   # See https://redis.io/docs/manual/persistence/
-  command: redis-server --appendonly yes --loglevel warning
+  command: redis-server ${BMON_REDIS_OPTIONS---appendonly yes --loglevel warning}
 
 services:
 
@@ -48,7 +48,7 @@ services:
 
   db:
     profiles: ["server"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/library/postgres:14-bullseye
     environment:
       POSTGRES_DB: bmon
@@ -69,7 +69,7 @@ services:
   grafana:
     profiles: ["server"]
     image: docker.io/grafana/grafana-enterprise:9.4.3
-    user: "${UID}"
+    user: "${USER_ID}"
     volumes:
       - ${ENV_ROOT}/grafana/etc:/etc/grafana
       - ${ENV_ROOT}/grafana/var:/var/lib/grafana
@@ -83,7 +83,7 @@ services:
   prom:
     profiles: ["server"]
     image: docker.io/prom/prometheus:latest
-    user: "${UID}"
+    user: "${USER_ID}"
     volumes:
       - ${ENV_ROOT}/prom/etc:/etc/prometheus
       - ${ENV_ROOT}/prom/data:/prometheus
@@ -95,7 +95,7 @@ services:
   alertman:
     profiles: ["server"]
     image: docker.io/prom/alertmanager:latest
-    user: "${UID}:1000"
+    user: "${USER_ID}:1000"
     volumes:
       - ${ENV_ROOT}/alertman/config.yml:/etc/alertmanager/config.yml
       - ${ENV_ROOT}/alertman/data:/alertmanager
@@ -105,7 +105,7 @@ services:
 
   web: &web_config
     profiles: ["server"]
-    user: "${UID}"
+    user: "${USER_ID}"
     build:
       context: .
       dockerfile: ./docker/py.Dockerfile
@@ -136,7 +136,7 @@ services:
 
   server-task-worker:
     profiles: ["server"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
@@ -150,7 +150,7 @@ services:
 
   server-mempool-task-worker:
     profiles: ["server"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
@@ -164,7 +164,7 @@ services:
 
   server-monitor:
     profiles: ["server"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
@@ -193,7 +193,7 @@ services:
   bitcoind:
     profiles: ["bitcoind"]
     image: ${BITCOIN_DOCKER_TAG}
-    user: "${UID}"
+    user: "${USER_ID}"
     volumes:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
     command: bitcoind -datadir=/bitcoin/data ${BITCOIN_FLAGS}
@@ -207,7 +207,7 @@ services:
 
   bitcoind-task-worker: &bitcoind-worker
     profiles: ["bitcoind"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     # We have to repeat the build section here because the `web` container won't
     # build on bitcoind hosts, so we have to have at least one container configured
@@ -242,7 +242,7 @@ services:
 
   bitcoind-watcher:
     profiles: ["bitcoind"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
@@ -260,7 +260,7 @@ services:
 
   bitcoind-monitor:
     profiles: ["bitcoind"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:latest
     environment:
       <<: *env
@@ -298,7 +298,7 @@ services:
 
   test:
     profiles: ["dev"]
-    user: "${UID}"
+    user: "${USER_ID}"
     image: docker.io/jamesob/bmon:test-latest
     build:
       context: .
@@ -322,7 +322,7 @@ services:
   js:
     profiles: ["dev"]
     image: js
-    user: "${UID}"
+    user: "${USER_ID}"
     build:
       context: ./frontend
     environment:
@@ -336,7 +336,7 @@ services:
   bitcoind-02:
     profiles: ["dev"]
     image: ${BITCOIN_DOCKER_TAG}
-    user: "${UID}"
+    user: "${USER_ID}"
     volumes:
       - ${ENV_ROOT}/bitcoin-02/data:/bitcoin/data
       - ${ENV_ROOT}/bitcoin-02/data/bitcoin.conf:/bitcoin/bitcoin.conf

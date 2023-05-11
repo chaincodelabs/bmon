@@ -126,7 +126,6 @@ def generateblock():
 
     if '"test"' not in brpc("getwalletinfo", capture_output=True, text=True).stdout:
         brpc("loadwallet test")
-
     sh(
         "docker-compose exec bitcoind bitcoin-cli -regtest -datadir=/bitcoin/data -generate"
     )
@@ -188,7 +187,9 @@ def cleardata():
 def _testrun(cmd: str) -> bool:
     return sh(
         f"docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '{cmd}'",
-        env={'BMON_BITCOIND_PORT': '8555', 'BMON_BITCOIND_RPC_PORT': '8554', 
+        env={'BMON_BITCOIND_PORT': '8555', 
+             'BMON_BITCOIND_RPC_PORT': '8554', 
+             'BMON_REDIS_OPTIONS': '',
              **os.environ},
     ).returncode == 0
 
