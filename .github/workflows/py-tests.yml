@@ -12,8 +12,8 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Build containers
-      run: docker-compose build test
+    - name: Pull test container
+      run: docker pull docker.io/jamesob/bmon:test-latest
 
     - name: create config
       run: |

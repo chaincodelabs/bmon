@@ -35,7 +35,7 @@ BMON_ENV=${bmon_env}
 COMPOSE_PROFILES=${compose_profiles}
 BMON_HOSTS_FILE=${hosts_file}
 ENV_ROOT=${root}
-UID=${uid}
+USER_ID=${uid}
 BMON_HOSTNAME=${hostname}
 BMON_DEBUG=${debug}
 
@@ -99,7 +99,7 @@ dev_settings = dict(
     compose_profiles="bitcoind,server",
     hosts_file=DEV_HOSTS_FILE,
     root="./services/dev",
-    uid=1000,
+    uid=os.getuid(),
     db_host="db",
     db_password="bmon",
     redis_server_host="redis",
