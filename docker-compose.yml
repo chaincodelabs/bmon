@@ -198,8 +198,8 @@ services:
       - ${ENV_ROOT}/bitcoin/data:/bitcoin/data
     command: bitcoind -datadir=/bitcoin/data ${BITCOIN_FLAGS}
     ports:
-      - 8332:8332
-      - 8333:8333
+      - ${BMON_BITCOIND_PORT:-8332}:8332
+      - ${BMON_BITCOIND_RPC_PORT:-8333}:8333
 
   redis-bitcoind:
     profiles: ["prod-bitcoind"]

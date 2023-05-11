@@ -187,7 +187,9 @@ def cleardata():
 
 def _testrun(cmd: str) -> bool:
     return sh(
-        f"docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '{cmd}'"
+        f"docker-compose run --rm -e RUN_DB_MIGRATIONS= test -- bash -c '{cmd}'",
+        env={'BMON_BITCOIND_PORT': '8555', 'BMON_BITCOIND_RPC_PORT': '8554', 
+             **os.environ},
     ).returncode == 0
 
 
