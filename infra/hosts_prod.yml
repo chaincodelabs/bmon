@@ -65,7 +65,7 @@ hosts:
     bitcoin:
       prune: 550 
       dbcache: 1200
-      docker_tag: jamesob/bitcoind:2023-05-download-bug
+      docker_tag: jamesob/bitcoind:2023-05-parallel-block-downloads
         
   b-03.slug:
     tags: [bitcoind, vagrant]
