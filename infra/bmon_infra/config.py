@@ -263,6 +263,8 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
         bitcoin_rpc_port=8332,
         bitcoin_rpc_user="bmon",
         sentry_dsn=host.secrets.sentry_dsn,
+        pushover_user=host.secrets.pushover.user,
+        pushover_token=host.secrets.pushover.token,
     )
 
     if "server" in host.tags:
@@ -275,8 +277,6 @@ def prod_settings(host, server_wireguard_ip: str) -> dict:
             web_api_url="http://web:8080",
             loki_host="loki",
             alertman_address="alertman:9093",
-            pushover_user=host.secrets.pushover.user,
-            pushover_token=host.secrets.pushover.token,
             bitcoind_version_path="",
             smtp_password=host.secrets.smtp_password,
             smtp_host=host.secrets.smtp_host,
