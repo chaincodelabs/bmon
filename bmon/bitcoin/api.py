@@ -31,7 +31,7 @@ def bitcoind_version(ver: None | str = None) -> tuple[tuple[int, ...], None | st
     if '-' in ver:
         ver, gitsha = ver.split('-', 1)
 
-    vertuple = tuple(int(i) for i in ver.split('.'))
+    vertuple = tuple(int(i.split('rc')[0]) for i in ver.split('.'))
     if len(vertuple) == 2:
         vertuple += (0,)
     assert len(vertuple) == 3

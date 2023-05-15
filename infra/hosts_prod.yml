@@ -99,7 +99,7 @@ hosts:
     bitcoin:
       prune: 550 
       dbcache: 1200
-      docker_tag: jamesob/bitcoind:22.0
+      docker_tag: jamesob/bitcoind:v25.0rc2
 
   ssd-1.ccl:
     tags: [bitcoind]
