@@ -415,6 +415,18 @@ class MempoolReject(BaseModel):
         return reason_code
 
 
+class BlockDownloadTimeout(BaseModel):
+    """
+    Timeout downloading block 000000000000000000086779ecf494b0595a9b779f501c7e25fb2be0b69907a2 from peer=24, disconnecting
+    """
+
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(db_index=True)
+    blockhash = models.CharField(max_length=80)
+    peer_num = models.IntegerField()
+    peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
+
+
 class MempoolAccept(models.Model):
     """
     TODO: This isn't actually persisted to the database, so we should probably
