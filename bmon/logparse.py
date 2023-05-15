@@ -367,7 +367,7 @@ BlockEvent = models.BlockDisconnectedEvent | models.BlockConnectedEvent
 
 class _BlockEventListener(t.Protocol):
     """
-    2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueui ng BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
+    2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueuing BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
     """
 
     event_type: str
@@ -657,6 +657,34 @@ def dict_onto_event(d: dict[str, str], event: t.Any, type_map: t.Any) -> None:
             log.warning(
                 "[%s] matched attribute not recognized: %s", event.__class__.__name__, k
             )
+
+
+class BlockDownloadTimeoutListener:
+
+    _accept_sub_patts = {
+        re.compile(rf"block (?P<blockhash>{_HASH})"),
+        _PEER_PATT,
+    }
+
+    def __init__(self, ignore_older_than: t.Optional[datetime.timedelta] = None):
+        self.ignore_older_than = ignore_older_than
+
+    def process_line(self, line: str) -> None | models.BlockDownloadTimeout:
+        if "Timeout downloading block " not in line:
+            return None
+
+        matches = {}
+        timestamp = get_time(line)
+
+        for patt in self._accept_sub_patts:
+            if match := patt.search(line):
+                matches.update(match.groupdict())
+
+        return models.BlockDownloadTimeout(
+            timestamp=timestamp,
+            peer_num=int(matches["peer_num"]),
+            blockhash=matches["blockhash"],
+        )
 
 
 """

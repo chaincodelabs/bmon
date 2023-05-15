@@ -7,6 +7,19 @@ import pytest
 from . import logparse, conftest, models, bitcoind_tasks
 
 
+def test_blockdownloadtimeout():
+    listener = logparse.BlockDownloadTimeoutListener()
+    thetime = logparse.get_time("2022-10-05T22:29:02.937882Z")
+
+    got = listener.process_line(
+        "2022-10-05T22:29:02.937882Z [] Timeout downloading block 000000000000000000086779ecf494b0595a9b779f501c7e25fb2be0b69907a2 from peer=24, disconnecting")
+    assert got
+    assert isinstance(got, models.BlockDownloadTimeout)
+    assert got.peer_num == 24
+    assert got.blockhash == "000000000000000000086779ecf494b0595a9b779f501c7e25fb2be0b69907a2"
+    assert got.timestamp == thetime
+
+
 def test_ponglistener():
     listener = logparse.PongListener()
 

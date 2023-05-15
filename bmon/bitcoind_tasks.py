@@ -373,6 +373,7 @@ if not settings.DEBUG:
     ignore_older_than = datetime.timedelta(hours=6)
 
 LOG_LISTENERS: ListenerList = (
+    logparse.BlockDownloadTimeoutListener(),
     logparse.ConnectBlockListener(),
     logparse.MempoolAcceptListener(ignore_older_than=ignore_older_than),
     logparse.MempoolRejectListener(ignore_older_than=ignore_older_than),
@@ -416,22 +417,25 @@ def process_line(
             got.host = host.name
             mempool_activity(got.avro_record(), linehash)  # type: ignore
             server_tasks.process_mempool_accept(got.txhash, got.timestamp, host.name)
+            got = None
             continue
 
         if isinstance(listener, logparse.PongListener):
             # We got a peer ID, not a model instance.
             assert isinstance(got, int)
             sync_peer_data(got)
+            got = None
             continue
 
         got.host = host
+        is_high_volume = got.is_high_volume
 
         # MempoolAccept too noisy for this log statement
-        if not isinstance(got, models.MempoolAccept):
+        if not is_high_volume:
             log.info("Got an instance %r from line (%s) %r", got, linehash, line)
 
-        if isinstance(got, models.MempoolReject):
-            # Need to fill out the `peeer` foreign key
+        if hasattr(got, 'peer_id') and not is_high_volume:
+            # Need to fill out the `peer` foreign key
             peer_id = peer_id_map.get(got.peer_num)
             if not peer_id:
                 log.error("peer cache miss: %s", got.peer_num)
@@ -451,9 +455,14 @@ def process_line(
             got.peer_id = int(peer_id)  # type: ignore
 
         if isinstance(got, models.ReorgEvent):
+            log.error("saw reorg! %s", got)
             util.pushover_notification(
                 f"[{host.name}] reorg: height={got.min_height} "
                 f"depth={len(got.old_blockhashes)}")
+
+        elif isinstance(got, models.BlockDownloadTimeout):
+            util.pushover_notification(
+                f"[{host.name}] saw block download timeout for {got.blockhash}")
 
         try:
             got.full_clean()
