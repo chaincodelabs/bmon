@@ -664,12 +664,13 @@ def wireguard_peer_template(hostname: str):
     print(get_wireguard_peer_template(hostname))
 
 
-def _run_rg(query: str, tail_limit: int, context: int, all: bool):
+def _run_rg(query: str, tail_limit: int, context: int, after: int, all: bool):
     os.chdir("./bmon/services/prod/bitcoin/data")
     context_str = "" if context == -1 else f"-C {context}"
+    after_str = "" if after == -1 else f"-A {after}"
     filename = "debug.log*" if all else "debug.log"
 
-    cmd = f"rg --color=always -z {context_str} '{query}' {filename}"
+    cmd = f"rg --color=always -z {context_str} {after_str} '{query}' {filename}"
     if tail_limit != -1:
         cmd += f"| tail -n {tail_limit}"
 
@@ -679,8 +680,9 @@ def _run_rg(query: str, tail_limit: int, context: int, all: bool):
 @cli.cmd
 @cli.arg("tail_limit", "-n")
 @cli.arg("context", "-C")
+@cli.arg("after", "-A")
 @cli.arg("all", "-a")
-def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = False):
+def rg(search_query: str, tail_limit: int = -1, context: int = -1, after: int = -1, all: bool = False):
     """
     Ripgrep through the bitcoind logs.
 
@@ -692,7 +694,7 @@ def rg(search_query: str, tail_limit: int = -1, context: int = -1, all: bool = F
     _, hostmap = get_hosts_for_cli(need_secrets=False)
     hosts = list(hostmap.values())
     with executor(*hosts) as exec:
-        got = exec.run(_run_rg, search_query, tail_limit, context, all)
+        got = exec.run(_run_rg, search_query, tail_limit, context, after, all)
 
         for host, result in got.all_results.items():
             for res in result.splitlines():
