@@ -373,6 +373,7 @@ if not settings.DEBUG:
     ignore_older_than = datetime.timedelta(hours=6)
 
 LOG_LISTENERS: ListenerList = (
+    logparse.HeaderToTipListener(),
     logparse.BlockDownloadTimeoutListener(),
     logparse.ConnectBlockListener(),
     logparse.MempoolAcceptListener(ignore_older_than=ignore_older_than),
@@ -398,6 +399,7 @@ def process_line(
     assert host
 
     for listener in ls:
+        got = None
         try:
             got = listener.process_line(line)
         except Exception:

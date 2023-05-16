@@ -7,6 +7,36 @@ import pytest
 from . import logparse, conftest, models, bitcoind_tasks
 
 
+def test_headertotip():
+    logdata = conftest.read_data_file("new-header.log")
+    listener = logparse.HeaderToTipListener()
+    got = []
+
+    for line in logdata:
+        print(line)
+        if (item := listener.process_line(line)):
+            got.append(item)
+
+    [event] = got
+
+    assert event.reconstruct_block_at == datetime.datetime(
+        2023, 5, 16, 5, 49, 52, 213277, tzinfo=datetime.timezone.utc)
+    assert event.reconstruction_data == {
+        'num_from_mempool': '4529',
+        'num_prefilled': '1',
+        'num_requested': '0',
+    }
+
+    assert event.block_to_tip_secs == 0.056563
+    assert event.blockhash == '00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a'
+    assert event.blocktime_minus_header_secs == -49.202998
+    assert event.header_to_block_secs == 0.010279
+    assert event.header_to_tip_secs == 0.066842
+    assert event.height == 789959
+    assert event.saw_header_at == datetime.datetime(2023, 5, 16, 5, 49, 52, 202998, tzinfo=datetime.timezone.utc)
+    assert event.tip_at == datetime.datetime(2023, 5, 16, 5, 49, 52, 269840, tzinfo=datetime.timezone.utc)
+
+
 def test_blockdownloadtimeout():
     listener = logparse.BlockDownloadTimeoutListener()
     thetime = logparse.get_time("2022-10-05T22:29:02.937882Z")

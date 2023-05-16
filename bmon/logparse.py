@@ -10,6 +10,7 @@ from pathlib import Path
 
 import walrus
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from bmon.models import ConnectBlockDetails, ConnectBlockEvent
 from bmon.bitcoin.api import is_pre_taproot
@@ -228,8 +229,17 @@ class Listener(t.Protocol):
     def process_line(self, line: str) -> t.Any:
         pass
 
+    def _match(self, patterns: t.Set[re.Pattern], line: str) -> dict:
+        matches = {}
 
-class MempoolAcceptListener:
+        for patt in patterns:
+            if match := patt.search(line):
+                matches.update(match.groupdict())
+
+        return matches
+
+
+class MempoolAcceptListener(Listener):
 
     _accept_sub_patts = {
         _PEER_PATT,
@@ -244,16 +254,13 @@ class MempoolAcceptListener:
         if not (" AcceptToMemoryPool:" in line and " accepted " in line):
             return None
 
-        matches = {}
         timestamp = get_time(line)
 
         if self.ignore_older_than and \
                 (timezone.now() - timestamp) > self.ignore_older_than:
             return None
 
-        for patt in self._accept_sub_patts:
-            if match := patt.search(line):
-                matches.update(match.groupdict())
+        matches = self._match(self._accept_sub_patts, line)
 
         return models.MempoolAccept(
             timestamp=timestamp,
@@ -264,7 +271,7 @@ class MempoolAcceptListener:
         )
 
 
-class MempoolRejectListener:
+class MempoolRejectListener(Listener):
     """
     [msghand] 4b93cc953162c4d953918e60fe1b9f48aae82e049ace3c912479e0ff5c7218c3 from peer=6 was not accepted: txn-mempool-conflict
     [msghand] 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af from peer=3 was not accepted: insufficient fee, rejecting replacement 91224dbc928799dfd9ca21c1364e1d9ce3168c604f743ff34a3a4e4bde8c23af; new feerate 0.00005965 BTC/kvB <= old feerate 0.00008334 BTC/kvB
@@ -289,17 +296,13 @@ class MempoolRejectListener:
         if not (" was not accepted:" in line and " from peer=" in line):
             return None
 
-        matches = {}
         timestamp = get_time(line)
 
         if self.ignore_older_than and \
                 (timezone.now() - timestamp) > self.ignore_older_than:
             return None
 
-        for patt in self._accept_sub_patts:
-            if match := patt.search(line):
-                matches.update(match.groupdict())
-
+        matches = self._match(self._accept_sub_patts, line)
         reason = line.split("was not accepted:")[-1].strip()
         assert reason
         reason_code = models.MempoolReject.get_reason_reject_code(reason)
@@ -336,7 +339,7 @@ class MempoolRejectListener:
         )
 
 
-class PongListener:
+class PongListener(Listener):
     """
     Listen for pong messages; this is a convenient way of determining when we
     should refresh cached peer information.
@@ -365,7 +368,7 @@ class PongListener:
 BlockEvent = models.BlockDisconnectedEvent | models.BlockConnectedEvent
 
 
-class _BlockEventListener(t.Protocol):
+class _BlockEventListener(Listener):
     """
     2022-10-22T14:22:49.357774Z [msghand] [validationinterface.cpp:239] [BlockDisconnected] [validation] Enqueuing BlockDisconnected: block hash=3cfd126d960a9b87823fd94d48121f774aac448c9a6f1b48efc547c61f9b8c1f block height=1
     """
@@ -381,11 +384,8 @@ class _BlockEventListener(t.Protocol):
     def process_line(self, line: str) -> None | BlockEvent:
         # Ignore the duplicate "Enqueuing" lines.
         if f" {self.event_type}: " in line and " Enqueuing " not in line:
-            matches = {}
+            matches = self._match(self._patts, line)
             timestamp = get_time(line)
-            for patt in self._patts:
-                if match := patt.search(line):
-                    matches.update(match.groupdict())
 
             assert self.event_class
             return self.event_class(  # typing: ignore
@@ -406,7 +406,7 @@ class BlockConnectedListener(_BlockEventListener):
     event_class = models.BlockConnectedEvent
 
 
-class ReorgListener:
+class ReorgListener(Listener):
     def __init__(self) -> None:
         self.disconnects: list[models.BlockDisconnectedEvent] = []
         self.replacements: list[models.BlockConnectedEvent] = []
@@ -482,7 +482,7 @@ class ReorgListener:
         return None
 
 
-class ConnectBlockListener:
+class ConnectBlockListener(Listener):
     _detail_patts = {
         re.compile(
             rf"- Load block from disk: (?P<load_block_from_disk_time_ms>{_FLOAT})ms "
@@ -569,9 +569,7 @@ class ConnectBlockListener:
         # Special-case UpdateTip since we can return the db event in one shot
         # (based on a single log line).
         if line.find(_UPDATE_TIP_START) != -1:
-            for patt in self._update_tip_sub_patts:
-                if match := patt.search(line):
-                    matchgroups.update(match.groupdict())
+            matchgroups.update(self._match(self._update_tip_sub_patts, line))
 
             timestamp = get_time(line)
 
@@ -659,9 +657,9 @@ def dict_onto_event(d: dict[str, str], event: t.Any, type_map: t.Any) -> None:
             )
 
 
-class BlockDownloadTimeoutListener:
+class BlockDownloadTimeoutListener(Listener):
 
-    _accept_sub_patts = {
+    _timeout_patts = {
         re.compile(rf"block (?P<blockhash>{_HASH})"),
         _PEER_PATT,
     }
@@ -673,18 +671,106 @@ class BlockDownloadTimeoutListener:
         if "Timeout downloading block " not in line:
             return None
 
-        matches = {}
+        matches = self._match(self._timeout_patts, line)
         timestamp = get_time(line)
-
-        for patt in self._accept_sub_patts:
-            if match := patt.search(line):
-                matches.update(match.groupdict())
 
         return models.BlockDownloadTimeout(
             timestamp=timestamp,
             peer_num=int(matches["peer_num"]),
             blockhash=matches["blockhash"],
         )
+
+
+class HeaderToTipListener(Listener):
+    """
+    Cue on "Saw new header" message, then record the amount of time to get to tip.
+
+    Saw new header hash= height=
+    Saw new cmpctblock header hash= peer=12
+    Successfully reconstructed block <hash> with 1 txn prefilled, 3313 txn from mempool (incl at least 0 from extra pool) and 1 txn requested
+    """
+    _header_patts = {
+        re.compile(rf"hash=(?P<blockhash>{_HASH})"),
+        re.compile(r"height=(?P<height>\d+)"),
+    }
+
+    _reconstruct_patts = {
+        re.compile(fr"block (?P<blockhash>{_HASH})"),
+        re.compile(r"(?P<num_prefilled>\d+) txn prefilled"),
+        re.compile(r"(?P<num_from_mempool>\d+) txn from mempool"),
+        re.compile(r"(?P<num_requested>\d+) txn requested"),
+    }
+
+    _tip_patts = {
+        re.compile(fr"best=(?P<blockhash>{_HASH}) "),
+        re.compile(r"date='(?P<blocktime>\S+)'"),
+    }
+
+    def __init__(self) -> None:
+        self.next_event = None
+
+    def process_line(self, line: str) -> t.Optional[models.HeaderToTipEvent]:
+        if "Saw new header" in line:
+            matches = self._match(self._header_patts, line)
+            timestamp = get_time(line)
+
+            if self.next_event:
+                log.error("Interrupting header-to-tip measurement",
+                          extra={"old": self.next_event})
+
+            self.next_event = models.HeaderToTipEvent()
+            self.next_event.blockhash = matches["blockhash"]
+            self.next_event.height = int(matches["height"])
+            self.next_event.saw_header_at = timestamp
+
+        if not self.next_event:
+            return
+
+        if "Successfully reconstructed block" in line:
+            if not self.next_event:
+                return
+            matches = self._match(self._reconstruct_patts, line)
+            timestamp = get_time(line)
+            if not self.next_event.blockhash == matches.get('blockhash'):
+                log.error("reconstruction blockhash mismatch",
+                          extra={'event': self.next_event, 'matches': matches})
+                return
+
+            matches.pop('blockhash')
+            self.next_event.reconstruct_block_at = timestamp
+            self.next_event.header_to_block_secs = (
+                self.next_event.reconstruct_block_at - self.next_event.saw_header_at
+            ).total_seconds()
+            self.next_event.reconstruction_data = matches
+
+        elif "UpdateTip: " in line:
+            if not self.next_event:
+                return
+            matches = self._match(self._tip_patts, line)
+            timestamp = get_time(line)
+            if not self.next_event.blockhash == matches.get('blockhash'):
+                log.error("reconstruction blockhash mismatch",
+                          extra={'event': self.next_event, 'matches': matches})
+                return
+
+            matches.pop('blockhash')
+            self.next_event.tip_at = timestamp
+            self.next_event.header_to_tip_secs = (
+                timestamp - self.next_event.saw_header_at).total_seconds()
+
+            if self.next_event.reconstruct_block_at:
+                self.next_event.block_to_tip_secs = (
+                    timestamp - self.next_event.reconstruct_block_at).total_seconds()
+
+            block_timestamp = parse_datetime(matches['blocktime'])
+            self.next_event.blocktime_minus_header_secs = (
+                block_timestamp - self.next_event.saw_header_at).total_seconds()
+
+            this_event = self.next_event
+            self.next_event = None
+            return this_event
+
+        return None
 
 
 """
