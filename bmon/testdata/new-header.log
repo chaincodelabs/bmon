@@ -1,0 +1,29 @@
+2023-05-16T05:49:52.202998Z [msghand] Saw new header hash=00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a height=789959
+2023-05-16T05:49:52.203009Z [msghand] [net] Saw new cmpctblock header hash=00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a peer=46
+2023-05-16T05:49:52.210637Z [msghand] [cmpctblock] Initialized PartiallyDownloadedBlock for block 00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a using a cmpctblock of size 27459
+2023-05-16T05:49:52.210744Z [msghand] [net] received: blocktxn (33 bytes) peer=46
+2023-05-16T05:49:52.213277Z [msghand] [cmpctblock] Successfully reconstructed block 00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a with 1 txn prefilled, 4529 txn from mempool (incl at least 4 from extra pool) and 0 txn requested
+2023-05-16T05:49:52.214496Z [msghand] [validation] NewPoWValidBlock: block hash=00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a
+2023-05-16T05:49:52.216604Z [msghand] [net] PeerManager::NewPoWValidBlock sending header-and-ids 00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a to peer=36
+2023-05-16T05:49:52.216920Z [msghand] [net] sending cmpctblock (27459 bytes) peer=36
+2023-05-16T05:49:52.217106Z [msghand] [net] PeerManager::NewPoWValidBlock sending header-and-ids 00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a to peer=43
+2023-05-16T05:49:52.217116Z [msghand] [net] sending cmpctblock (27459 bytes) peer=43
+2023-05-16T05:49:52.224032Z [msghand] [bench]   - Using cached block
+2023-05-16T05:49:52.224053Z [msghand] [bench]   - Load block from disk: 0.02ms [0.00s (0.02ms/blk)]
+2023-05-16T05:49:52.224069Z [msghand] [bench]     - Sanity checks: 0.00ms [0.00s (0.00ms/blk)]
+2023-05-16T05:49:52.224080Z [msghand] [bench]     - Fork checks: 0.01ms [0.00s (0.01ms/blk)]
+2023-05-16T05:49:52.235159Z [msghand] [bench]       - Connect 4530 transactions: 11.07ms (0.002ms/tx, 0.002ms/txin) [0.14s (13.06ms/blk)]
+2023-05-16T05:49:52.235176Z [msghand] [bench]     - Verify 5434 txins: 11.09ms (0.002ms/txin) [0.15s (13.51ms/blk)]
+2023-05-16T05:49:52.238731Z [msghand] [bench]     - Write undo data: 3.55ms [0.04s (3.67ms/blk)]
+2023-05-16T05:49:52.238742Z [msghand] [bench]     - Index writing: 0.01ms [0.00s (0.01ms/blk)]
+2023-05-16T05:49:52.239139Z [msghand] [validation] BlockChecked: block hash=00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a state=Valid
+2023-05-16T05:49:52.239153Z [msghand] [bench]   - Connect total: 15.11ms [0.19s (17.61ms/blk)]
+2023-05-16T05:49:52.243699Z [msghand] [bench]   - Flush: 4.55ms [0.06s (5.79ms/blk)]
+2023-05-16T05:49:52.243712Z [msghand] [bench]   - Writing chainstate: 0.01ms [0.00s (0.02ms/blk)]
+2023-05-16T05:49:52.249227Z [msghand] [validation] Enqueuing TransactionRemovedFromMempool: txid=8c2c557deb498b554b4ed5316a2f45975314079fe4e230f2a148bf770ebd336d wtxid=2e8a26ac7a33e3712a02d5d20b5486411862d349c1aa351a01f0805f84595890 reason=conflict
+2023-05-16T05:49:52.249309Z [scheduler] [validation] TransactionRemovedFromMempool: txid=8c2c557deb498b554b4ed5316a2f45975314079fe4e230f2a148bf770ebd336d wtxid=2e8a26ac7a33e3712a02d5d20b5486411862d349c1aa351a01f0805f84595890 reason=conflict
+2023-05-16T05:49:52.264753Z [msghand] [validation] Enqueuing TransactionRemovedFromMempool: txid=0b5a140531f0e45ec3b725c02e9cb58f00a4b1b48a66aeebc7bf6c125f0d6acc wtxid=c92796f548ac07ef26be5e983a76dabb78be8e6d119ada787d58e1b53cf3fa59 reason=conflict
+2023-05-16T05:49:52.264842Z [scheduler] [validation] TransactionRemovedFromMempool: txid=0b5a140531f0e45ec3b725c02e9cb58f00a4b1b48a66aeebc7bf6c125f0d6acc wtxid=c92796f548ac07ef26be5e983a76dabb78be8e6d119ada787d58e1b53cf3fa59 reason=conflict
+2023-05-16T05:49:52.264918Z [msghand] [validation] Enqueuing TransactionRemovedFromMempool: txid=8a8a22707c8e249007ecb5e71d85c23a0c7de07a9dadc9902a96f4d566fb8ab1 wtxid=f6de5f230bfa0ae8cbc2f599eebf3cbebd2370a8fd5e14bd1470648942baec6c reason=conflict
+2023-05-16T05:49:52.264988Z [scheduler] [validation] TransactionRemovedFromMempool: txid=8a8a22707c8e249007ecb5e71d85c23a0c7de07a9dadc9902a96f4d566fb8ab1 wtxid=f6de5f230bfa0ae8cbc2f599eebf3cbebd2370a8fd5e14bd1470648942baec6c reason=conflict
+2023-05-16T05:49:52.269840Z [msghand] UpdateTip: new best=00000000000000000004b2aea48da395156297a536ca62c2c53d25e14225f72a height=789959 version=0x333d4000 log2_work=94.182447 tx=838636104 date='2023-05-16T05:49:03Z' progress=1.000000 cache=76.4MiB(626588txo)

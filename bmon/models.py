@@ -426,6 +426,44 @@ class BlockDownloadTimeout(BaseModel):
     peer_num = models.IntegerField()
     peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
 
+    def __repr__(self):
+        return _repr(self, ["host", "timestamp", "blockhash", "peer_num"])
+
+    __str__ = __repr__
+
+
+class HeaderToTipEvent(BaseModel):
+    """
+    Measures times between seeing a new block header and adding it as our tip.
+    """
+    host = models.ForeignKey(Host, on_delete=models.CASCADE)
+    blockhash = models.CharField(max_length=80)
+    height = models.IntegerField()
+    saw_header_at = models.DateTimeField(
+        help_text="When we first saw the Saw new header message")
+    reconstruct_block_at = models.DateTimeField(
+        help_text="When the (compact)block was reconstructed")
+    tip_at = models.DateTimeField(
+        help_text="When the block became tip")
+
+    header_to_tip_secs = models.FloatField(
+        help_text="Time between header seen and new tip appended")
+    header_to_block_secs = models.FloatField(
+        help_text="Time between header seen and full block obtained")
+    block_to_tip_secs = models.FloatField(
+        help_text="Time between full block obtained and tip updated")
+    blocktime_minus_header_secs = models.FloatField(
+        help_text="Difference between blocktime and header seen")
+
+    reconstruction_data = models.JSONField(
+        default=dict, blank=True,
+        help_text="Extra data associated with the block reconstruction")
+
+    def __repr__(self):
+        return _repr(self, ["host", "blockhash", "saw_header_at", "header_to_tip_secs"])
+
+    __str__ = __repr__
+
 
 class MempoolAccept(models.Model):
     """

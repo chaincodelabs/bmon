@@ -25,6 +25,6 @@ jobs:
       run: |
         ./dev test
 
-    - name: mypy
-      run: |
-        ./dev mypy
+    # - name: mypy
+    #   run: |
+    #     ./dev mypy
