@@ -467,7 +467,7 @@ def process_line(
                 f"[{host.name}] saw block download timeout for {got.blockhash}")
 
         elif isinstance(got, models.HeaderToTipEvent):
-            if got.header_to_tip_secs > 2:
+            if got.header_to_tip_secs > 10:
                 util.pushover_notification(
                     f"[{host.name}] slow header-to-tip "
                     f"({got.header_to_tip_secs}) for {got.blockhash}")
