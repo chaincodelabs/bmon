@@ -20,6 +20,7 @@ table td {
   <th>Header-to-tip (s)</th>
   <th>Header-to-block (s)</th>
   <th>Block-to-tip (s)</th>
+  <th>Num CB txns requested</th>
 </tr>
 {% for event in events %}
 <tr>
@@ -30,6 +31,7 @@ table td {
   <td>{{ event.header_to_tip_secs }}</td>
   <td>{{ event.header_to_block_secs }}</td>
   <td>{{ event.block_to_tip_secs }}</td>
+  <td>{{ event.reconstruction_data.num_requested }}</td>
 </tr>
 {% endfor %}
 
