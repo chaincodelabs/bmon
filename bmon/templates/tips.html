@@ -26,7 +26,7 @@ table td {
   <td>{{ event.saw_header_at }}</td>
   <td><a href="https://mempool.space/block/{{ event.blockhash }}">{{ event.height }}</a></td>
   <td>{{ event.host.name }}</td>
-  <td>{{ event.host.bitcoin_gitref or event.host.bitcoin_version }}</td>
+  <td>{% firstof event.host.bitcoin_gitref event.host.bitcoin_version %}</td>
   <td>{{ event.header_to_tip_secs }}</td>
   <td>{{ event.header_to_block_secs }}</td>
   <td>{{ event.block_to_tip_secs }}</td>
