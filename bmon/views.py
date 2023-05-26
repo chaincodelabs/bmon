@@ -8,5 +8,5 @@ def main(request):
 
 
 def headertotip(request):
-    events = HeaderToTipEvent.objects.order_by('-height')[:100]
+    events = HeaderToTipEvent.objects.filter(header_to_tip_secs__gte=5).order_by('-height')[:100]
     return render(request, 'tips.html', {"events": events})
