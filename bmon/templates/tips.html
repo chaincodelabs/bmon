@@ -1,0 +1,28 @@
+<html>
+
+<h1>Tips</h1>
+
+<table>
+<tr>
+  <th>Height</th>
+  <th>Hostname</th>
+  <th>Version</th>
+  <th>Header-to-tip (s)</th>
+  <th>Header-to-block (s)</th>
+  <th>Block-to-tip (s)</th>
+</tr>
+{% for event in events %}
+<tr>
+  <td>{{ event.height }}</td>
+  <td>{{ event.host.name }}</td>
+  <td>{{ event.host.bitcoin_version }}</td>
+  <td>{{ event.header_to_tip_secs }}</td>
+  <td>{{ event.header_to_block_secs }}</td>
+  <td>{{ event.block_to_tip_secs }}</td>
+</tr>
+{% endfor %}
+
+
+</table>
+
+</html>
