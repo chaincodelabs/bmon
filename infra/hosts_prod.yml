@@ -35,71 +35,73 @@ hosts:
     bitcoin:
       docker_tag: jamesob/bitcoind:23.0
 
-  b-01.slug:
-    tags: [bitcoind, vagrant]
-    ssh_hostname: 10.33.0.20
-    username: vagrant
-    check_host_keys: accept
-    wireguard:
-      wg-bmon:
-        ip: 10.33.0.20
-        endpoint: 10.8.1.1
-        a: b-01.slug.james.bmon.info
-        pubkey: VzvkMZx+ZpzCmZvgFECohT1pa2QyC40qp7dHFaEzGn8=
-    bitcoin:
-      prune: 550 
-      dbcache: 1200
-      docker_tag: jamesob/bitcoind:22.0
+  # Down due to harddrive failure
+  #
+  # b-01.slug:
+  #   tags: [bitcoind, vagrant]
+  #   ssh_hostname: 10.33.0.20
+  #   username: vagrant
+  #   check_host_keys: accept
+  #   wireguard:
+  #     wg-bmon:
+  #       ip: 10.33.0.20
+  #       endpoint: 10.8.1.1
+  #       a: b-01.slug.james.bmon.info
+  #       pubkey: VzvkMZx+ZpzCmZvgFECohT1pa2QyC40qp7dHFaEzGn8=
+  #   bitcoin:
+  #     prune: 550 
+  #     dbcache: 1200
+  #     docker_tag: jamesob/bitcoind:22.0
 
-  b-02.slug:
-    tags: [bitcoind, vagrant]
-    ssh_hostname: 10.33.0.21
-    check_host_keys: accept
-    username: vagrant
-    wireguard:
-      wg-bmon:
-        ip: 10.33.0.21
-        endpoint: 10.8.1.1
-        a: b-02.slug.james.bmon.info
-        pubkey: t/jLtFWsGaEy/RGp5ehcY7cVIdsKW8d1iJzTTUBmIxU=
-    bitcoin:
-      prune: 550 
-      dbcache: 1200
-      docker_tag: jamesob/bitcoind:2023-05-parallel-block-downloads
+  # b-02.slug:
+  #   tags: [bitcoind, vagrant]
+  #   ssh_hostname: 10.33.0.21
+  #   check_host_keys: accept
+  #   username: vagrant
+  #   wireguard:
+  #     wg-bmon:
+  #       ip: 10.33.0.21
+  #       endpoint: 10.8.1.1
+  #       a: b-02.slug.james.bmon.info
+  #       pubkey: t/jLtFWsGaEy/RGp5ehcY7cVIdsKW8d1iJzTTUBmIxU=
+  #   bitcoin:
+  #     prune: 550 
+  #     dbcache: 1200
+  #     docker_tag: jamesob/bitcoind:2023-05-parallel-block-downloads
         
-  b-03.slug:
-    tags: [bitcoind, vagrant]
-    ssh_hostname: 10.33.0.22
-    check_host_keys: accept
-    # outbound_wireguard: wg-australia-01
-    username: vagrant
-    wireguard:
-      wg-bmon:
-        ip: 10.33.0.22
-        endpoint: 10.8.1.1
-        a: b-03.slug.james.bmon.info
-        pubkey: FCuA6MLGa5PuNX95ZKfjo9WodcI2r3u2792wy6gjxSw=
-    bitcoin:
-      prune: 550 
-      dbcache: 1200
-      docker_tag: jamesob/bitcoind:0.19.1
+  # b-03.slug:
+  #   tags: [bitcoind, vagrant]
+  #   ssh_hostname: 10.33.0.22
+  #   check_host_keys: accept
+  #   # outbound_wireguard: wg-australia-01
+  #   username: vagrant
+  #   wireguard:
+  #     wg-bmon:
+  #       ip: 10.33.0.22
+  #       endpoint: 10.8.1.1
+  #       a: b-03.slug.james.bmon.info
+  #       pubkey: FCuA6MLGa5PuNX95ZKfjo9WodcI2r3u2792wy6gjxSw=
+  #   bitcoin:
+  #     prune: 550 
+  #     dbcache: 1200
+  #     docker_tag: jamesob/bitcoind:0.19.1
 
-  b-04.slug:
-    tags: [bitcoind, vagrant]
-    ssh_hostname: 10.33.0.23
-    check_host_keys: accept
-    # outbound_wireguard: wg-japan-01
-    username: vagrant
-    wireguard:
-      wg-bmon:
-        ip: 10.33.0.23
-        endpoint: 10.8.1.1
-        a: b-04.slug.james.bmon.info
-        pubkey: L3DN/gKgDT9gF2qrvcybjV09MC9G4zT7u1Lsa34dTR4=
-    bitcoin:
-      prune: 550 
-      dbcache: 1200
-      docker_tag: jamesob/bitcoind:v25.0rc2
+  # b-04.slug:
+  #   tags: [bitcoind, vagrant]
+  #   ssh_hostname: 10.33.0.23
+  #   check_host_keys: accept
+  #   # outbound_wireguard: wg-japan-01
+  #   username: vagrant
+  #   wireguard:
+  #     wg-bmon:
+  #       ip: 10.33.0.23
+  #       endpoint: 10.8.1.1
+  #       a: b-04.slug.james.bmon.info
+  #       pubkey: L3DN/gKgDT9gF2qrvcybjV09MC9G4zT7u1Lsa34dTR4=
+  #   bitcoin:
+  #     prune: 550 
+  #     dbcache: 1200
+  #     docker_tag: jamesob/bitcoind:v25.0rc2
 
   ssd-1.ccl:
     tags: [bitcoind]
