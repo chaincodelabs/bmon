@@ -25,7 +25,7 @@ table td {
 {% for event in events %}
 <tr>
   <td>{{ event.saw_header_at }}</td>
-  <td><a href="https://mempool.space/block/{{ event.blockhash }}">{{ event.height }}</a></td>
+  <td><a target="_blank" rel="noopener noreferrer" href="https://mempool.space/block/{{ event.blockhash }}">{{ event.height }}</a></td>
   <td>{{ event.host.name }}</td>
   <td>{% firstof event.host.bitcoin_gitref event.host.bitcoin_version %}</td>
   <td>{{ event.header_to_tip_secs }}</td>
