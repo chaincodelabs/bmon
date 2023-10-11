@@ -25,7 +25,6 @@ from .config import Host, get_hosts
 
 cli = App()
 cli.add_argument("-t", "--tag-filter")
-cli.add_argument("-r", "--role-filter")
 cli.add_argument("-f", "--hostname-filter")
 
 REPO_URL = "https://github.com/chaincodelabs/bmon.git"

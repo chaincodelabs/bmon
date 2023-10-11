@@ -111,6 +111,13 @@ def test_mempool_reject():
     assert got.reason_data == {}
     assert got.reason_code == 'too-long-mempool-chain'
 
+    got = listener.process_line(
+        '2023-10-11T13:28:31.069800Z [msghand] [mempoolrej] 5820965b4e2883464eb38cd3c38329a7495b45c78efdd2e78a8a091b1ddeb651 (wtxid=34b1c2741d8534b4b96f42cb8b7714ea81faef59467ccc5adf460cb871e41733) from peer=107 was not accepted: insufficient fee, rejecting replacement 5820965b4e2883464eb38cd3c38329a7495b45c78efdd2e78a8a091b1ddeb651; new feerate 0.00665872 BTC/kvB <= old feerate 0.00723845 BTC/kvB')
+    assert got
+    assert got.peer_num == 107
+    assert got.txhash == "5820965b4e2883464eb38cd3c38329a7495b45c78efdd2e78a8a091b1ddeb651"
+    assert got.wtxid == "34b1c2741d8534b4b96f42cb8b7714ea81faef59467ccc5adf460cb871e41733"
+
 
 def test_mempool_accept():
     listener = logparse.MempoolAcceptListener()

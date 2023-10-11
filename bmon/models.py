@@ -373,6 +373,7 @@ class MempoolReject(BaseModel):
     host = models.ForeignKey(Host, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(db_index=True)
     txhash = models.CharField(max_length=80)
+    wtxid = models.CharField(max_length=80, null=True, blank=True)
     peer_num = models.IntegerField()
     peer = models.ForeignKey(Peer, on_delete=models.CASCADE)
     reason_code = models.CharField(

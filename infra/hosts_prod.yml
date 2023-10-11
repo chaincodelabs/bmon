@@ -131,7 +131,7 @@ hosts:
     bitcoin:
       prune: 5000
       dbcache: 3000
-      docker_tag: jamesob/bitcoind:bip324-enable
+      docker_tag: jamesob/bitcoind:744157ef1a0b61ceb714cc27c9ae158907aecdc9
       extra_args: -v2transport=1
       listen: 1
 

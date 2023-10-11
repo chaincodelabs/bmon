@@ -284,7 +284,11 @@ class MempoolRejectListener(Listener):
 
     _accept_sub_patts = {
         _PEER_PATT,
-        re.compile(rf"\s+(?P<txhash>{_HASH})\s+from peer"),
+        re.compile(
+            rf"\s+(?P<txhash>{_HASH})"
+            rf"(\s+\(wtxid=(?P<wtxid>{_HASH})\))?"
+            rf"\s+from peer"
+        ),
         re.compile(rf"new feerate\s+(?P<insufficient_feerate>{_FLOAT})\s+BTC/kvB"),
         re.compile(rf"old feerate\s+(?P<old_feerate>{_FLOAT})\s+BTC/kvB"),
         re.compile(
@@ -333,6 +337,7 @@ class MempoolRejectListener(Listener):
             # `peer` FK will be filled out in `bitcoind_tasks`, where the redis cache
             # lives.
             txhash=matches["txhash"],
+            wtxid=matches.get('wtxid'),
             reason=reason,
             reason_data=reason_data,
             reason_code=reason_code,
